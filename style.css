@@ -186,6 +186,141 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
     user-select: none;
 }
 
+/* ==================== DYNAMIC TOAST NOTIFICATIONS ==================== */
+.notification-container {
+    position: fixed;
+    top: 70px; /* Sits cleanly below the navbar */
+    right: 15px;
+    z-index: 400; /* Stays above absolute sidebars and maps */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none; /* Allows clicks to pass through the empty container */
+    max-width: calc(100% - 30px);
+    width: 320px;
+}
+
+/* Base Toast Panel */
+.toast-notification {
+    background-color: #1a1a1a;
+    border: 2px solid #333;
+    border-radius: 8px;
+    padding: 12px 15px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+    pointer-events: auto; /* Restores clicks inside the toast itself */
+    animation: slideInRight 0.3s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+    overflow: hidden;
+}
+
+/* Animations */
+@keyframes slideInRight {
+    0% { transform: translateX(120%); opacity: 0; }
+    100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOutRight {
+    0% { transform: translateX(0); opacity: 1; }
+    100% { transform: translateX(120%); opacity: 0; }
+}
+
+@keyframes shrinkProgress {
+    0% { width: 100%; }
+    100% { width: 0%; }
+}
+
+/* Toast Exiting animation class */
+.toast-notification.exiting {
+    animation: slideOutRight 0.3s forwards ease-in;
+}
+
+/* Header contents */
+.toast-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.toast-title {
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: var(--gold-accent);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.toast-close-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    margin: 0;
+}
+
+.toast-close-btn:hover {
+    color: #f87171;
+}
+
+/* Body Content */
+.toast-body {
+    font-size: 0.78rem;
+    color: var(--text-light);
+    line-height: 1.4;
+    margin-bottom: 6px;
+}
+
+/* Action button for click-through events */
+.toast-action-btn {
+    align-self: flex-start;
+    background-color: var(--gold-accent);
+    color: #121212;
+    border: none;
+    padding: 4px 10px;
+    font-size: 0.72rem;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 4px;
+    transition: background-color 0.2s;
+}
+
+.toast-action-btn:hover {
+    background-color: #e6b800;
+}
+
+/* Self-draining Progress Bar Timer */
+.toast-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background-color: var(--gold-accent);
+    animation: shrinkProgress linear forwards;
+}
+
+/* Variant Color-Coding Themes */
+.toast-level-up { border-color: var(--gold-accent); }
+.toast-level-up .toast-progress { background-color: var(--gold-accent); }
+
+.toast-sell { border-color: #4ade80; }
+.toast-sell .toast-title { color: #4ade80; }
+.toast-sell .toast-progress { background-color: #4ade80; }
+
+.toast-shop { border-color: #38bdf8; }
+.toast-shop .toast-title { color: #38bdf8; }
+.toast-shop .toast-progress { background-color: #38bdf8; }
+
+.toast-collection { border-color: #c084fc; }
+.toast-collection .toast-title { color: #c084fc; }
+.toast-collection .toast-progress { background-color: #c084fc; }
+
 /* ==================== RESPONSIVE RULES ==================== */
 @media (max-width: 480px) { .xp-text { display: none; } }
 @media (max-width: 330px), (max-height: 500px) { .container { grid-template-columns: repeat(2, 1fr); } .map-wrapper { width: min(260px, 85vw); } .map-navigation { padding: 6px 8px; gap: 6px; } .nav-btn { padding: 5px 10px; font-size: 0.75rem; min-height: 28px; } .map-page-label { font-size: 0.75rem; } }

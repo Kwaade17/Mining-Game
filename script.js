@@ -75,6 +75,81 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ==================== INTERACTIVE NOTIFICATION SYSTEM ====================
+    
+    // Global notification container setup
+    let notificationContainer = document.querySelector('.notification-container');
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.className = 'notification-container';
+        document.body.appendChild(notificationContainer);
+    }
+
+    /**
+     * Spawns an animated, interactive notification toast
+     * @param {string} title - Header text
+     * @param {string} message - Body text description
+     * @param {string} type - Variant style class ('level-up', 'sell', 'shop', 'collection')
+     * @param {number} duration - Auto-close timer limit in milliseconds
+     * @param {object|null} action - Optional button { label: "Click", callback: () => {} }
+     */
+    function showNotification(title, message, type = '', duration = 4000, action = null) {
+        const toast = document.createElement('div');
+        toast.className = `toast-notification toast-${type}`;
+
+        // Toast layout construction
+        toast.innerHTML = `
+            <div class="toast-header">
+                <span class="toast-title">${title}</span>
+                <button class="toast-close-btn" aria-label="Close">×</button>
+            </div>
+            <div class="toast-body">${message}</div>
+            <div class="toast-progress" style="animation-duration: ${duration}ms;"></div>
+        `;
+
+        // Add interactive action button if specified
+        if (action) {
+            const actionBtn = document.createElement('button');
+            actionBtn.className = 'toast-action-btn';
+            actionBtn.textContent = action.label;
+            actionBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                action.callback();
+                closeToast();
+            });
+            toast.appendChild(actionBtn);
+        }
+
+        // Close animation handler
+        function closeToast() {
+            if (toast.classList.contains('exiting')) return;
+            toast.classList.add('exiting');
+            // Remove from DOM once slideOut finishes
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }
+
+        // Close hooks
+        toast.querySelector('.toast-close-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeToast();
+        });
+
+        // Auto-close timer
+        const autoCloseTimeout = setTimeout(closeToast, duration);
+
+        notificationContainer.appendChild(toast);
+    }
+
+    // Helper redirect to navigate views programmatically
+    function navigateToView(viewId) {
+        const targetLink = document.querySelector(`.nav-link[data-view="${viewId}"]`);
+        if (targetLink) {
+            targetLink.click(); // Simulates a programmatic click on the sidebar link
+        }
+    }
+
     // ==================== VISUAL EFFECTS ENGINE ====================
     function spawnFloatingText(text, x, y, colorClass = '') {
         const el = document.createElement('div');
@@ -110,9 +185,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rewardGold = 40 + Math.floor(Math.random() * 61); 
                 playerState.money += rewardGold;
 
+                // Spawn interactive feedback
                 spawnFloatingText(`+🪙 ${rewardGold}`, e.clientX, e.clientY, 'float-gold');
+                showNotification("🎁 Gift Opened!", `Unlocked 🪙 ${rewardGold} Coins from a Cavern Chest!`, "sell", 3500);
+
                 chest.remove();
-                
                 saveGame();
                 updateStatsUI();
             });
@@ -155,6 +232,15 @@ document.addEventListener('DOMContentLoaded', () => {
             playerState.xpNeeded = Math.floor(playerState.xpNeeded * 1.5);
             playerState.maxEnergy = Math.floor(playerState.maxEnergy * 1.1);
             playerState.currentEnergy = playerState.maxEnergy;
+
+            // Trigger Level-Up Notification toast
+            showNotification(
+                "🎉 Level Up!", 
+                `Awesome! You reached Level ${playerState.level}! Max Energy increased to ${playerState.maxEnergy}%!`, 
+                "level-up", 
+                5000
+            );
+
             if (playerState.level >= 10) unlockCollectionItem("cavern-cup");
         }
         updateStatsUI();
@@ -188,13 +274,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (sellAllBtn) {
         sellAllBtn.addEventListener('click', (e) => {
-            if (playerState.inventory.length === 0) return;
+            const count = playerState.inventory.length;
+            if (count === 0) return;
             let totalGold = 0;
             playerState.inventory.forEach(o => totalGold += o.finalValue);
             playerState.money += totalGold;
             playerState.inventory = [];
             
             spawnFloatingText(`+🪙 ${totalGold}`, e.clientX, e.clientY, 'float-gold');
+            
+            // Trigger Sell Notification toast
+            showNotification(
+                "🪙 Ores Sold!", 
+                `Traded ${count} ores at market for 🪙 ${totalGold} Coins!`, 
+                "sell", 
+                4000
+            );
 
             updateStatsUI();
             renderInventoryTray();
@@ -222,6 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
             finalValue: Math.floor(subTotal * rolledMut.multiplier), icon: cave.oreIcon
         });
 
+        // Trigger dynamic unlock checks
         unlockCollectionItem(`${cave.oreName.toLowerCase().split(' ')[0]}-col`);
         if (rolledVar.id !== "normal") unlockCollectionItem(`${rolledVar.id}-col`);
         if (rolledMut.id !== "none") unlockCollectionItem(`${rolledMut.id}-col`);
@@ -229,6 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
         totalMinesCount++;
         if (totalMinesCount >= 100) unlockCollectionItem("hard-worker");
 
+        // Spawn interactive visual feedbacks
         if (clickEvent) {
             const x = clickEvent.clientX;
             const y = clickEvent.clientY;
@@ -237,7 +334,9 @@ document.addEventListener('DOMContentLoaded', () => {
             spawnFloatingText(`+ ${cave.oreIcon} ${rolledVar.name !== 'Normal' ? rolledVar.name + ' ' : ''}${cave.oreName.split(' ')[0]}`, x, y - 20, 'float-ore');
         }
 
+        // Spawn gift chest chance
         rollChestSpawn();
+
         awardXp(cave.xpReward);
         renderInventoryTray();
         saveGame();
@@ -446,7 +545,13 @@ document.addEventListener('DOMContentLoaded', () => {
             playerState.currentEnergy = Math.min(playerState.maxEnergy, playerState.currentEnergy + item.energy);
         }
 
-        alert(`Successfully unlocked: ${item.name}!`);
+        // Trigger Shop Purchase Toast
+        showNotification(
+            "🛒 Item Purchased!", 
+            `Successfully obtained ${item.name}! Applied active stat adjustments.`, 
+            "shop", 
+            4000
+        );
         
         saveGame();
         updateStatsUI();
@@ -511,6 +616,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const item = collectionsData.find(c => c.id === itemId);
         if (item && !item.obtained) {
             item.obtained = true;
+
+            // Trigger Collection Unlock Toast
+            showNotification(
+                "🏆 Collection Unlocked!", 
+                `New entry unlocked: ${item.name}! Check your gallery details.`, 
+                "collection", 
+                6000,
+                {
+                    label: "View Gallery",
+                    callback: () => navigateToView("view-collections") // Redirect to Collections tab
+                }
+            );
+
             renderCollections();
             saveGame();
         }
