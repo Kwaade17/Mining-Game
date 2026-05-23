@@ -1,10 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ==================== SESSION STATE ====================
+    const GAME_VERSION = "1.5.0"; // Active version used to check shop updates
+    
     const playerState = {
         username: "",           // Custom player display name
         level: 1, xp: 0, xpNeeded: 100, money: 200, maxBagCapacity: 20,
         currentEnergy: 100, maxEnergy: 100, activePickaxeMultiplier: 1.0,
-        xpMultiplier: 1.0, inventory: []
+        xpMultiplier: 1.0, inventory: [],
+        soundsMuted: false,     // Tracks global audio state
+        buffs: {
+            luck: 0,            // Dynamic luck timer in seconds
+            rage: 0             // Dynamic rage cost timer in seconds
+        }
     };
 
     // ==================== SELECTORS ====================
@@ -68,6 +75,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Game Manual Element selectors
     const readmeContent = document.getElementById('readmeContent');
 
+    // Active Buffs Panel container
+    const buffsContainer = document.getElementById('buffsContainer');
+
     let currentMapPage = 1, cavesPerPage = 9, maxMapPages = 1, totalMinesCount = 0;
     let readmeLoaded = false; 
 
@@ -96,7 +106,8 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         playTone(freq, type, duration, gainStart) {
             this.init();
-            if (!this.ctx) return;
+            // Block all audio nodes if player has muted audio
+            if (!this.ctx || playerState.soundsMuted) return;
             try {
                 const osc = this.ctx.createOscillator();
                 const gainNode = this.ctx.createGain();
@@ -158,7 +169,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (savedState) {
             try {
                 const parsed = JSON.parse(savedState);
+                
+                if (parsed.inventory) {
+                    parsed.inventory.forEach(ore => {
+                        ore.isNew = false;
+                    });
+                }
+                
                 Object.assign(playerState, parsed);
+                
+                // Keep dropdown settings text matched upon startup load
+                if (dropdownSettings) {
+                    dropdownSettings.textContent = playerState.soundsMuted ? "🔈 Unmute Sounds" : "🔊 Mute Sounds";
+                }
             } catch (err) {
                 console.error("Save load failed: ", err);
             }
@@ -171,6 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 collectionsData.forEach(item => {
                     if (parsedCol[item.id] !== undefined) {
                         item.obtained = parsedCol[item.id];
+                        item.isNew = false; 
                     }
                 });
             } catch (err) {
@@ -180,17 +204,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==================== CURRENCY FORMATTER ENGINE ====================
-    
-    /**
-     * Formats raw numeric balances with standard locale commas or compact shorthand
-     * @param {number|string} value - Raw coins balance
-     * @param {boolean} compact - True to scale values down on small viewports (e.g. 1.2M, 50K)
-     */
     function formatMoney(value, compact = false) {
         const num = Number(value);
         if (isNaN(num)) return "0";
 
-        // Compact Notation for tight, responsive viewport spaces (e.g., values >= 100,000)
         if (compact && num >= 100000) {
             return new Intl.NumberFormat('en-US', {
                 notation: 'compact',
@@ -198,7 +215,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }).format(num);
         }
 
-        // Standard dynamic commas formatting (e.g., 12,500)
         return num.toLocaleString();
     }
 
@@ -364,6 +380,51 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1200);
     }
 
+    // Spawns 6 physical rock splash particles falling on click coords
+    function spawnMineParticles(x, y, icon) {
+        const particleCount = 6;
+        const particlePool = [icon, '🪨', '✨', '🪙', '🟫'];
+
+        for (let i = 0; i < particleCount; i++) {
+            const el = document.createElement('div');
+            el.className = 'mine-particle';
+            el.innerHTML = particlePool[Math.floor(Math.random() * particlePool.length)];
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            document.body.appendChild(el);
+
+            // Compute random polar coordinates velocity vectors
+            const angle = Math.random() * Math.PI * 2;
+            const force = 3 + Math.random() * 6;
+            const vx = Math.cos(angle) * force;
+            const vy = Math.sin(angle) * force - 4; // Launches slightly upward initially
+
+            let currentX = x, currentY = y, currentVy = vy;
+
+            // Physics interval ticking loop
+            const physicsInterval = setInterval(() => {
+                currentX += vx;
+                currentVy += 0.6; // Gravity factor simulation
+                currentY += currentVy;
+
+                el.style.left = `${currentX}px`;
+                el.style.top = `${currentY}px`;
+
+                // Self-destruct once it falls out of viewport frame
+                if (currentY > window.innerHeight + 50) {
+                    clearInterval(physicsInterval);
+                    el.remove();
+                }
+            }, 30);
+
+            // Backup garbage collection
+            setTimeout(() => {
+                clearInterval(physicsInterval);
+                el.remove();
+            }, 1000);
+        }
+    }
+
     function rollChestSpawn() {
         if (Math.random() <= 0.08) {
             const activeView = document.querySelector('.game-view.active');
@@ -404,6 +465,44 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ==================== ACTIVE TIMERS ENGINE ====================
+    
+    function renderBuffsUI() {
+        if (!buffsContainer) return;
+        buffsContainer.innerHTML = '';
+
+        if (playerState.buffs.luck > 0) {
+            const badge = document.createElement('div');
+            badge.className = 'buff-badge';
+            badge.innerHTML = `🍀 Luck: ${playerState.buffs.luck}s`;
+            buffsContainer.appendChild(badge);
+        }
+
+        if (playerState.buffs.rage > 0) {
+            const badge = document.createElement('div');
+            badge.className = 'buff-badge';
+            badge.innerHTML = `🔥 Rage: ${playerState.buffs.rage}s`;
+            buffsContainer.appendChild(badge);
+        }
+    }
+
+    // 1-second system ticking loop for active countdown timers
+    setInterval(() => {
+        let changed = false;
+        if (playerState.buffs.luck > 0) {
+            playerState.buffs.luck--;
+            changed = true;
+        }
+        if (playerState.buffs.rage > 0) {
+            playerState.buffs.rage--;
+            changed = true;
+        }
+        if (changed) {
+            renderBuffsUI();
+            saveGame();
+        }
+    }, 1000);
+
     // ==================== UTILITY ALGORITHMS ====================
     function rollWeightedSelection(itemsArray) {
         const roll = Math.random();
@@ -419,7 +518,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (labelLevel) labelLevel.textContent = playerState.level;
         if (labelXp) labelXp.textContent = playerState.xp;
         
-        // Compact formatting on the navigation bar so numbers don't wrap on small screens
         if (labelMoney) labelMoney.textContent = formatMoney(playerState.money, true);
         
         if (labelOres) labelOres.textContent = playerState.inventory.length;
@@ -437,9 +535,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const displayName = playerState.username ? playerState.username : "Miner Joe";
         if (navUsername) navUsername.textContent = displayName;
         if (sideUsername) sideUsername.textContent = displayName;
-        
-        // NEW: Automatically check all award conditions whenever player statistics change
-        checkAchievements();
+
+        checkAchievements(); 
     }
 
     function awardXp(amount) {
@@ -459,6 +556,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 "level-up", 
                 5000
             );
+
+            if (playerState.level >= 10) unlockCollectionItem("cavern-cup");
 
             updateMapPageStructure();
         }
@@ -481,13 +580,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const goldVal = ore.finalValue !== undefined ? ore.finalValue : 10;
             card.innerHTML = `
+                ${ore.isNew ? '<span class="new-badge">New</span>' : ''}
                 <span class="loot-icon">${ore.icon}</span>
                 <div class="loot-details">
                     <span class="loot-name">${ore.variant !== 'Normal' ? ore.variant + ' ' : ''}${ore.name}</span>
                     <span class="loot-meta">${ore.actualWeight}kg | 🪙${formatMoney(goldVal)}${ore.mutation !== 'Normal' ? ' (' + ore.mutation + ')' : ''}</span>
                 </div>`;
 
-            // Display comma-formatted details inside full popup modal
             card.addEventListener('click', (e) => {
                 e.stopPropagation();
                 SoundEngine.playClick();
@@ -549,7 +648,11 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification("🔒 Cavern Locked!", `You need to reach Level ${cave.requiredLevel} to mine here.`, "level-up", 3000);
             return;
         }
-        if (playerState.currentEnergy < cave.energyCost) {
+        
+        // Dynamic Energy calculations based on active Rage buffs
+        const activeCost = playerState.buffs.rage > 0 ? Math.ceil(cave.energyCost / 2) : cave.energyCost;
+
+        if (playerState.currentEnergy < activeCost) {
             SoundEngine.playError();
             showNotification("⚡ Out of Energy!", "Eat some food or buy Stamina Brews from the Shop to restore energy.", "shop", 3000);
             if (clickEvent) spawnFloatingText("No Energy! ⚡", clickEvent.clientX, clickEvent.clientY, "float-red");
@@ -562,12 +665,18 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        playerState.currentEnergy -= cave.energyCost;
+        playerState.currentEnergy -= activeCost;
 
+        // Roll dynamic ore from loot pool
         const pool = cave.lootPool;
         let totalWeight = 0;
         pool.forEach(ore => {
-            totalWeight += rarityWeights[ore.rarity] || 1000;
+            let weight = rarityWeights[ore.rarity] || 1000;
+            // Luck Brew active double-rarity roll check
+            if (playerState.buffs.luck > 0 && ore.rarity !== 'common') {
+                weight *= 2; 
+            }
+            totalWeight += weight;
         });
 
         const roll = Math.random() * totalWeight;
@@ -575,7 +684,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let selectedOre = pool[0];
 
         for (let ore of pool) {
-            cumulativeWeight += rarityWeights[ore.rarity] || 1000;
+            let weight = rarityWeights[ore.rarity] || 1000;
+            if (playerState.buffs.luck > 0 && ore.rarity !== 'common') {
+                weight *= 2;
+            }
+            cumulativeWeight += weight;
             if (roll <= cumulativeWeight) {
                 selectedOre = ore;
                 break;
@@ -589,7 +702,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const rolledMut = rollWeightedSelection(mutationsData);
         const finalValue = Math.floor(subTotal * rolledMut.multiplier);
 
-        playerState.inventory.push({
+        const newOre = {
             id: selectedOre.name.toLowerCase().replace(/\s+/g, '-'),
             name: selectedOre.name,
             rarity: selectedOre.rarity,
@@ -602,8 +715,11 @@ document.addEventListener('DOMContentLoaded', () => {
             mutation: rolledMut.name,
             mutationMultiplier: rolledMut.multiplier,
             finalValue: finalValue,
-            icon: selectedOre.icon
-        });
+            icon: selectedOre.icon,
+            isNew: true 
+        };
+
+        playerState.inventory.push(newOre);
 
         if (cave.collectionId) unlockCollectionItem(cave.collectionId);
         if (rolledVar.collectionId) unlockCollectionItem(rolledVar.collectionId);
@@ -617,15 +733,34 @@ document.addEventListener('DOMContentLoaded', () => {
         if (clickEvent) {
             const x = clickEvent.clientX;
             const y = clickEvent.clientY;
-            spawnFloatingText(`-${cave.energyCost}⚡`, x - 30, y, 'float-energy');
+            spawnFloatingText(`-${activeCost}⚡`, x - 30, y, 'float-energy');
             spawnFloatingText(`+${cave.xpReward} XP`, x + 30, y, 'float-xp');
             spawnFloatingText(`+ ${selectedOre.icon} ${rolledVar.name !== 'Normal' ? rolledVar.name + ' ' : ''}${selectedOre.name.split(' ')[0]}`, x, y - 20, 'float-ore');
+            
+            // Spawn dynamic bouncy mining particles
+            spawnMineParticles(x, y, selectedOre.icon);
         }
 
         rollChestSpawn();
         awardXp(cave.xpReward);
         renderInventoryTray();
         saveGame();
+
+        // Smooth-scrolling horizontal tray focused on new item
+        setTimeout(() => {
+            if (inventoryScroll) {
+                inventoryScroll.scrollTo({
+                    left: inventoryScroll.scrollWidth,
+                    behavior: 'smooth'
+                });
+            }
+        }, 100);
+
+        // Remove the ephemeral "NEW" badge from active list after 5 seconds
+        setTimeout(() => {
+            newOre.isNew = false;
+            renderInventoryTray();
+        }, 5000);
     }
 
     // ==================== CAVE GRID RENDERER ====================
@@ -717,8 +852,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (prevMapBtn && nextMapBtn) {
-        prevMapBtn.addEventListener('click', () => { if (currentMapPage > 1) { currentMapPage--; SoundEngine.playClick(); updateMapPageStructure(); } });
-        nextMapBtn.addEventListener('click', () => { if (currentMapPage < maxMapPages) { currentMapPage++; SoundEngine.playClick(); updateMapPageStructure(); } });
+        prevMapBtn.addEventListener('click', () => { if (currentMapPage > 1) { currentMapPage--; updateMapPageStructure(); } });
+        nextMapBtn.addEventListener('click', () => { if (currentMapPage < maxMapPages) { currentMapPage++; updateMapPageStructure(); } });
     }
 
     // ==================== SHOP DYNAMIC RENDERER ====================
@@ -736,7 +871,12 @@ document.addEventListener('DOMContentLoaded', () => {
         shopData.filter(i => i.category === subCat).forEach(item => {
             const card = document.createElement('div');
             card.className = cardClass;
+            const isNewItem = item.releaseDate && ((Date.now() - Date.parse(item.releaseDate)) < 3 * 24 * 60 * 60 * 1000);
+            const isNewVersion = item.versionAdded === GAME_VERSION;
+            const showNew = isNewItem || isNewVersion;
+
             card.innerHTML = `
+                ${showNew ? '<span class="new-badge">New</span>' : ''}
                 <div class="rounded-image-icon">${item.icon}</div>
                 <span class="wider-card-name">${item.name}</span>
                 <p class="wider-card-desc">${item.desc}</p>
@@ -765,13 +905,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 grid.className = 'portrait-grid';
 
                 shopData.filter(i => i.category === catKey).forEach(item => {
-                    grid.innerHTML += `
-                        <div class="portrait-card">
-                            <div class="circle-icon">${item.icon}</div>
-                            <span class="card-name">${item.name}</span>
-                            <p class="card-desc">${item.desc}</p>
-                            <button class="card-buy-btn" data-id="${item.id}">🪙 ${formatMoney(item.cost)}</button>
-                        </div>`;
+                    const card = document.createElement('div');
+                    card.className = 'portrait-card';
+
+                    const isNewItem = item.releaseDate && ((Date.now() - Date.parse(item.releaseDate)) < 3 * 24 * 60 * 60 * 1000);
+                    const isNewVersion = item.versionAdded === GAME_VERSION;
+                    const showNew = isNewItem || isNewVersion;
+
+                    card.innerHTML = `
+                        ${showNew ? '<span class="new-badge">New</span>' : ''}
+                        <div class="circle-icon">${item.icon}</div>
+                        <span class="card-name">${item.name}</span>
+                        <p class="card-desc">${item.desc}</p>
+                        <button class="card-buy-btn" data-id="${item.id}">🪙 ${formatMoney(item.cost)}</button>
+                    `;
+                    grid.appendChild(card);
                 });
                 scroll.appendChild(grid);
                 section.appendChild(scroll);
@@ -833,7 +981,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!item) return;
 
         if (item.isIAP) {
-            SoundEngine.playCoin(); 
             showNotification(
                 "🎁 Purchase Successful!", 
                 `Unlocked ${item.name}! (Simulated IAP)`, 
@@ -868,6 +1015,10 @@ document.addEventListener('DOMContentLoaded', () => {
             playerState.maxBagCapacity = item.capacity;
         } else if (item.category === "energy") {
             playerState.currentEnergy = Math.min(playerState.maxEnergy, playerState.currentEnergy + item.energy);
+        } else if (item.id === "luck-brew") {
+            playerState.buffs.luck = 60; // Triggers 60-second active luck boost
+        } else if (item.id === "rage-elixir") {
+            playerState.buffs.rage = 60; // Triggers 60-second active rage boost
         }
 
         SoundEngine.playCoin();
@@ -882,6 +1033,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saveGame();
         updateStatsUI();
         renderShop();
+        renderBuffsUI(); // Dynamically updates visual timers on buy
         updateMapPageStructure();
     }
 
@@ -905,6 +1057,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const card = document.createElement('div');
         card.className = 'col-card';
         card.innerHTML = `
+            ${item.isNew ? '<span class="new-badge">New</span>' : ''}
             <div class="col-icon-circle">${item.obtained ? item.icon : '❓'}</div>
             <h4 class="col-card-title">${item.obtained ? item.name : 'Unknown'}</h4>
             <p class="col-card-desc">${item.obtained ? item.desc : 'Keep mining layers to unlock details.'}</p>
@@ -965,6 +1118,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const item = collectionsData.find(c => c.id === itemId);
         if (item && !item.obtained) {
             item.obtained = true;
+            item.isNew = true; 
 
             SoundEngine.playUnlock();
 
@@ -981,31 +1135,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             renderCollections();
             saveGame();
+
+            setTimeout(() => {
+                item.isNew = false;
+                renderCollections();
+            }, 6000);
         }
     }
-    
-    // ==================== UNIFIED DATA-DRIVEN ACHIEVEMENT ENGINE ====================
-    
-    // Loops through awards dynamically, checks conditions, and unlocks achievements
-    function checkAchievements() {
-        collectionsData.forEach(item => {
-            // Only process unobtained awards possessing a valid condition type
-            if (item.category === "awards" && !item.obtained && item.conditionType) {
-                let isEligible = false;
 
-                if (item.conditionType === "level" && playerState.level >= item.conditionValue) {
-                    isEligible = true;
-                } else if (item.conditionType === "mines" && totalMinesCount >= item.conditionValue) {
-                    isEligible = true;
-                } else if (item.conditionType === "money" && playerState.money >= item.conditionValue) {
-                    isEligible = true;
-                }
-
-                if (isEligible) {
-                    unlockCollectionItem(item.id);
-                }
-            }
-        });
+    function updateHardWorkerBadge() {
+        if (totalMinesCount >= 100) {
+            unlockCollectionItem("hard-worker");
+        }
     }
 
     // ==================== SEARCH/FILTER SYSTEM ====================
@@ -1065,7 +1206,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ==================== TAB SWITCHER & TOGGLES ====================
     
-    // Set initial view visibility inline to prevent stylesheet timing issues
     gameViews.forEach(view => {
         if (view.classList.contains('active')) {
             view.style.display = 'flex';
@@ -1074,44 +1214,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Tab switcher with absolute inline-style display overrides
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            e.stopPropagation(); // Safe click propagation lock
+            e.stopPropagation(); 
             SoundEngine.playClick();
 
-            // Toggle active styling on navigation list options
             navLinks.forEach(item => item.classList.remove('active'));
             link.classList.add('active');
 
-            // Force hide all viewport wrappers to prevent display conflicts
             gameViews.forEach(view => {
                 view.classList.remove('active');
-                view.style.display = 'none'; // Overrides CSS caching bugs
+                view.style.display = 'none'; 
             });
 
-            // Force display active viewport
             const targetId = link.getAttribute('data-view');
             const targetView = document.getElementById(targetId);
             if (targetView) {
                 targetView.classList.add('active');
-                targetView.style.display = 'flex'; // Overrides CSS caching bugs
+                targetView.style.display = 'flex'; 
                 
-                // Fetch and render local README.md dynamically if navigating to manual
                 if (targetId === "view-readme") {
                     loadReadmeFile();
                 }
             }
 
-            // Auto-close sidebar on mobile viewports
             if (window.innerWidth < 768 && sidebar) {
                 sidebar.classList.remove('open');
             }
         });
     });
 
-    // ==================== DROPDOWN CLICK CONTROLLERS ====================
     if (userProfile) {
         userProfile.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1125,7 +1258,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 1. Account Dropdown Option (Displays real-time stats inside unified modal)
     if (dropdownAccount) {
         dropdownAccount.addEventListener('click', (e) => {
             e.preventDefault();
@@ -1149,24 +1281,35 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 2. Settings Dropdown Option (Displays Toast confirmation)
     if (dropdownSettings) {
         dropdownSettings.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
+            
+            // Toggle global sound system
+            playerState.soundsMuted = !playerState.soundsMuted;
+            
+            // Dynamic labels update on click
+            dropdownSettings.textContent = playerState.soundsMuted ? "🔈 Unmute Sounds" : "🔊 Mute Sounds";
+
+            showNotification(
+                playerState.soundsMuted ? "🔈 Caverns Silenced" : "🔊 Caverns Active", 
+                playerState.soundsMuted ? "All sound effects are now muted." : "Cavern sound effects are now active!", 
+                "shop", 
+                3000
+            );
+
+            saveGame();
             SoundEngine.playClick();
-            showNotification("⚙️ Settings Opened", "Settings and configurations are active.", "shop", 3000);
         });
     }
 
-    // 3. Sign Out Dropdown Option (Confirmation modal before reset)
     if (dropdownSignOut) {
         dropdownSignOut.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
             SoundEngine.playError();
             
-            // Custom confirmation modal popup
             openDetailModal(
                 "Reset Cavern Progress?",
                 "🚪",
@@ -1183,11 +1326,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ==================== STARTING USERNAME INPUT MODAL CONTROLLER ====================
     if (saveNameBtn && usernameInput && nameModal) {
         saveNameBtn.addEventListener('click', () => {
             SoundEngine.playCoin();
-
             const inputVal = usernameInput.value.trim();
             playerState.username = inputVal ? inputVal : "Miner Joe";
             
@@ -1237,14 +1378,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 100);
     });
 
-    // ==================== INITIAL GESTURE TRIGGER ====================
     document.body.addEventListener('click', () => {
         SoundEngine.init();
-    }, { once: true }); 
+    }, { once: true });
 
     // ==================== INITIALIZATION ====================
-    loadGame(); // Restore progress from local storage on reload
-    checkUserRegistration(); // Call registration check on load
+    loadGame(); 
+    checkUserRegistration(); 
     updateMapPageStructure();
     updateStatsUI();
     renderInventoryTray();

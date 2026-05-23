@@ -151,37 +151,48 @@ const mutationsData = [
 
 // ==================== SHOP ITEMS DATABASE ====================
 const shopData = [
+    // Mining Speed
     { id: "wooden-pick", category: "mining-speed", name: "Wooden Pick", desc: "+5% mining efficiency.", cost: 50, icon: "🪵", multiplier: 1.05, collectionId: "starter-tool" },
     { id: "iron-pick", category: "mining-speed", name: "Iron Pick", desc: "+20% mining efficiency.", cost: 150, icon: "⛏️", multiplier: 1.20, collectionId: "iron-digger" },
-    { id: "drill-arm", category: "mining-speed", name: "Drill Arm", desc: "+50% mining efficiency.", cost: 500, icon: "🔋", multiplier: 1.50, collectionId: "drill-arm-col" },
     
+    // Persistent new badge triggered by specific active version (GAME_VERSION = 1.5.0)
+    { id: "drill-arm", category: "mining-speed", name: "Drill Arm", desc: "+50% mining efficiency.", cost: 500, icon: "🔋", multiplier: 1.50, collectionId: "drill-arm-col", versionAdded: "1.5.0" },
+    
+    // Bag Capacity
     { id: "pouch-bag", category: "bag-capacity", name: "Pouch Bag", desc: "Increases bag limit to 30.", cost: 80, icon: "🎒", capacity: 30, collectionId: null },
     { id: "cargo-bag", category: "bag-capacity", name: "Cargo Bag", desc: "Increases bag limit to 60.", cost: 300, icon: "💼", capacity: 60, collectionId: null },
     { id: "steel-trunk", category: "bag-capacity", name: "Steel Trunk", desc: "Increases bag limit to 120.", cost: 800, icon: "📦", capacity: 120, collectionId: null },
     
-    { id: "raw-apple", category: "energy", name: "Raw Apple", desc: "Restores 15 Energy.", cost: 10, icon: "🍏", energy: 15, collectionId: null },
+    // Energy Upgrades (Persistent new badge triggered by release date)
+    { id: "raw-apple", category: "energy", name: "Raw Apple", desc: "Restores 15 Energy.", cost: 10, icon: "🍏", energy: 15, collectionId: null, releaseDate: "2026-05-23" },
     { id: "stamina-brew", category: "energy", name: "Stamina Brew", desc: "Restores 50 Energy.", cost: 75, icon: "🧪", energy: 50, collectionId: null },
     { id: "cooked-meat", category: "energy", name: "Cooked Meat", desc: "Restores 100 Energy.", cost: 180, icon: "🥩", energy: 100, collectionId: null },
 
+    // Boosts / Potions
     { id: "luck-brew", category: "boosts", name: "Luck Brew", desc: "Double gem roll chance.", cost: 120, icon: "⭐", collectionId: null },
     { id: "rage-elixir", category: "boosts", name: "Rage Elixir", desc: "Cuts mining costs by 50%.", cost: 200, icon: "🔥", collectionId: null },
 
+    // Packs
     { id: "starter-bundle", category: "packs", name: "Starter Bundle", desc: "Unlock 500 Coins & custom skin.", cost: "$1.99", icon: "💎", isIAP: true, collectionId: null },
     { id: "prospector-chest", category: "packs", name: "Prospector Chest", desc: "Unlock 2500 Coins & 5 Brews.", cost: "$4.99", icon: "🪙", isIAP: true, collectionId: null },
 
+    // Subscriptions
     { id: "weekly-vip", category: "subscriptions", name: "Weekly VIP", desc: "Daily energy and pick speed.", cost: "$0.99/w", icon: "👑", isIAP: true, collectionId: null },
     { id: "monthly-elite", category: "subscriptions", name: "Monthly Elite", desc: "Daily gems and max capacity.", cost: "$2.99/m", icon: "⚜️", isIAP: true, collectionId: null },
 
+    // Passes
     { id: "underworld-pass", category: "passes", name: "Season 1 Underworld Pass", desc: "Unlocks the Underworld Pass and access to Tier Rewards.", cost: "$5.99", icon: "🎫", isIAP: true, collectionId: null },
     { id: "double-xp-pass", category: "passes", name: "Double XP Permanent Pass", desc: "Permanently doubles all experience earned from mining.", cost: "$2.99", icon: "⚡", isIAP: true, collectionId: null }
 ];
 
 // ==================== COLLECTIONS GALLERY DATABASE ====================
 const collectionsData = [
+    // Pickaxes
     { id: "starter-tool", category: "pickaxes", name: "Starter Tool", desc: "Rusty, wooden, but dependable gear.", icon: "🪵", obtained: true },
     { id: "iron-digger", category: "pickaxes", name: "Iron Digger", desc: "Wrought iron forged deep in dwarven kilns.", icon: "⛏️", obtained: false },
     { id: "drill-arm-col", category: "pickaxes", name: "Drill Arm Specialist", desc: "A fully mechanical drill arm attachment.", icon: "🔋", obtained: false },
 
+    // Ores
     { id: "coal-col", category: "ores", name: "Coal Nugget", desc: "Combustible fuel, found in early cave layers.", icon: "🪨", obtained: false },
     { id: "copper-col", category: "ores", name: "Copper Ore", desc: "Highly conductive chunks showing green oxidation.", icon: "🟧", obtained: false },
     { id: "iron-col", category: "ores", name: "Iron Ore", desc: "Heavy metal chunks ready to be refined.", icon: "⚙️", obtained: false },
@@ -193,6 +204,7 @@ const collectionsData = [
     { id: "obsidian-col", category: "ores", name: "Obsidian Core", desc: "Superheated volcanic core shards vibrating with force.", icon: "🔥", obtained: false },
     { id: "void-col", category: "ores", name: "Void Essence", desc: "A dark, gravitational substance radiating cold, silent energy.", icon: "🌑", obtained: false },
 
+    // Mutations (Merged with Variant Unlocks)
     { id: "rust-col", category: "mutations", name: "Rust Variant", desc: "An old oxidization coating on standard cave ores.", icon: "🟫", obtained: false },
     { id: "pure-col", category: "mutations", name: "Pure Variant", desc: "Unblemished minerals displaying high density.", icon: "✨", obtained: false },
     { id: "rainbow-col", category: "mutations", name: "Rainbow Variant", desc: "Prismatic surface reflections showing color spectrums.", icon: "🌈", obtained: false },
@@ -200,58 +212,9 @@ const collectionsData = [
     { id: "toxic-col", category: "mutations", name: "Toxic Mutation", desc: "Glowing with radioactive isotopes.", icon: "🤢", obtained: false },
     { id: "crystalline-col", category: "mutations", name: "Crystalline Mutation", desc: "Grown with sparkling crystal points.", icon: "🔮", obtained: false },
     { id: "cosmic-col", category: "mutations", name: "Cosmic Mutation", desc: "Pulsing with gravity-warping alien force.", icon: "🌌", obtained: false },
-    
-    // Awards - Trophies (Quest Chests)
-    { 
-        id: "cavern-cup", 
-        category: "awards", 
-        subCategory: "trophies", 
-        name: "Cavern Cup", 
-        desc: "Reach Character Level 10.", 
-        icon: "🥇", 
-        obtained: false,
-        // Programmatic condition checks:
-        conditionType: "level", 
-        conditionValue: 10 
-    },
-    
-    // Awards - Badges (Quest Tasks)
-    { 
-        id: "hard-worker", 
-        category: "awards", 
-        subCategory: "badges", 
-        name: "Hard Worker", 
-        desc: "Mine 100 total ores in caves.", 
-        icon: "🎖️", 
-        obtained: false,
-        // Programmatic condition checks:
-        conditionType: "mines", 
-        conditionValue: 100 
-    },
-    
-    // NEW: Wealthy Miner Badge (Zero code edits required!)
-    { 
-        id: "wealthy-miner", 
-        category: "awards", 
-        subCategory: "badges", 
-        name: "Wealthy Miner", 
-        desc: "Accumulate 1,000 Gold Coins.", 
-        icon: "💰", 
-        obtained: false,
-        // Programmatic condition checks:
-        conditionType: "money", 
-        conditionValue: 1000 
-    },
-    
-    { 
-        id: "ore-hoarder", 
-        category: "awards", 
-        subCategory: "badges", 
-        name: "Ore Hoarder", 
-        desc: "Mine 500 total ores.", 
-        icon: "🎒", 
-        obtained: false, 
-        conditionType: "mines", 
-        conditionValue: 500
-    }
+
+    // Awards - Trophies
+    { id: "cavern-cup", category: "awards", subCategory: "trophies", name: "Cavern Cup", desc: "Reach Character Level 10.", icon: "🥇", obtained: false, conditionType: "level", conditionValue: 10 },
+    { id: "hard-worker", category: "awards", subCategory: "badges", name: "Hard Worker", desc: "Mine 100 total ores in caves.", icon: "🎖️", obtained: false, conditionType: "mines", conditionValue: 100 },
+    { id: "wealthy-miner", category: "awards", subCategory: "badges", name: "Wealthy Miner", desc: "Accumulate 1,000 Gold Coins.", icon: "💰", obtained: false, conditionType: "money", conditionValue: 1000 }
 ];
