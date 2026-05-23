@@ -69,7 +69,79 @@ document.addEventListener('DOMContentLoaded', () => {
     const readmeContent = document.getElementById('readmeContent');
 
     let currentMapPage = 1, cavesPerPage = 9, maxMapPages = 1, totalMinesCount = 0;
-    let readmeLoaded = false; // Prevents fetching multiple times unnecessarily
+    let readmeLoaded = false; 
+
+    // Rarity weights table used to compute loot tables
+    const rarityWeights = {
+        common: 1000,
+        uncommon: 500,
+        rare: 200,
+        epic: 80,
+        legendary: 30,
+        mythic: 10,
+        divine: 3,
+        cosmic: 1
+    };
+
+    // ==================== OFFLINE SYNTHESIZED SOUND ENGINE ====================
+    const SoundEngine = {
+        ctx: null,
+        init() {
+            if (!this.ctx) {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (this.ctx && this.ctx.state === 'suspended') {
+                this.ctx.resume();
+            }
+        },
+        playTone(freq, type, duration, gainStart) {
+            this.init();
+            if (!this.ctx) return;
+            try {
+                const osc = this.ctx.createOscillator();
+                const gainNode = this.ctx.createGain();
+
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+
+                gainNode.gain.setValueAtTime(gainStart, this.ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+
+                osc.connect(gainNode);
+                gainNode.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            } catch (err) {
+                console.error("Audio node generation failed: ", err);
+            }
+        },
+        playClick() {
+            this.playTone(600, 'sine', 0.08, 0.05); 
+        },
+        playMine() {
+            this.playTone(1200, 'triangle', 0.1, 0.15); 
+            setTimeout(() => this.playTone(800, 'sine', 0.05, 0.05), 40); 
+        },
+        playCoin() {
+            this.playTone(987.77, 'sine', 0.12, 0.08); 
+            setTimeout(() => this.playTone(1318.51, 'sine', 0.22, 0.08), 80); 
+        },
+        playLevelUp() {
+            this.playTone(523.25, 'triangle', 0.15, 0.15); 
+            setTimeout(() => this.playTone(659.25, 'triangle', 0.15, 0.15), 100); 
+            setTimeout(() => this.playTone(783.99, 'triangle', 0.15, 0.15), 200); 
+            setTimeout(() => this.playTone(1046.50, 'triangle', 0.4, 0.15), 300); 
+        },
+        playError() {
+            this.playTone(130, 'sawtooth', 0.25, 0.12); 
+        },
+        playUnlock() {
+            this.playTone(880, 'sine', 0.1, 0.08);
+            setTimeout(() => this.playTone(1100, 'sine', 0.1, 0.08), 60);
+            setTimeout(() => this.playTone(1320, 'sine', 0.15, 0.08), 120);
+        }
+    };
 
     // ==================== PERSISTENT LOCAL STORAGE ENGINE ====================
     function saveGame() {
@@ -107,6 +179,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ==================== CURRENCY FORMATTER ENGINE ====================
+    
+    /**
+     * Formats raw numeric balances with standard locale commas or compact shorthand
+     * @param {number|string} value - Raw coins balance
+     * @param {boolean} compact - True to scale values down on small viewports (e.g. 1.2M, 50K)
+     */
+    function formatMoney(value, compact = false) {
+        const num = Number(value);
+        if (isNaN(num)) return "0";
+
+        // Compact Notation for tight, responsive viewport spaces (e.g., values >= 100,000)
+        if (compact && num >= 100000) {
+            return new Intl.NumberFormat('en-US', {
+                notation: 'compact',
+                maximumFractionDigits: 1
+            }).format(num);
+        }
+
+        // Standard dynamic commas formatting (e.g., 12,500)
+        return num.toLocaleString();
+    }
+
     // ==================== INTERACTIVE NOTIFICATION SYSTEM ====================
     let notificationContainer = document.querySelector('.notification-container');
     if (!notificationContainer) {
@@ -134,17 +229,16 @@ document.addEventListener('DOMContentLoaded', () => {
             actionBtn.textContent = action.label;
             actionBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                SoundEngine.playClick();
                 action.callback();
                 closeToast();
             });
             toast.appendChild(actionBtn);
         }
 
-        // Close animation handler
         function closeToast() {
             if (toast.classList.contains('exiting')) return;
             toast.classList.add('exiting');
-            // Remove from DOM once slideOut finishes
             setTimeout(() => {
                 toast.remove();
             }, 300);
@@ -152,6 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         toast.querySelector('.toast-close-btn').addEventListener('click', (e) => {
             e.stopPropagation();
+            SoundEngine.playClick();
             closeToast();
         });
 
@@ -167,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==================== DYNAMIC POPUP MODAL ENGINE ====================
-    function openDetailModal(title, icon, description, statsArray = []) {
+    function openDetailModal(title, icon, description, statsArray = [], customAction = null) {
         if (!infoModal || !modalTitle || !modalIcon || !modalDescription || !modalStats) return;
 
         modalTitle.textContent = title;
@@ -191,11 +286,27 @@ document.addEventListener('DOMContentLoaded', () => {
             modalStats.style.display = 'none';
         }
 
+        if (customAction) {
+            const btn = document.createElement('button');
+            btn.className = 'card-buy-btn';
+            btn.style.marginTop = '15px';
+            btn.style.width = '100%';
+            btn.textContent = customAction.label;
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                customAction.callback();
+                infoModal.classList.remove('active');
+            });
+            modalStats.style.display = 'flex';
+            modalStats.appendChild(btn);
+        }
+
         infoModal.classList.add('active');
     }
 
     if (modalCloseBtn) {
         modalCloseBtn.addEventListener('click', () => {
+            SoundEngine.playClick();
             infoModal.classList.remove('active');
         });
     }
@@ -203,29 +314,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (infoModal) {
         infoModal.addEventListener('click', (e) => {
             if (e.target === infoModal) {
+                SoundEngine.playClick();
                 infoModal.classList.remove('active');
             }
         });
     }
 
     // ==================== GAME MANUAL PARSER (README.MD FETCH) ====================
-    
-    // Dynamically fetches, parses, and renders the local README.md
     function loadReadmeFile() {
         if (readmeLoaded || !readmeContent) return;
 
         fetch('README.md')
             .then(response => {
-                if (!response.ok) throw new Error("Could not load README.md file from project root.");
+                if (!response.ok) throw new Error("Could not load README.md file.");
                 return response.text();
             })
             .then(markdownText => {
-                // Parse markdown content inside Marked.js library compiler
                 if (window.marked) {
                     readmeContent.innerHTML = window.marked.parse(markdownText);
                     readmeLoaded = true;
                 } else {
-                    // Pre-formatted plain-text fallback if CDN fails
                     readmeContent.innerHTML = `<pre style="font-family: inherit; font-size: 0.8rem; white-space: pre-wrap;">${markdownText}</pre>`;
                 }
             })
@@ -236,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span style="font-size: 2rem;">⚠️</span>
                         <p style="color: #f87171; font-size: 0.85rem; margin-top: 10px;">
                             Failed to load Game Manual.<br>
-                            Ensure you are running your browser via VS Code <strong>Live Server</strong> and that <code>README.md</code> is placed in your project directory.
+                            Ensure you are running your browser via VS Code <strong>Live Server</strong>.
                         </p>
                     </div>`;
             });
@@ -280,8 +388,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rewardGold = 40 + Math.floor(Math.random() * 61); 
                 playerState.money += rewardGold;
 
-                spawnFloatingText(`+🪙 ${rewardGold}`, e.clientX, e.clientY, 'float-gold');
-                showNotification("🎁 Gift Opened!", `Unlocked 🪙 ${rewardGold} Coins from a Cavern Chest!`, "sell", 3500);
+                spawnFloatingText(`+🪙 ${formatMoney(rewardGold)}`, e.clientX, e.clientY, 'float-gold');
+                showNotification("🎁 Gift Opened!", `Unlocked 🪙 ${formatMoney(rewardGold)} Coins from a Cavern Chest!`, "sell", 3500);
 
                 chest.remove();
                 saveGame();
@@ -310,14 +418,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateStatsUI() {
         if (labelLevel) labelLevel.textContent = playerState.level;
         if (labelXp) labelXp.textContent = playerState.xp;
-        if (labelMoney) labelMoney.textContent = playerState.money;
+        
+        // Compact formatting on the navigation bar so numbers don't wrap on small screens
+        if (labelMoney) labelMoney.textContent = formatMoney(playerState.money, true);
+        
         if (labelOres) labelOres.textContent = playerState.inventory.length;
         if (labelCapacity) labelCapacity.textContent = playerState.maxBagCapacity;
         if (labelEnergy) labelEnergy.textContent = `${Math.floor(playerState.currentEnergy)}%`;
         if (labelInvCount) labelInvCount.textContent = playerState.inventory.length;
         if (labelInvMax) labelInvMax.textContent = playerState.maxBagCapacity;
 
-        // Dynamic update of Sidebar XP progress bar
         if (sidebarXpFill && sidebarXpText) {
             const xpPercent = Math.min(100, (playerState.xp / playerState.xpNeeded) * 100);
             sidebarXpFill.style.width = `${xpPercent}%`;
@@ -337,6 +447,8 @@ document.addEventListener('DOMContentLoaded', () => {
             playerState.xpNeeded = Math.floor(playerState.xpNeeded * 1.5);
             playerState.maxEnergy = Math.floor(playerState.maxEnergy * 1.1);
             playerState.currentEnergy = playerState.maxEnergy;
+
+            SoundEngine.playLevelUp();
 
             showNotification(
                 "🎉 Level Up!", 
@@ -363,18 +475,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         playerState.inventory.forEach(ore => {
             const card = document.createElement('div');
-            card.className = 'loot-item';
-            if (ore.variant === 'Rainbow' || ore.mutation === 'Cosmic') {
-                card.style.borderColor = 'var(--gold-accent)';
-                card.style.boxShadow = '0 0 4px rgba(255, 204, 0, 0.4)';
-            }
+            
+            card.className = `loot-item variant-${ore.variant.toLowerCase()}`;
+
             const goldVal = ore.finalValue !== undefined ? ore.finalValue : 10;
             card.innerHTML = `
                 <span class="loot-icon">${ore.icon}</span>
                 <div class="loot-details">
                     <span class="loot-name">${ore.variant !== 'Normal' ? ore.variant + ' ' : ''}${ore.name}</span>
-                    <span class="loot-meta">${ore.actualWeight}kg | 🪙${goldVal}${ore.mutation !== 'Normal' ? ' (' + ore.mutation + ')' : ''}</span>
+                    <span class="loot-meta">${ore.actualWeight}kg | 🪙${formatMoney(goldVal)}${ore.mutation !== 'Normal' ? ' (' + ore.mutation + ')' : ''}</span>
                 </div>`;
+
+            // Display comma-formatted details inside full popup modal
+            card.addEventListener('click', (e) => {
+                e.stopPropagation();
+                SoundEngine.playClick();
+
+                const stats = [
+                    { label: "Variant Grade", value: ore.variant.toUpperCase() },
+                    { label: "Mutation Factor", value: ore.mutation.toUpperCase() },
+                    { label: "Rarity Tier", value: ore.rarity.toUpperCase() },
+                    { label: "Weight", value: `${ore.actualWeight} kg` },
+                    { label: "Sub-Total Value", value: `🪙 ${formatMoney(ore.subTotalValue)}` },
+                    { label: "Final Sell Price", value: `🪙 ${formatMoney(ore.finalValue)}` }
+                ];
+
+                openDetailModal(
+                    `${ore.variant !== 'Normal' ? ore.variant + ' ' : ''}${ore.name}`,
+                    ore.icon,
+                    `A fine specimen of mined cavern resource. Standard multiplier modifiers applied.`,
+                    stats
+                );
+            });
+
             inventoryScroll.appendChild(card);
         });
     }
@@ -390,11 +523,11 @@ document.addEventListener('DOMContentLoaded', () => {
             playerState.money += totalGold;
             playerState.inventory = [];
             
-            spawnFloatingText(`+🪙 ${totalGold}`, e.clientX, e.clientY, 'float-gold');
+            spawnFloatingText(`+🪙 ${formatMoney(totalGold)}`, e.clientX, e.clientY, 'float-gold');
             
             showNotification(
                 "🪙 Ores Sold!", 
-                `Traded ${count} ores at market for 🪙 ${totalGold} Coins!`, 
+                `Traded ${count} ores at market for 🪙 ${formatMoney(totalGold)} Coins!`, 
                 "sell", 
                 4000
             );
@@ -410,35 +543,65 @@ document.addEventListener('DOMContentLoaded', () => {
         const cave = cavesData.find(c => c.id === caveId);
         if (!cave) return;
 
-        // Interactive UX warning feedback on validation checks
         if (playerState.level < cave.requiredLevel) {
+            SoundEngine.playError();
             showNotification("🔒 Cavern Locked!", `You need to reach Level ${cave.requiredLevel} to mine here.`, "level-up", 3000);
             return;
         }
         if (playerState.currentEnergy < cave.energyCost) {
+            SoundEngine.playError();
             showNotification("⚡ Out of Energy!", "Eat some food or buy Stamina Brews from the Shop to restore energy.", "shop", 3000);
             if (clickEvent) spawnFloatingText("No Energy! ⚡", clickEvent.clientX, clickEvent.clientY, "float-red");
             return;
         }
         if (playerState.inventory.length >= playerState.maxBagCapacity) {
+            SoundEngine.playError();
             showNotification("🎒 Bag Full!", "Click 'Sell All Ores' below to empty your inventory and earn coins.", "sell", 3000);
             if (clickEvent) spawnFloatingText("Bag Full! 🎒", clickEvent.clientX, clickEvent.clientY, "float-red");
             return;
         }
 
         playerState.currentEnergy -= cave.energyCost;
+
+        const pool = cave.lootPool;
+        let totalWeight = 0;
+        pool.forEach(ore => {
+            totalWeight += rarityWeights[ore.rarity] || 1000;
+        });
+
+        const roll = Math.random() * totalWeight;
+        let cumulativeWeight = 0;
+        let selectedOre = pool[0];
+
+        for (let ore of pool) {
+            cumulativeWeight += rarityWeights[ore.rarity] || 1000;
+            if (roll <= cumulativeWeight) {
+                selectedOre = ore;
+                break;
+            }
+        }
+
         const rolledVar = rollWeightedSelection(variantsData);
-        const actualWeight = parseFloat((cave.baseWeight * (0.8 + Math.random() * 0.4)).toFixed(2));
-        const subTotal = Math.floor((cave.baseValue * rolledVar.multiplier) * actualWeight);
+        const weightFluctuation = 0.8 + (Math.random() * 0.4);
+        const actualWeight = parseFloat((selectedOre.baseWeight * weightFluctuation).toFixed(2));
+        const subTotal = Math.floor((selectedOre.baseValue * rolledVar.multiplier) * actualWeight);
         const rolledMut = rollWeightedSelection(mutationsData);
+        const finalValue = Math.floor(subTotal * rolledMut.multiplier);
 
         playerState.inventory.push({
-            id: cave.oreName.toLowerCase().replace(/\s+/g, '-'), name: cave.oreName,
-            baseValue: cave.baseValue, baseWeight: cave.baseWeight,
-            variant: rolledVar.name, variantMultiplier: rolledVar.multiplier,
-            actualWeight: actualWeight, subTotalValue: subTotal,
-            mutation: rolledMut.name, mutationMultiplier: rolledMut.multiplier,
-            finalValue: Math.floor(subTotal * rolledMut.multiplier), icon: cave.oreIcon
+            id: selectedOre.name.toLowerCase().replace(/\s+/g, '-'),
+            name: selectedOre.name,
+            rarity: selectedOre.rarity,
+            baseValue: selectedOre.baseValue,
+            baseWeight: selectedOre.baseWeight,
+            variant: rolledVar.name,
+            variantMultiplier: rolledVar.multiplier,
+            actualWeight: actualWeight,
+            subTotalValue: subTotal,
+            mutation: rolledMut.name,
+            mutationMultiplier: rolledMut.multiplier,
+            finalValue: finalValue,
+            icon: selectedOre.icon
         });
 
         if (cave.collectionId) unlockCollectionItem(cave.collectionId);
@@ -448,12 +611,14 @@ document.addEventListener('DOMContentLoaded', () => {
         totalMinesCount++;
         if (totalMinesCount >= 100) unlockCollectionItem("hard-worker");
 
+        SoundEngine.playMine();
+
         if (clickEvent) {
             const x = clickEvent.clientX;
             const y = clickEvent.clientY;
             spawnFloatingText(`-${cave.energyCost}⚡`, x - 30, y, 'float-energy');
             spawnFloatingText(`+${cave.xpReward} XP`, x + 30, y, 'float-xp');
-            spawnFloatingText(`+ ${cave.oreIcon} ${rolledVar.name !== 'Normal' ? rolledVar.name + ' ' : ''}${cave.oreName.split(' ')[0]}`, x, y - 20, 'float-ore');
+            spawnFloatingText(`+ ${selectedOre.icon} ${rolledVar.name !== 'Normal' ? rolledVar.name + ' ' : ''}${selectedOre.name.split(' ')[0]}`, x, y - 20, 'float-ore');
         }
 
         rollChestSpawn();
@@ -483,22 +648,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     box.style.backgroundImage = `url('${cave.image}')`;
                     box.innerHTML = `<span class="box-title">${cave.name}</span><button class="box-btn" data-id="${cave.id}">Mine</button>`;
                     
-                    // Clicking on the active Cave Card Background displays its detailed stats
                     box.addEventListener('click', (e) => {
                         if (e.target.classList.contains('box-btn')) return; 
+
+                        SoundEngine.playClick();
 
                         const stats = [
                             { label: "Required Level", value: `Lvl ${cave.requiredLevel}` },
                             { label: "Energy Cost", value: `${cave.energyCost}⚡` },
-                            { label: "Standard Ore", value: `${cave.oreIcon} ${cave.oreName}` },
-                            { label: "Base Value", value: `🪙 ${cave.baseValue}` },
-                            { label: "Base Weight", value: `${cave.baseWeight} kg` },
+                            { label: "Standard Ore Pool", value: `${cave.lootPool.length} Ores` },
                             { label: "XP Reward", value: `+${cave.xpReward} XP` }
                         ];
                         openDetailModal(
                             cave.name, 
-                            cave.oreIcon, 
-                            `A deep mining layer containing rich resources. Mine here using your pickaxe to collect valuable raw ${cave.oreName}.`, 
+                            "🧗", 
+                            `A deep mining layer containing rich minerals. Mine here using your pickaxe to collect valuable raw ore samples.`, 
                             stats
                         );
                     });
@@ -552,8 +716,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (prevMapBtn && nextMapBtn) {
-        prevMapBtn.addEventListener('click', () => { if (currentMapPage > 1) { currentMapPage--; updateMapPageStructure(); } });
-        nextMapBtn.addEventListener('click', () => { if (currentMapPage < maxMapPages) { currentMapPage++; updateMapPageStructure(); } });
+        prevMapBtn.addEventListener('click', () => { if (currentMapPage > 1) { currentMapPage--; SoundEngine.playClick(); updateMapPageStructure(); } });
+        nextMapBtn.addEventListener('click', () => { if (currentMapPage < maxMapPages) { currentMapPage++; SoundEngine.playClick(); updateMapPageStructure(); } });
     }
 
     // ==================== SHOP DYNAMIC RENDERER ====================
@@ -605,7 +769,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="circle-icon">${item.icon}</div>
                             <span class="card-name">${item.name}</span>
                             <p class="card-desc">${item.desc}</p>
-                            <button class="card-buy-btn" data-id="${item.id}">🪙 ${item.cost}</button>
+                            <button class="card-buy-btn" data-id="${item.id}">🪙 ${formatMoney(item.cost)}</button>
                         </div>`;
                 });
                 scroll.appendChild(grid);
@@ -668,6 +832,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!item) return;
 
         if (item.isIAP) {
+            SoundEngine.playCoin(); 
             showNotification(
                 "🎁 Purchase Successful!", 
                 `Unlocked ${item.name}! (Simulated IAP)`, 
@@ -681,9 +846,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (playerState.money < item.cost) {
+            SoundEngine.playError();
             showNotification(
                 "🪙 Insufficient Coins!", 
-                `You need 🪙 ${item.cost} to purchase ${item.name}.`, 
+                `You need 🪙 ${formatMoney(item.cost)} to purchase ${item.name}.`, 
                 "sell", 
                 4000
             );
@@ -702,6 +868,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (item.category === "energy") {
             playerState.currentEnergy = Math.min(playerState.maxEnergy, playerState.currentEnergy + item.energy);
         }
+
+        SoundEngine.playCoin();
 
         showNotification(
             "🛒 Item Purchased!", 
@@ -745,6 +913,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const readMoreBtn = card.querySelector('.col-read-more');
             readMoreBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                SoundEngine.playClick();
                 
                 const stats = [
                     { label: "Category", value: item.category.toUpperCase() }
@@ -795,6 +964,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const item = collectionsData.find(c => c.id === itemId);
         if (item && !item.obtained) {
             item.obtained = true;
+
+            SoundEngine.playUnlock();
 
             showNotification(
                 "🏆 Collection Unlocked!", 
@@ -889,6 +1060,7 @@ document.addEventListener('DOMContentLoaded', () => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation(); // Safe click propagation lock
+            SoundEngine.playClick();
 
             // Toggle active styling on navigation list options
             navLinks.forEach(item => item.classList.remove('active'));
@@ -939,11 +1111,12 @@ document.addEventListener('DOMContentLoaded', () => {
         dropdownAccount.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
+            SoundEngine.playClick();
             
             const stats = [
                 { label: "Level Progress", value: `Lvl ${playerState.level}` },
                 { label: "XP", value: `${playerState.xp} / ${playerState.xpNeeded}` },
-                { label: "Total Coins", value: `🪙 ${playerState.money}` },
+                { label: "Total Coins", value: `🪙 ${formatMoney(playerState.money)}` },
                 { label: "Bag Space", value: `${playerState.inventory.length} / ${playerState.maxBagCapacity}` },
                 { label: "Active Pick speed multiplier", value: `${playerState.activePickaxeMultiplier}x` }
             ];
@@ -962,6 +1135,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dropdownSettings.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
+            SoundEngine.playClick();
             showNotification("⚙️ Settings Opened", "Settings and configurations are active.", "shop", 3000);
         });
     }
@@ -971,17 +1145,30 @@ document.addEventListener('DOMContentLoaded', () => {
         dropdownSignOut.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
+            SoundEngine.playError();
             
-            if (confirm("Are you sure you want to Sign Out? This will completely clear your browser's local save file and reset progress!")) {
-                localStorage.clear();
-                window.location.reload();
-            }
+            // Custom confirmation modal popup
+            openDetailModal(
+                "Reset Cavern Progress?",
+                "🚪",
+                "Are you sure you want to sign out and clear your session? This will permanently delete your coin balance, levels, inventory, and unlocked collections!",
+                [],
+                {
+                    label: "RESET EVERYTHING",
+                    callback: () => {
+                        localStorage.clear();
+                        window.location.reload();
+                    }
+                }
+            );
         });
     }
 
     // ==================== STARTING USERNAME INPUT MODAL CONTROLLER ====================
     if (saveNameBtn && usernameInput && nameModal) {
         saveNameBtn.addEventListener('click', () => {
+            SoundEngine.playCoin();
+
             const inputVal = usernameInput.value.trim();
             playerState.username = inputVal ? inputVal : "Miner Joe";
             
@@ -1009,6 +1196,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (menuToggle && sidebar) {
         menuToggle.addEventListener('click', (e) => {
             e.stopPropagation();
+            SoundEngine.playClick();
             sidebar.classList.toggle('open');
         });
     }
@@ -1029,6 +1217,11 @@ document.addEventListener('DOMContentLoaded', () => {
             updateMapPageStructure();
         }, 100);
     });
+
+    // ==================== INITIAL GESTURE TRIGGER ====================
+    document.body.addEventListener('click', () => {
+        SoundEngine.init();
+    }, { once: true }); 
 
     // ==================== INITIALIZATION ====================
     loadGame(); // Restore progress from local storage on reload
