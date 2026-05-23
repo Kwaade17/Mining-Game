@@ -1,47 +1,18 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ==================== SESSION STATE ====================
     const playerState = {
-        level: 1,
-        xp: 0,
-        xpNeeded: 100,
-        money: 200,             // Starting Coins
-        maxBagCapacity: 20,     // Slots inside inventory
-        currentEnergy: 100,
-        maxEnergy: 100,
-        activePickaxeMultiplier: 1.0, // Speed/Mining efficiency
-        xpMultiplier: 1.0,      // Double XP pass modifier
-        inventory: []           // Mined Ore Objects
+        level: 1, xp: 0, xpNeeded: 100, money: 200, maxBagCapacity: 20,
+        currentEnergy: 100, maxEnergy: 100, activePickaxeMultiplier: 1.0,
+        xpMultiplier: 1.0, inventory: []
     };
 
     // ==================== SELECTORS ====================
-    // Navigation elements
     const menuToggle = document.getElementById('menuToggle');
     const sidebar = document.getElementById('sidebar');
     const navLinks = document.querySelectorAll('.nav-link');
     const gameViews = document.querySelectorAll('.game-view');
     const userProfile = document.getElementById('userProfile');
 
-    function switchView(viewId) {
-        gameViews.forEach(view => {
-            view.classList.toggle('active', view.id === viewId);
-        });
-
-        navLinks.forEach(link => {
-            link.classList.toggle('active', link.dataset.view === viewId);
-        });
-    }
-
-    navLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const target = link.dataset.view;
-            if (!target) return;
-            switchView(target);
-            if (window.innerWidth < 768 && sidebar) sidebar.classList.remove('open');
-        });
-    });
-
-    // Stats Labels
     const labelLevel = document.getElementById('player-level');
     const labelXp = document.getElementById('player-xp');
     const labelMoney = document.getElementById('player-money');
@@ -49,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const labelCapacity = document.getElementById('bag-capacity');
     const labelEnergy = document.getElementById('player-energy');
 
-    // Main Game View Elements
     const caveContainer = document.getElementById('caveContainer');
     const prevMapBtn = document.getElementById('prevMapBtn');
     const nextMapBtn = document.getElementById('nextMapBtn');
@@ -59,38 +29,125 @@ document.addEventListener('DOMContentLoaded', () => {
     const labelInvMax = document.getElementById('inv-max');
     const sellAllBtn = document.getElementById('sellAllBtn');
 
-    // Shop selectors
     const shopSearchInput = document.getElementById('shopSearchInput');
     const shopSectionFilter = document.getElementById('shopSectionFilter');
     const shopSectionsList = document.getElementById('shopSectionsList');
 
-    // Collections selectors
     const colSearchInput = document.getElementById('colSearchInput');
     const colSectionFilter = document.getElementById('colSectionFilter');
     const colSectionsList = document.getElementById('colSectionsList');
 
-    // Map Pagination State
-    let currentMapPage = 1;
-    let cavesPerPage = 9; 
-    let maxMapPages = 1;  
+    let currentMapPage = 1, cavesPerPage = 9, maxMapPages = 1, totalMinesCount = 0;
 
-    // ==================== CORE UTILITY ALGORITHMS ====================
-
-    // Weighted Random Picker based on probability rate (pr)
-    function rollWeightedSelection(itemsArray) {
-        const roll = Math.random();
-        let cumulativeProbability = 0;
-
-        for (let item of itemsArray) {
-            cumulativeProbability += item.pr;
-            if (roll <= cumulativeProbability) {
-                return item;
-            }
-        }
-        return itemsArray[0]; // Normal variant fallback
+    // ==================== PERSISTENT LOCAL STORAGE ENGINE ====================
+    
+    // Save current session metrics
+    function saveGame() {
+        localStorage.setItem('miner_save', JSON.stringify(playerState));
+        // Serialize and save dynamic obtained collections
+        const colMap = {};
+        collectionsData.forEach(item => {
+            colMap[item.id] = item.obtained;
+        });
+        localStorage.setItem('miner_col_save', JSON.stringify(colMap));
     }
 
-    // Update Navbar labels
+    // Load saved session on DOM boot
+    function loadGame() {
+        const savedState = localStorage.getItem('miner_save');
+        if (savedState) {
+            try {
+                const parsed = JSON.parse(savedState);
+                Object.assign(playerState, parsed);
+            } catch (err) {
+                console.error("Save load failed: ", err);
+            }
+        }
+
+        const savedCol = localStorage.getItem('miner_col_save');
+        if (savedCol) {
+            try {
+                const parsedCol = JSON.parse(savedCol);
+                collectionsData.forEach(item => {
+                    if (parsedCol[item.id] !== undefined) {
+                        item.obtained = parsedCol[item.id];
+                    }
+                });
+            } catch (err) {
+                console.error("Collections load failed: ", err);
+            }
+        }
+    }
+
+    // ==================== VISUAL EFFECTS ENGINE ====================
+    
+    // Spawns rising floating text at click coordinates
+    function spawnFloatingText(text, x, y, colorClass = '') {
+        const el = document.createElement('div');
+        el.className = `floating-text ${colorClass}`;
+        el.innerHTML = text;
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+        document.body.appendChild(el);
+        
+        // Auto-remove once CSS translation finishes
+        setTimeout(() => {
+            el.remove();
+        }, 1200);
+    }
+
+    // Spawn bouncing mystery gift on mining clicks (8% chance)
+    function rollChestSpawn() {
+        if (Math.random() <= 0.08) {
+            const activeView = document.querySelector('.game-view.active');
+            if (!activeView) return;
+
+            const chest = document.createElement('div');
+            chest.className = 'mystery-chest';
+            chest.innerHTML = '🎁';
+
+            const rect = activeView.getBoundingClientRect();
+            // Bound chest randomized coordinates comfortably inside main map
+            const randomX = Math.max(30, Math.random() * (rect.width - 70));
+            const randomY = Math.max(90, Math.random() * (rect.height - 180));
+
+            chest.style.left = `${randomX}px`;
+            chest.style.top = `${randomY}px`;
+
+            // Open Chest on Tap
+            chest.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Sells a random coin value reward
+                const rewardGold = 40 + Math.floor(Math.random() * 61); // 40 to 100 gold
+                playerState.money += rewardGold;
+
+                spawnFloatingText(`+🪙 ${rewardGold}`, e.clientX, e.clientY, 'float-gold');
+                chest.remove();
+                
+                saveGame();
+                updateStatsUI();
+            });
+
+            activeView.appendChild(chest);
+
+            // De-spawn after 7 seconds if missed
+            setTimeout(() => {
+                chest.remove();
+            }, 7000);
+        }
+    }
+
+    // ==================== UTILITY ALGORITHMS ====================
+    function rollWeightedSelection(itemsArray) {
+        const roll = Math.random();
+        let cumulative = 0;
+        for (let item of itemsArray) {
+            cumulative += item.pr;
+            if (roll <= cumulative) return item;
+        }
+        return itemsArray[0];
+    }
+
     function updateStatsUI() {
         if (labelLevel) labelLevel.textContent = playerState.level;
         if (labelXp) labelXp.textContent = playerState.xp;
@@ -98,13 +155,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (labelOres) labelOres.textContent = playerState.inventory.length;
         if (labelCapacity) labelCapacity.textContent = playerState.maxBagCapacity;
         if (labelEnergy) labelEnergy.textContent = `${Math.floor(playerState.currentEnergy)}%`;
-
-        // Update active inventory panel metrics
         if (labelInvCount) labelInvCount.textContent = playerState.inventory.length;
         if (labelInvMax) labelInvMax.textContent = playerState.maxBagCapacity;
     }
 
-    // Handle Player Level Ups
     function awardXp(amount) {
         playerState.xp += amount * playerState.xpMultiplier;
         if (playerState.xp >= playerState.xpNeeded) {
@@ -112,252 +166,201 @@ document.addEventListener('DOMContentLoaded', () => {
             playerState.level += 1;
             playerState.xpNeeded = Math.floor(playerState.xpNeeded * 1.5);
             playerState.maxEnergy = Math.floor(playerState.maxEnergy * 1.1);
-            playerState.currentEnergy = playerState.maxEnergy; // Fully restore
-            
-            // Check Cave Layer Trophies
-            if (playerState.level >= 10) {
-                unlockCollectionItem("cavern-cup");
-            }
+            playerState.currentEnergy = playerState.maxEnergy;
+            if (playerState.level >= 10) unlockCollectionItem("cavern-cup");
         }
         updateStatsUI();
+        saveGame();
     }
 
-    // ==================== ACTIVE INVENTORY ENGINE ====================
-
+    // ==================== INVENTORY & SELLING ====================
     function renderInventoryTray() {
         if (!inventoryScroll) return;
         inventoryScroll.innerHTML = '';
-
         if (playerState.inventory.length === 0) {
             inventoryScroll.innerHTML = '<span style="color: #666; font-size: 0.75rem; margin: auto;">Your bag is empty. Start mining!</span>';
             return;
         }
-
-        playerState.inventory.forEach((ore) => {
-            const itemCard = document.createElement('div');
-            itemCard.className = 'loot-item';
-            
-            // Apply gold frame glow to highly valuable mutations/variants
+        playerState.inventory.forEach(ore => {
+            const card = document.createElement('div');
+            card.className = 'loot-item';
             if (ore.variant === 'Rainbow' || ore.mutation === 'Cosmic') {
-                itemCard.style.borderColor = 'var(--gold-accent)';
-                itemCard.style.boxShadow = '0 0 4px rgba(255, 204, 0, 0.4)';
+                card.style.borderColor = 'var(--gold-accent)';
+                card.style.boxShadow = '0 0 4px rgba(255, 204, 0, 0.4)';
             }
-
-            itemCard.innerHTML = `
+            card.innerHTML = `
                 <span class="loot-icon">${ore.icon}</span>
                 <div class="loot-details">
                     <span class="loot-name">${ore.variant !== 'Normal' ? ore.variant + ' ' : ''}${ore.name}</span>
-                    <span class="loot-meta">${ore.actualWeight}kg | 🪙${ore.finalValue} ${ore.mutation !== 'Normal' ? ' (' + ore.mutation + ')' : ''}</span>
-                </div>
-            `;
-            inventoryScroll.appendChild(itemCard);
+                    <span class="loot-meta">${ore.actualWeight}kg | 🪙${ore.finalValue}${ore.mutation !== 'Normal' ? ' (' + ore.mutation + ')' : ''}</span>
+                </div>`;
+            inventoryScroll.appendChild(card);
         });
     }
 
-    // Sell inventory content
     if (sellAllBtn) {
-        sellAllBtn.addEventListener('click', () => {
+        sellAllBtn.addEventListener('click', (e) => {
             if (playerState.inventory.length === 0) return;
-
-            let totalGoldEarned = 0;
-            playerState.inventory.forEach(ore => {
-                totalGoldEarned += ore.finalValue;
-            });
-
-            playerState.money += totalGoldEarned;
-            playerState.inventory = []; // Empty out bag
+            let totalGold = 0;
+            playerState.inventory.forEach(o => totalGold += o.finalValue);
+            playerState.money += totalGold;
+            playerState.inventory = [];
+            
+            // Spawn gain float text centered at click
+            spawnFloatingText(`+🪙 ${totalGold}`, e.clientX, e.clientY, 'float-gold');
 
             updateStatsUI();
             renderInventoryTray();
+            saveGame();
         });
     }
 
     // ==================== CORE MINING CALCULATOR ====================
-
-    function mineCave(caveId) {
+    function mineCave(caveId, clickEvent) {
         const cave = cavesData.find(c => c.id === caveId);
-        if (!cave) return;
+        if (!cave || playerState.level < cave.requiredLevel || playerState.currentEnergy < cave.energyCost || playerState.inventory.length >= playerState.maxBagCapacity) return;
 
-        // Validation Checks
-        if (playerState.level < cave.requiredLevel) return;
-        if (playerState.currentEnergy < cave.energyCost) return;
-        if (playerState.inventory.length >= playerState.maxBagCapacity) return;
-
-        // 1. Consume Energy
         playerState.currentEnergy -= cave.energyCost;
+        const rolledVar = rollWeightedSelection(variantsData);
+        const actualWeight = parseFloat((cave.baseWeight * (0.8 + Math.random() * 0.4)).toFixed(2));
+        const subTotal = Math.floor((cave.baseValue * rolledVar.multiplier) * actualWeight);
+        const rolledMut = rollWeightedSelection(mutationsData);
 
-        // 2. Roll Variant properties (Base Value Multiplier)
-        const rolledVariant = rollWeightedSelection(variantsData);
-        const modifiedBaseValue = cave.baseValue * rolledVariant.multiplier;
+        playerState.inventory.push({
+            id: cave.oreName.toLowerCase().replace(/\s+/g, '-'), name: cave.oreName,
+            baseValue: cave.baseValue, baseWeight: cave.baseWeight,
+            variant: rolledVar.name, variantMultiplier: rolledVar.multiplier,
+            actualWeight: actualWeight, subTotalValue: subTotal,
+            mutation: rolledMut.name, mutationMultiplier: rolledMut.multiplier,
+            finalValue: Math.floor(subTotal * rolledMut.multiplier), icon: cave.oreIcon
+        });
 
-        // 3. Roll randomized fluctuation on Weight
-        const weightFluctuation = 0.8 + (Math.random() * 0.4); // Random float between 0.8 and 1.2
-        const actualWeight = parseFloat((cave.baseWeight * weightFluctuation).toFixed(2));
-
-        // 4. Calculate Sub-Total value
-        const subTotalValue = Math.floor(modifiedBaseValue * actualWeight);
-
-        // 5. Roll Mutation properties (Final Value Multiplier)
-        const rolledMutation = rollWeightedSelection(mutationsData);
-        const finalValue = Math.floor(subTotalValue * rolledMutation.multiplier);
-
-        // 6. Generate loot and append to inventory Array
-        const minedOre = {
-            id: cave.oreName.toLowerCase().replace(/\s+/g, '-'),
-            name: cave.oreName,
-            baseValue: cave.baseValue,
-            baseWeight: cave.baseWeight,
-            variant: rolledVariant.name,
-            variantMultiplier: rolledVariant.multiplier,
-            actualWeight: actualWeight,
-            subTotalValue: subTotalValue,
-            mutation: rolledMutation.name,
-            mutationMultiplier: rolledMutation.multiplier,
-            finalValue: finalValue,
-            icon: cave.oreIcon
-        };
-
-        playerState.inventory.push(minedOre);
-
-        // 7. Sync with Collections unlocks
-        // Sync active ore unlock
+        // Trigger dynamic unlock checks
         unlockCollectionItem(`${cave.oreName.toLowerCase().split(' ')[0]}-col`);
-        
-        // Sync Variant unlocks
-        if (rolledVariant.id !== "normal") {
-            unlockCollectionItem(`${rolledVariant.id}-col`);
-        }
-        // Sync Mutation unlocks
-        if (rolledMutation.id !== "none") {
-            unlockCollectionItem(`${rolledMutation.id}-col`);
+        if (rolledVar.id !== "normal") unlockCollectionItem(`${rolledVar.id}-col`);
+        if (rolledMut.id !== "none") unlockCollectionItem(`${rolledMut.id}-col`);
+
+        totalMinesCount++;
+        if (totalMinesCount >= 100) unlockCollectionItem("hard-worker");
+
+        // Spawn interactive visual feedbacks
+        if (clickEvent) {
+            const x = clickEvent.clientX;
+            const y = clickEvent.clientY;
+            spawnFloatingText(`-${cave.energyCost}⚡`, x - 30, y, 'float-energy');
+            spawnFloatingText(`+${cave.xpReward} XP`, x + 30, y, 'float-xp');
+            spawnFloatingText(`+ ${cave.oreIcon} ${rolledVar.name !== 'Normal' ? rolledVar.name + ' ' : ''}${cave.oreName.split(' ')[0]}`, x, y - 20, 'float-ore');
         }
 
-        // Check active count badge Achievements
-        updateHardWorkerBadge();
+        // Spawn gift chest chance
+        rollChestSpawn();
 
-        // 8. Award Experience
         awardXp(cave.xpReward);
-
-        // 9. Re-render UI
-        updateStatsUI();
         renderInventoryTray();
+        saveGame();
     }
 
     // ==================== CAVE GRID RENDERER ====================
-
     function renderCaves() {
         if (!caveContainer) return;
         caveContainer.innerHTML = '';
-
         const startIndex = (currentMapPage - 1) * cavesPerPage;
         const endIndex = startIndex + cavesPerPage;
 
         for (let i = startIndex; i < endIndex; i++) {
             const box = document.createElement('div');
-
             if (i < cavesData.length) {
                 const cave = cavesData[i];
                 const isLocked = playerState.level < cave.requiredLevel;
 
                 if (isLocked) {
                     box.className = 'box disabled';
-                    box.innerHTML = `
-                        <span class="box-title">Locked</span>
-                        <span style="font-size:0.65rem; color:#bbb; z-index:2;">Lvl ${cave.requiredLevel} Req.</span>
-                    `;
+                    box.innerHTML = `<span class="box-title">Locked</span><span style="font-size:0.65rem; color:#bbb; z-index:2;">Lvl ${cave.requiredLevel} Req.</span>`;
                 } else {
                     box.className = 'box';
-                    box.id = `cave-${cave.id}`;
-                    // Set cave image
                     box.style.backgroundImage = `url('${cave.image}')`;
-                    box.innerHTML = `
-                        <span class="box-title">${cave.name}</span>
-                        <button class="box-btn" data-id="${cave.id}">Mine</button>
-                    `;
+                    box.innerHTML = `<span class="box-title">${cave.name}</span><button class="box-btn" data-id="${cave.id}">Mine</button>`;
                 }
             } else {
                 box.className = 'box disabled';
-                box.innerHTML = `
-                    <span class="box-title">Coming Soon</span>
-                `;
+                box.innerHTML = `<span class="box-title">Coming Soon</span>`;
             }
             caveContainer.appendChild(box);
         }
 
-        // Add event listeners inside the dynamically generated Mine buttons
-        const mineButtons = caveContainer.querySelectorAll('.box-btn');
-        mineButtons.forEach(btn => {
+        caveContainer.querySelectorAll('.box-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const caveId = parseInt(btn.getAttribute('data-id'));
-                mineCave(caveId);
+
+                // Handle Upgrades Cooldown blocking spam click
+                btn.disabled = true;
+                btn.textContent = "Mining...";
+                mineCave(caveId, e);
+
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.textContent = "Mine";
+                }, 1000 / playerState.activePickaxeMultiplier);
             });
         });
     }
 
-    // Helper functions to adjust Map Pagination size limits
     function getGridColumnsCount() {
-        if (!caveContainer) return 3;
-        const computedStyle = window.getComputedStyle(caveContainer);
-        const gridTemplateColumns = computedStyle.getPropertyValue('grid-template-columns');
-        return gridTemplateColumns.trim().split(/\s+/).length;
+        const w = window.innerWidth, h = window.innerHeight;
+        return (w <= 220 || h <= 380) ? 1 : (w <= 330 || h <= 500) ? 2 : 3;
     }
 
     function updateMapPageStructure() {
-        const columns = getGridColumnsCount();
-
-        if (columns === 3) cavesPerPage = 9; 
-        else if (columns === 2) cavesPerPage = 4; 
-        else cavesPerPage = 1; 
-
+        const cols = getGridColumnsCount();
+        cavesPerPage = (cols === 3) ? 9 : (cols === 2) ? 4 : 1;
         maxMapPages = Math.ceil(cavesData.length / cavesPerPage);
 
         if (currentMapPage > maxMapPages) currentMapPage = maxMapPages;
-        if (currentMapPage < 1) currentMapPage = 1;
-
         if (mapPageLabel) mapPageLabel.textContent = `Map ${currentMapPage} / ${maxMapPages}`;
-
         if (prevMapBtn && nextMapBtn) {
             prevMapBtn.disabled = (currentMapPage === 1);
             nextMapBtn.disabled = (currentMapPage === maxMapPages);
         }
-
         renderCaves();
     }
 
-    // Page navigations click hooks
     if (prevMapBtn && nextMapBtn) {
-        prevMapBtn.addEventListener('click', () => {
-            if (currentMapPage > 1) {
-                currentMapPage--;
-                updateMapPageStructure();
-            }
-        });
-
-        nextMapBtn.addEventListener('click', () => {
-            if (currentMapPage < maxMapPages) {
-                currentMapPage++;
-                updateMapPageStructure();
-            }
-        });
+        prevMapBtn.addEventListener('click', () => { if (currentMapPage > 1) { currentMapPage--; updateMapPageStructure(); } });
+        nextMapBtn.addEventListener('click', () => { if (currentMapPage < maxMapPages) { currentMapPage++; updateMapPageStructure(); } });
     }
 
     // ==================== SHOP DYNAMIC RENDERER ====================
+    function renderShopSubSection(parent, title, subCat, gridClass, cardClass) {
+        const header = document.createElement('h4');
+        header.className = 'sub-section-header';
+        header.textContent = title;
+        parent.appendChild(header);
+
+        const scroll = document.createElement('div');
+        scroll.className = 'scroll-container';
+        const grid = document.createElement('div');
+        grid.className = gridClass;
+
+        shopData.filter(i => i.category === subCat).forEach(item => {
+            const card = document.createElement('div');
+            card.className = cardClass;
+            card.innerHTML = `
+                <div class="rounded-image-icon">${item.icon}</div>
+                <span class="wider-card-name">${item.name}</span>
+                <p class="wider-card-desc">${item.desc}</p>
+                <button class="wider-card-btn" data-id="${item.id}">Buy ${item.cost}</button>`;
+            grid.appendChild(card);
+        });
+        scroll.appendChild(grid);
+        parent.appendChild(scroll);
+    }
 
     function renderShop() {
         if (!shopSectionsList) return;
         shopSectionsList.innerHTML = '';
+        const categories = {"mining-speed": "⚡ Mining Speed", "bag-capacity": "🎒 Bag Capacity", "energy": "🔋 Energy Upgrades", "boosts": "🧪 Boosts & Potions", "money-perks": "🪙 Money Perks"};
 
-        // Categories Map
-        const categories = {
-            "mining-speed": "⚡ Mining Speed",
-            "bag-capacity": "🎒 Bag Capacity",
-            "energy": "🔋 Energy Upgrades",
-            "boosts": "🧪 Boosts & Potions",
-            "money-perks": "🪙 Money Perks"
-        };
-
-        // Render each category container dynamically
         Object.keys(categories).forEach(catKey => {
             const section = document.createElement('section');
             section.className = 'shop-section';
@@ -365,84 +368,30 @@ document.addEventListener('DOMContentLoaded', () => {
             section.innerHTML = `<h3 class="section-header">${categories[catKey]}</h3>`;
 
             if (catKey !== "money-perks") {
-                // Render standard Portrait grids
-                const scrollContainer = document.createElement('div');
-                scrollContainer.className = 'scroll-container';
+                const scroll = document.createElement('div');
+                scroll.className = 'scroll-container';
                 const grid = document.createElement('div');
                 grid.className = 'portrait-grid';
 
-                const items = shopData.filter(i => i.category === catKey);
-                items.forEach(item => {
-                    const card = document.createElement('div');
-                    card.className = 'portrait-card';
-                    card.innerHTML = `
-                        <div class="circle-icon">${item.icon}</div>
-                        <span class="card-name">${item.name}</span>
-                        <p class="card-desc">${item.desc}</p>
-                        <button class="card-buy-btn" data-id="${item.id}">🪙 ${item.cost}</button>
-                    `;
-                    grid.appendChild(card);
+                shopData.filter(i => i.category === catKey).forEach(item => {
+                    grid.innerHTML += `
+                        <div class="portrait-card">
+                            <div class="circle-icon">${item.icon}</div>
+                            <span class="card-name">${item.name}</span>
+                            <p class="card-desc">${item.desc}</p>
+                            <button class="card-buy-btn" data-id="${item.id}">🪙 ${item.cost}</button>
+                        </div>`;
                 });
-
-                scrollContainer.appendChild(grid);
-                section.appendChild(scrollContainer);
+                scroll.appendChild(grid);
+                section.appendChild(scroll);
             } else {
-                // Render Sub-sections inside Money Perks
-                // 1. Packs
-                const packsHeader = document.createElement('h4');
-                packsHeader.className = 'sub-section-header';
-                packsHeader.textContent = '🎁 Bundles & Packs';
-                section.appendChild(packsHeader);
+                renderShopSubSection(section, '🎁 Bundles & Packs', 'packs', 'wider-grid', 'wider-card');
+                renderShopSubSection(section, '📅 Subscriptions', 'subscriptions', 'wider-grid', 'wider-card');
 
-                const packsScrollContainer = document.createElement('div');
-                packsScrollContainer.className = 'scroll-container';
-                const packsGrid = document.createElement('div');
-                packsGrid.className = 'wider-grid';
-
-                shopData.filter(i => i.category === 'packs').forEach(pack => {
-                    const card = document.createElement('div');
-                    card.className = 'wider-card';
-                    card.innerHTML = `
-                        <div class="rounded-image-icon">${pack.icon}</div>
-                        <span class="wider-card-name">${pack.name}</span>
-                        <p class="wider-card-desc">${pack.desc}</p>
-                        <button class="wider-card-btn" data-id="${pack.id}">Buy ${pack.cost}</button>
-                    `;
-                    packsGrid.appendChild(card);
-                });
-                packsScrollContainer.appendChild(packsGrid);
-                section.appendChild(packsScrollContainer);
-
-                // 2. Subscriptions
-                const subsHeader = document.createElement('h4');
-                subsHeader.className = 'sub-section-header';
-                subsHeader.textContent = '📅 Subscriptions';
-                section.appendChild(subsHeader);
-
-                const subsScrollContainer = document.createElement('div');
-                subsScrollContainer.className = 'scroll-container';
-                const subsGrid = document.createElement('div');
-                subsGrid.className = 'wider-grid';
-
-                shopData.filter(i => i.category === 'subscriptions').forEach(sub => {
-                    const card = document.createElement('div');
-                    card.className = 'wider-card';
-                    card.innerHTML = `
-                        <div class="rounded-image-icon">${sub.icon}</div>
-                        <span class="wider-card-name">${sub.name}</span>
-                        <p class="wider-card-desc">${sub.desc}</p>
-                        <button class="wider-card-btn" data-id="${sub.id}">Buy ${sub.cost}</button>
-                    `;
-                    subsGrid.appendChild(card);
-                });
-                subsScrollContainer.appendChild(subsGrid);
-                section.appendChild(subsScrollContainer);
-
-                // 3. Passes (Collapsible Panels)
-                const passesHeader = document.createElement('h4');
-                passesHeader.className = 'sub-section-header';
-                passesHeader.textContent = '🎫 Season Passes';
-                section.appendChild(passesHeader);
+                const passHeader = document.createElement('h4');
+                passHeader.className = 'sub-section-header';
+                passHeader.textContent = '🎫 Season Passes';
+                section.appendChild(passHeader);
 
                 const passesList = document.createElement('div');
                 passesList.className = 'passes-list';
@@ -450,15 +399,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 shopData.filter(i => i.category === 'passes').forEach(pass => {
                     const card = document.createElement('div');
                     card.className = 'pass-card';
-                    // Simulation state
-                    const isBought = pass.id === 'double-xp-pass'; 
+                    const isBought = pass.id === 'double-xp-pass';
                     card.setAttribute('data-bought', isBought ? 'true' : 'false');
 
                     card.innerHTML = `
                         <div class="pass-header">
                             <span class="pass-card-title">${pass.icon} ${pass.name}</span>
                             <div class="pass-controls">
-                                ${isBought ? '<span class="owned-badge">Owned</span>' : `<button class="pass-header-buy-btn" data-id="${pass.id}">Buy ${pass.cost}</button>`}
+                                ${isBought ? '<span class="owned-badge">Owned</span>' : '<button class="pass-header-buy-btn" data-id="' + pass.id + '">Buy ' + pass.cost + '</button>'}
                                 <button class="pass-toggle-btn">▼</button>
                             </div>
                         </div>
@@ -467,63 +415,49 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <h5>🌟 Benefit Details</h5>
                                 <p>${pass.desc}</p>
                             </div>
-                            ${isBought ? '<div class="pass-owned-placeholder">✓ Already Owned & Active</div>' : `<button class="pass-content-buy-btn" data-id="${pass.id}">Buy Pass (${pass.cost})</button>`}
-                        </div>
-                    `;
+                            ${isBought ? '<div class="pass-owned-placeholder">✓ Already Owned & Active</div>' : '<button class="pass-content-buy-btn" data-id="' + pass.id + '">Buy Pass (' + pass.cost + ')</button>'}
+                        </div>`;
 
-                    // Expansion event hook
                     card.querySelector('.pass-toggle-btn').addEventListener('click', (e) => {
                         e.stopPropagation();
                         card.classList.toggle('expanded');
                     });
-
                     passesList.appendChild(card);
                 });
                 section.appendChild(passesList);
             }
-
             shopSectionsList.appendChild(section);
         });
 
-        // Hook click purchase listeners
-        const buyButtons = shopSectionsList.querySelectorAll('.card-buy-btn, .wider-card-btn, .pass-header-buy-btn, .pass-content-buy-btn');
-        buyButtons.forEach(btn => {
+        shopSectionsList.querySelectorAll('.card-buy-btn, .wider-card-btn, .pass-header-buy-btn, .pass-content-buy-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const itemId = btn.getAttribute('data-id');
-                buyShopItem(itemId);
+                buyShopItem(btn.getAttribute('data-id'));
             });
         });
     }
 
-    // Handles item upgrade logic
     function buyShopItem(itemId) {
         const item = shopData.find(i => i.id === itemId);
         if (!item) return;
 
-        // IAP Purchases simulation (real world currency)
         if (item.isIAP) {
             alert(`Purchase success for ${item.name}! (Simulated IAP)`);
-            if (item.id === "double-xp-pass") {
-                playerState.xpMultiplier = 2.0; // Double XP active
-            }
+            if (item.id === "double-xp-pass") playerState.xpMultiplier = 2.0;
+            saveGame();
             renderShop();
             return;
         }
 
-        // Gold Purchases check
         if (playerState.money < item.cost) {
             alert("Not enough coins!");
             return;
         }
 
-        // Deduct Coins
         playerState.money -= item.cost;
-
-        // Apply Upgrade Stat properties
         if (item.category === "mining-speed") {
             playerState.activePickaxeMultiplier = item.multiplier;
-            unlockCollectionItem("iron-digger"); // Unlock gallery card
+            unlockCollectionItem("iron-digger");
         } else if (item.category === "bag-capacity") {
             playerState.maxBagCapacity = item.capacity;
         } else if (item.category === "energy") {
@@ -531,23 +465,44 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         alert(`Successfully unlocked: ${item.name}!`);
+        
+        saveGame();
         updateStatsUI();
         renderShop();
-        renderCaves();
+        updateMapPageStructure();
     }
 
     // ==================== COLLECTIONS RENDERER ====================
+    function renderColSubSection(parent, title, subCat) {
+        const header = document.createElement('h4');
+        header.className = 'col-sub-header';
+        header.textContent = title;
+        parent.appendChild(header);
+
+        const grid = document.createElement('div');
+        grid.className = 'col-grid';
+
+        collectionsData.filter(c => c.category === 'awards' && c.subCategory === subCat).forEach(item => {
+            grid.appendChild(createColCard(item));
+        });
+        parent.appendChild(grid);
+    }
+
+    function createColCard(item) {
+        const card = document.createElement('div');
+        card.className = 'col-card';
+        card.innerHTML = `
+            <div class="col-icon-circle">${item.obtained ? item.icon : '❓'}</div>
+            <h4 class="col-card-title">${item.obtained ? item.name : 'Unknown'}</h4>
+            <p class="col-card-desc">${item.obtained ? item.desc : 'Keep mining layers to unlock details.'}</p>
+            <button class="col-read-more" ${item.obtained ? '' : 'disabled'}>Read more</button>`;
+        return card;
+    }
 
     function renderCollections() {
         if (!colSectionsList) return;
         colSectionsList.innerHTML = '';
-
-        const categories = {
-            "pickaxes": "⛏️ Pickaxes Collections",
-            "ores": "🪨 Ores Collections",
-            "mutations": "⚛️ Mutations Collections",
-            "awards": "🏆 Awards Collections"
-        };
+        const categories = {"pickaxes": "⛏️ Pickaxes", "ores": "🪨 Ores", "mutations": "⚛️ Mutations", "awards": "🏆 Awards"};
 
         Object.keys(categories).forEach(catKey => {
             const section = document.createElement('section');
@@ -555,146 +510,79 @@ document.addEventListener('DOMContentLoaded', () => {
             section.setAttribute('data-category', catKey);
             section.innerHTML = `<h3 class="col-section-header">${categories[catKey]}</h3>`;
 
-            const grid = document.createElement('div');
-            grid.className = 'col-grid';
-
             if (catKey !== "awards") {
-                const items = collectionsData.filter(c => c.category === catKey);
-                items.forEach(item => {
-                    const card = document.createElement('div');
-                    card.className = 'col-card';
-                    card.innerHTML = `
-                        <div class="col-icon-circle">${item.obtained ? item.icon : '❓'}</div>
-                        <h4 class="col-card-title">${item.obtained ? item.name : 'Unknown'}</h4>
-                        <p class="col-card-desc">${item.obtained ? item.desc : 'Keep mining layers to unlock details.'}</p>
-                        <button class="col-read-more" ${item.obtained ? '' : 'disabled'}>Read more</button>
-                    `;
-                    grid.appendChild(card);
+                const grid = document.createElement('div');
+                grid.className = 'col-grid';
+                collectionsData.filter(c => c.category === catKey).forEach(item => {
+                    grid.appendChild(createColCard(item));
                 });
                 section.appendChild(grid);
             } else {
-                // Trophies subsection
-                const subTrophies = document.createElement('h4');
-                subTrophies.className = 'col-sub-header';
-                subTrophies.textContent = '🏆 Trophies (Quest Chests)';
-                section.appendChild(subTrophies);
-
-                const gridTrophies = document.createElement('div');
-                gridTrophies.className = 'col-grid';
-
-                collectionsData.filter(c => c.category === 'awards' && c.subCategory === 'trophies').forEach(item => {
-                    const card = document.createElement('div');
-                    card.className = 'col-card';
-                    card.innerHTML = `
-                        <div class="col-icon-circle">${item.obtained ? item.icon : '❓'}</div>
-                        <h4 class="col-card-title">${item.obtained ? item.name : 'Unknown'}</h4>
-                        <p class="col-card-desc">${item.obtained ? item.desc : 'Complete high-level layers to obtain.'}</p>
-                        <button class="col-read-more" ${item.obtained ? '' : 'disabled'}>Read more</button>
-                    `;
-                    gridTrophies.appendChild(card);
-                });
-                section.appendChild(gridTrophies);
-
-                // Badges subsection
-                const subBadges = document.createElement('h4');
-                subBadges.className = 'col-sub-header';
-                subBadges.textContent = '🏷️ Badges (Quest Tasks)';
-                section.appendChild(subBadges);
-
-                const gridBadges = document.createElement('div');
-                gridBadges.className = 'col-grid';
-
-                collectionsData.filter(c => c.category === 'awards' && c.subCategory === 'badges').forEach(item => {
-                    const card = document.createElement('div');
-                    card.className = 'col-card';
-                    card.innerHTML = `
-                        <div class="col-icon-circle">${item.obtained ? item.icon : '❓'}</div>
-                        <h4 class="col-card-title">${item.obtained ? item.name : 'Unknown'}</h4>
-                        <p class="col-card-desc">${item.obtained ? item.desc : 'Finish quest tasks to unlock.'}</p>
-                        <button class="col-read-more" ${item.obtained ? '' : 'disabled'}>Read more</button>
-                    `;
-                    gridBadges.appendChild(card);
-                });
-                section.appendChild(gridBadges);
+                renderColSubSection(section, '🏆 Trophies (Quest Chests)', 'trophies');
+                renderColSubSection(section, '🏷️ Badges (Quest Tasks)', 'badges');
             }
-
             colSectionsList.appendChild(section);
         });
     }
 
-    // Helper to flip the collection item unlock state
     function unlockCollectionItem(itemId) {
         const item = collectionsData.find(c => c.id === itemId);
         if (item && !item.obtained) {
             item.obtained = true;
             renderCollections();
+            saveGame();
         }
     }
 
     // Unlock badge achievements dynamically based on totals
-    let totalMinesCount = 0;
     function updateHardWorkerBadge() {
-        totalMinesCount += 1;
         if (totalMinesCount >= 100) {
             unlockCollectionItem("hard-worker");
         }
     }
 
-    // ==================== SEARCH/FILTER IMPLEMENTATIONS ====================
-
+    // ==================== SEARCH/FILTER SYSTEM ====================
     function filterShopItems() {
-        const searchQuery = shopSearchInput.value.toLowerCase().trim();
-        const selectedCategory = shopSectionFilter.value;
+        const q = shopSearchInput.value.toLowerCase().trim();
+        const cat = shopSectionFilter.value;
 
-        shopSectionsList.querySelectorAll('.shop-section').forEach(section => {
-            const sectionCategory = section.getAttribute('data-category');
-            const matchCategory = (selectedCategory === 'all' || sectionCategory === selectedCategory);
-
-            const cards = section.querySelectorAll('.portrait-card, .wider-card, .pass-card');
-            let visibleCardsCount = 0;
+        shopSectionsList.querySelectorAll('.shop-section').forEach(sec => {
+            const secCat = sec.getAttribute('data-category');
+            const matchCat = (cat === 'all' || secCat === cat);
+            const cards = sec.querySelectorAll('.portrait-card, .wider-card, .pass-card');
+            let visibleCount = 0;
 
             cards.forEach(card => {
                 const nameEl = card.querySelector('.card-name, .wider-card-name, .pass-card-title');
                 const nameText = nameEl ? nameEl.textContent.toLowerCase() : '';
-                const matchSearch = nameText.includes(searchQuery);
+                const matchSearch = nameText.includes(q);
 
-                if (matchSearch) {
-                    card.style.display = '';
-                    visibleCardsCount++;
-                } else {
-                    card.style.display = 'none';
-                }
+                card.style.display = matchSearch ? '' : 'none';
+                if (matchSearch) visibleCount++;
             });
-
-            section.style.display = (matchCategory && visibleCardsCount > 0) ? '' : 'none';
+            sec.style.display = (matchCat && visibleCount > 0) ? '' : 'none';
         });
     }
 
     function filterCollectionItems() {
-        const searchQuery = colSearchInput.value.toLowerCase().trim();
-        const selectedCategory = colSectionFilter.value;
+        const q = colSearchInput.value.toLowerCase().trim();
+        const cat = colSectionFilter.value;
 
-        colSectionsList.querySelectorAll('.col-section').forEach(section => {
-            const sectionCategory = section.getAttribute('data-category');
-            const matchCategory = (selectedCategory === 'all' || sectionCategory === selectedCategory);
-
-            const cards = section.querySelectorAll('.col-card');
-            let visibleCardsCount = 0;
+        colSectionsList.querySelectorAll('.col-section').forEach(sec => {
+            const secCat = sec.getAttribute('data-category');
+            const matchCat = (cat === 'all' || secCat === cat);
+            const cards = sec.querySelectorAll('.col-card');
+            let visibleCount = 0;
 
             cards.forEach(card => {
                 const titleEl = card.querySelector('.col-card-title');
                 const titleText = titleEl ? titleEl.textContent.toLowerCase() : '';
-                const matchSearch = titleText.includes(searchQuery);
+                const matchSearch = titleText.includes(q);
 
-                if (matchSearch) {
-                    card.style.display = '';
-                    visibleCardsCount++;
-                } else {
-                    card.style.display = 'none';
-                }
+                card.style.display = matchSearch ? '' : 'none';
+                if (matchSearch) visibleCount++;
             });
-
-            section.style.display = (matchCategory && visibleCardsCount > 0) ? '' : 'none';
+            sec.style.display = (matchCat && visibleCount > 0) ? '' : 'none';
         });
     }
 
@@ -708,7 +596,20 @@ document.addEventListener('DOMContentLoaded', () => {
         colSectionFilter.addEventListener('change', filterCollectionItems);
     }
 
-    // Mobile sidebar toggle
+    // ==================== TOGGLES & TRIGGERS ====================
+    if (userProfile) {
+        userProfile.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userProfile.classList.toggle('active');
+        });
+    }
+
+    window.addEventListener('click', () => {
+        if (userProfile && userProfile.classList.contains('active')) {
+            userProfile.classList.remove('active');
+        }
+    });
+
     if (menuToggle && sidebar) {
         menuToggle.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -716,7 +617,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Hide sidebar on click outside when on narrow screens
     const gameArea = document.querySelector('.game-area');
     if (gameArea && sidebar) {
         gameArea.addEventListener('click', () => {
@@ -726,7 +626,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Monitor resize movements to adjust grid configurations
     let resizeTimer;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimer);
@@ -736,6 +635,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ==================== INITIALIZATION ====================
+    loadGame(); // Restore progress from local storage on reload
     updateMapPageStructure();
     updateStatsUI();
     renderInventoryTray();
