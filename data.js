@@ -1,7 +1,7 @@
 // ==================== CAVES DATABASE (DYNAMIC LOOT POOLS) ====================
 const cavesData = [
     { 
-        id: 1, name: "Abyssal Hollow", image: "Img/Abyssal Hollow.png", requiredLevel: 1, energyCost: 5, xpReward: 10, collectionId: "coal-col",
+        id: 1, name: "Abyssal Hollow", image: "Img/Abyssal Hollow.png", requiredLevel: 1, energyCost: 10, xpReward: 5, collectionId: "cave-1-col",
         lootPool: [
             { name: "Coal Ore", rarity: "common", baseValue: 5, baseWeight: 1.5, icon: "🪨" },
             { name: "Sooty Shale", rarity: "common", baseValue: 7, baseWeight: 1.8, icon: "🪵" },
@@ -14,7 +14,7 @@ const cavesData = [
         ]
     },
     { 
-        id: 2, name: "Azure Sinkhole", image: "Img/Azure Sinkhole.png", requiredLevel: 2, energyCost: 6, xpReward: 15, collectionId: "copper-col",
+        id: 2, name: "Azure Sinkhole", image: "Img/Azure Sinkhole.png", requiredLevel: 2, energyCost: 20, xpReward: 10, collectionId: "cave-2-col",
         lootPool: [
             { name: "Copper Ore", rarity: "common", baseValue: 10, baseWeight: 2.0, icon: "🟧" },
             { name: "Verdigris Crust", rarity: "common", baseValue: 14, baseWeight: 2.2, icon: "🦠" },
@@ -27,7 +27,7 @@ const cavesData = [
         ]
     },
     { 
-        id: 3, name: "Crystalline Chasm", image: "Img/Crystalline Chasm.png", requiredLevel: 3, energyCost: 8, xpReward: 25, collectionId: "iron-col",
+        id: 3, name: "Crystalline Chasm", image: "Img/Crystalline Chasm.png", requiredLevel: 3, energyCost: 30, xpReward: 15, collectionId: "cave-3-col",
         lootPool: [
             { name: "Iron Ore", rarity: "common", baseValue: 16, baseWeight: 2.8, icon: "⚙️" },
             { name: "Hematite Lump", rarity: "common", baseValue: 22, baseWeight: 3.2, icon: "🟫" },
@@ -40,7 +40,7 @@ const cavesData = [
         ]
     },
     { 
-        id: 4, name: "Echoing Grotto", image: "Img/Echoing Grotto.png", requiredLevel: 4, energyCost: 10, xpReward: 40, collectionId: "silver-col",
+        id: 4, name: "Echoing Grotto", image: "Img/Echoing Grotto.png", requiredLevel: 4, energyCost: 40, xpReward: 20, collectionId: "cave-4-col",
         lootPool: [
             { name: "Silver Ore", rarity: "common", baseValue: 24, baseWeight: 3.2, icon: "🪙" },
             { name: "Galena Chunk", rarity: "common", baseValue: 34, baseWeight: 3.6, icon: "🩶" },
@@ -53,7 +53,7 @@ const cavesData = [
         ]
     },
     { 
-        id: 5, name: "Gilded Labyrinth", image: "Img/Gilded Labyrinth.png", requiredLevel: 5, energyCost: 12, xpReward: 60, collectionId: "gold-col",
+        id: 5, name: "Gilded Labyrinth", image: "Img/Gilded Labyrinth.png", requiredLevel: 5, energyCost: 50, xpReward: 25, collectionId: "cave-5-col",
         lootPool: [
             { name: "Gold Vein", rarity: "common", baseValue: 36, baseWeight: 4.0, icon: "👑" },
             { name: "Gold Dust Rock", rarity: "common", baseValue: 50, baseWeight: 4.5, icon: "🌟" },
@@ -66,7 +66,7 @@ const cavesData = [
         ]
     },
     { 
-        id: 6, name: "Glacial Crevasse", image: "Img/Glacial Crevasse.png", requiredLevel: 6, energyCost: 15, xpReward: 90, collectionId: "emerald-col",
+        id: 6, name: "Glacial Crevasse", image: "Img/Glacial Crevasse.png", requiredLevel: 6, energyCost: 60, xpReward: 30, collectionId: "cave-6-col",
         lootPool: [
             { name: "Emerald Gem", rarity: "common", baseValue: 52, baseWeight: 5.0, icon: "💚" },
             { name: "Beryl Shard", rarity: "common", baseValue: 72, baseWeight: 5.6, icon: "🧪" },
@@ -79,7 +79,7 @@ const cavesData = [
         ]
     },
     { 
-        id: 7, name: "The Chipped Vein", image: "Img/The Chipped Vein.png", requiredLevel: 7, energyCost: 18, xpReward: 130, collectionId: "ruby-col",
+        id: 7, name: "The Chipped Vein", image: "Img/The Chipped Vein.png", requiredLevel: 7, energyCost: 70, xpReward: 35, collectionId: "cave-7-col",
         lootPool: [
             { name: "Ruby Gem", rarity: "common", baseValue: 75, baseWeight: 6.2, icon: "🟥" },
             { name: "Spinel Shard", rarity: "common", baseValue: 100, baseWeight: 7.0, icon: "🩸" },
@@ -92,7 +92,7 @@ const cavesData = [
         ]
     },
     { 
-        id: 8, name: "The Ember Maw", image: "Img/The Ember Maw.png", requiredLevel: 8, energyCost: 22, xpReward: 180, collectionId: "diamond-col",
+        id: 8, name: "The Ember Maw", image: "Img/The Ember Maw.png", requiredLevel: 8, energyCost: 80, xpReward: 40, collectionId: "cave-8-col",
         lootPool: [
             { name: "Diamond Shard", rarity: "common", baseValue: 110, baseWeight: 7.5, icon: "💎" },
             { name: "Zircon Lump", rarity: "common", baseValue: 150, baseWeight: 8.4, icon: "🥥" },
@@ -105,7 +105,7 @@ const cavesData = [
         ]
     },
     { 
-        id: 9, name: "The Shattered Stratum", image: "Img/The Shattered Stratum.png", requiredLevel: 9, energyCost: 30, xpReward: 300, collectionId: "obsidian-col",
+        id: 9, name: "The Shattered Stratum", image: "Img/The Shattered Stratum.png", requiredLevel: 9, energyCost: 90, xpReward: 45, collectionId: "cave-9-col",
         lootPool: [
             { name: "Obsidian Core", rarity: "common", baseValue: 160, baseWeight: 9.2, icon: "🔥" },
             { name: "Basalt Crust", rarity: "common", baseValue: 220, baseWeight: 10.2, icon: "🌑" },
@@ -118,7 +118,7 @@ const cavesData = [
         ]
     },
     { 
-        id: 10, name: "The Void Rift", image: "Img/The Void Rift.png", requiredLevel: 10, energyCost: 40, xpReward: 500, baseValue: 700, baseWeight: 25.0, oreName: "Void Essence", oreIcon: "🌑", collectionId: "void-col",
+        id: 10, name: "The Void Rift", image: "Img/The Void Rift.png", requiredLevel: 10, energyCost: 40, xpReward: 100, baseValue: 50, baseWeight: 25.0, oreName: "Void Essence", oreIcon: "🌑", collectionId: "cave-10-col",
         lootPool: [
             { name: "Void Essence", rarity: "common", baseValue: 300, baseWeight: 12.0, icon: "🌑" },
             { name: "Singularity Dust", rarity: "common", baseValue: 400, baseWeight: 13.5, icon: "🌪️" },
@@ -152,21 +152,22 @@ const mutationsData = [
 // ==================== SHOP ITEMS DATABASE ====================
 const shopData = [
     // Mining Speed
-    { id: "wooden-pick", category: "mining-speed", name: "Wooden Pick", desc: "+5% mining efficiency.", cost: 50, icon: "🪵", multiplier: 1.05, collectionId: "starter-tool" },
-    { id: "iron-pick", category: "mining-speed", name: "Iron Pick", desc: "+20% mining efficiency.", cost: 150, icon: "⛏️", multiplier: 1.20, collectionId: "iron-digger" },
-    { id: "drill-arm", category: "mining-speed", name: "Drill Arm", desc: "+50% mining efficiency.", cost: 500, icon: "🔋", multiplier: 1.50, collectionId: "drill-arm-col", versionAdded: "1.5.0" },
+    { id: "wooden-pick", category: "mining-speed", name: "Wooden Pick", desc: "+5% mining efficiency.", cost: 2000, icon: "🪵", multiplier: 1.05, collectionId: "starter-tool" },
+    { id: "iron-pick", category: "mining-speed", name: "Iron Pick", desc: "+20% mining efficiency.", cost: 8000, icon: "⛏️", multiplier: 1.20, collectionId: "iron-digger" },
+    { id: "drill-arm", category: "mining-speed", name: "Drill Arm", desc: "+50% mining efficiency.", cost: 32000, icon: "🔋", multiplier: 1.50, collectionId: "drill-arm-col" },
+    { id: "heavy-weight", category: "mining-speed", name: "Heavy Weight", desc: "+80% mining efficiency.", cost: 128000, icon: "⚖️", multiplier: 1.80, collectionId: "heavy-weight-col", versionAdded: "1.5.0" },
     
     // Bag Capacity
-    { id: "pouch-bag", category: "bag-capacity", name: "Pouch Bag", desc: "Increases bag limit to 30.", cost: 80, icon: "🎒", capacity: 30, collectionId: null },
-    { id: "cargo-bag", category: "bag-capacity", name: "Cargo Bag", desc: "Increases bag limit to 60.", cost: 300, icon: "💼", capacity: 60, collectionId: null },
-    { id: "steel-trunk", category: "bag-capacity", name: "Steel Trunk", desc: "Increases bag limit to 120.", cost: 800, icon: "📦", capacity: 120, collectionId: null },
-    { id: "courier-bag", category: "bag-capacity", name: "Courier Bag", desc: "Increases bag limit to 500.", cost: 1500, icon: "🛵", capacity: 500, collectionId: null, versionAdded: "1.5.0" },
+    { id: "pouch-bag", category: "bag-capacity", name: "Pouch Bag", desc: "Increases bag limit to 20.", cost: 3000, icon: "🎒", capacity: 20, collectionId: null },
+    { id: "cargo-bag", category: "bag-capacity", name: "Cargo Bag", desc: "Increases bag limit to 40.", cost: 15000, icon: "💼", capacity: 40, collectionId: null },
+    { id: "steel-trunk", category: "bag-capacity", name: "Steel Trunk", desc: "Increases bag limit to 60.", cost: 75000, icon: "📦", capacity: 60, collectionId: null },
+    { id: "courier-bag", category: "bag-capacity", name: "Courier Bag", desc: "Increases bag limit to 80.", cost: 375000, icon: "🛵", capacity: 80, collectionId: null, versionAdded: "1.5.0" },
     
     // Energy Upgrades
-    { id: "raw-apple", category: "energy", name: "Raw Apple", desc: "Restores 15 Energy.", cost: 10, icon: "🍏", energy: 15, collectionId: null, releaseDate: "2026-05-23" },
-    { id: "stamina-brew", category: "energy", name: "Stamina Brew", desc: "Restores 50 Energy.", cost: 75, icon: "🧪", energy: 50, collectionId: null },
-    { id: "cooked-meat", category: "energy", name: "Cooked Meat", desc: "Restores 100 Energy.", cost: 180, icon: "🥩", energy: 100, collectionId: null },
-    { id: "magic-berry", category: "energy", name: "Magic Berry", desc: "Restores 800 Energy.", cost: 2500, icon: "🍓", energy: 800, collectionId: null, releaseDate: "2026-05-23" },
+    { id: "raw-apple", category: "energy", name: "Raw Apple", desc: "Restores 100 Energy.", cost: 500, icon: "🍏", energy: 100, collectionId: null, },
+    { id: "stamina-brew", category: "energy", name: "Stamina Brew", desc: "Restores 300 Energy.", cost: 2500, icon: "🧪", energy: 300, collectionId: null },
+    { id: "cooked-meat", category: "energy", name: "Cooked Meat", desc: "Restores 900 Energy.", cost: 12500, icon: "🥩", energy: 900, collectionId: null },
+    { id: "magic-berry", category: "energy", name: "Magic Berry", desc: "Restores 2700 Energy.", cost: 62500, icon: "🍓", energy: 2700, collectionId: null, releaseDate: "2026-05-23" },
 
     // Boosts / Potions
     { id: "luck-brew", category: "boosts", name: "Luck Brew", desc: "Double gem roll chance.", cost: 120, icon: "⭐", collectionId: null, buffType: "luck", buffDuration: 60 },
@@ -176,24 +177,43 @@ const shopData = [
 
 // ==================== COLLECTIONS GALLERY DATABASE ====================
 const collectionsData = [
-    // Pickaxes
+    // ==================== CAVES COLLECTIONS ====================
+    { id: "cave-1-col", category: "caves", name: "Abyssal Discovery", desc: "Mined and mapped the shallow coal deposits of the Abyssal Cavern.", icon: "🧗", obtained: true },
+    { id: "cave-2-col", category: "caves", name: "Azure Discovery", desc: "Successfully navigated the watery azure sinkholes.", icon: "🌊", obtained: false },
+    { id: "cave-3-col", category: "caves", name: "Crystalline Discovery", desc: "Reached the deep crystal caverns filled with sharp quartz.", icon: "🔮", obtained: false },
+    { id: "cave-4-col", category: "caves", name: "Echoing Discovery", desc: "Heard the ringing sound of pure silver echoing off grotto walls.", icon: "🔔", obtained: false },
+    { id: "cave-5-col", category: "caves", name: "Gilded Discovery", desc: "Entered the labyrinth constructed entirely of sparkling gold vein.", icon: "👑", obtained: false },
+    { id: "cave-6-col", category: "caves", name: "Glacial Discovery", desc: "Breached the frozen crevices holding valuable emerald pockets.", icon: "❄️", obtained: false },
+    { id: "cave-7-col", category: "caves", name: "The Chipped Discovery", desc: "Mapped the hot volcanic vents holding the chipped rubies.", icon: "🌋", obtained: false },
+    { id: "cave-8-col", category: "caves", name: "The Ember Discovery", desc: "Survived the superheated maw housing raw diamond shards.", icon: "🔥", obtained: false },
+    { id: "cave-9-col", category: "caves", name: "The Stratum Discovery", desc: "Reached the deep tectonic shattering layer containing obsidian cores.", icon: "🖤", obtained: false },
+    { id: "cave-10-col", category: "caves", name: "The Void Discovery", desc: "Breached the event horizon rift where the void core pulses.", icon: "🧿", obtained: false },
+
+    // ==================== PICKAXES COLLECTIONS ====================
     { id: "starter-tool", category: "pickaxes", name: "Starter Tool", desc: "Rusty, wooden, but dependable gear.", icon: "🪵", obtained: true },
     { id: "iron-digger", category: "pickaxes", name: "Iron Digger", desc: "Wrought iron forged deep in dwarven kilns.", icon: "⛏️", obtained: false },
     { id: "drill-arm-col", category: "pickaxes", name: "Drill Arm Specialist", desc: "A fully mechanical drill arm attachment.", icon: "🔋", obtained: false },
 
-    // Ores
-    { id: "coal-col", category: "ores", name: "Coal Nugget", desc: "Combustible fuel, found in early cave layers.", icon: "🪨", obtained: false },
-    { id: "copper-col", category: "ores", name: "Copper Ore", desc: "Highly conductive chunks showing green oxidation.", icon: "🟧", obtained: false },
-    { id: "iron-col", category: "ores", name: "Iron Ore", desc: "Heavy metal chunks ready to be refined.", icon: "⚙️", obtained: false },
-    { id: "silver-col", category: "ores", name: "Silver Ore", desc: "Precious reflective silver vein chunks.", icon: "🪙", obtained: false },
-    { id: "gold-col", category: "ores", name: "Gold Vein", desc: "Pure sparkling gold nugget segments.", icon: "👑", obtained: false },
-    { id: "emerald-col", category: "ores", name: "Emerald Gem", desc: "Shimmering hexagonal green emerald clusters.", icon: "💚", obtained: false },
-    { id: "ruby-col", category: "ores", name: "Ruby Gem", desc: "Deep crimson ruby crystals mined from hot fissures.", icon: "🟥", obtained: false },
-    { id: "diamond-col", category: "ores", name: "Diamond Shard", desc: "Indestructible diamond structures sparkling in the dark.", icon: "💎", obtained: false },
-    { id: "obsidian-col", category: "ores", name: "Obsidian Core", desc: "Superheated volcanic core shards vibrating with force.", icon: "🔥", obtained: false },
-    { id: "void-col", category: "ores", name: "Void Essence", desc: "A dark, gravitational substance radiating cold, silent energy.", icon: "🌑", obtained: false },
+    // ==================== MULTI-TIERED ORE RNG COLLECTIONS ====================
+    // 1. Coal Ore Tiers (Cave 1)
+    { id: "coal-ore-normal", category: "ores", name: "Common Coal", desc: "A standard, unrefined lump of coal fuel.", icon: "🪨", obtained: false },
+    { id: "coal-ore-variant", category: "ores", name: "Refined Coal (Rare)", desc: "A shiny, highly valued coal variant.", icon: "✨", obtained: false },
+    { id: "coal-ore-mutation", category: "ores", name: "Spore Coal (Epic)", desc: "A coal nugget glowing with organic cave spores.", icon: "🟢", obtained: false },
+    { id: "coal-ore-hybrid", category: "ores", name: "Rainbow-Cosmic Coal (Legendary)", desc: "A legendary hybrid roll on raw coal ore!", icon: "🌈", obtained: false },
 
-    // Mutations (Merged with Variant Unlocks)
+    // 2. Copper Ore Tiers (Cave 2)
+    { id: "copper-ore-normal", category: "ores", name: "Common Copper", desc: "A standard oxidated chunk of copper metal.", icon: "🟧", obtained: false },
+    { id: "copper-ore-variant", category: "ores", name: "Polished Copper (Rare)", desc: "A pure copper chunk displaying zero rust.", icon: "✨", obtained: false },
+    { id: "copper-ore-mutation", category: "ores", name: "Spiked Copper (Epic)", desc: "Mined copper covered in toxic spore growths.", icon: "🤢", obtained: false },
+    { id: "copper-ore-hybrid", category: "ores", name: "Prismatic Star Copper (Legendary)", desc: "An ultra-rare hybrid variant roll on raw copper!", icon: "🔮", obtained: false },
+
+    // 3. Iron Ore Tiers (Cave 3)
+    { id: "iron-ore-normal", category: "ores", name: "Common Iron", desc: "Standard heavy iron ore chunks.", icon: "⚙️", obtained: false },
+    { id: "iron-ore-variant", category: "ores", name: "Steel Spark (Rare)", desc: "Highly dense pure iron display variant.", icon: "🔩", obtained: false },
+    { id: "iron-ore-mutation", category: "ores", name: "Magnetic Iron (Epic)", desc: "Iron ore mutated by deep magnetic frequencies.", icon: "🧲", obtained: false },
+    { id: "iron-ore-hybrid", category: "ores", name: "Cosmic Iron (Legendary)", desc: "A legendary cosmic hybrid iron ore drop!", icon: "🌌", obtained: false },
+
+    // ==================== MUTATIONS COLLECTIONS ====================
     { id: "rust-col", category: "mutations", name: "Rust Variant", desc: "An old oxidization coating on standard cave ores.", icon: "🟫", obtained: false },
     { id: "pure-col", category: "mutations", name: "Pure Variant", desc: "Unblemished minerals displaying high density.", icon: "✨", obtained: false },
     { id: "rainbow-col", category: "mutations", name: "Rainbow Variant", desc: "Prismatic surface reflections showing color spectrums.", icon: "🌈", obtained: false },
@@ -202,9 +222,8 @@ const collectionsData = [
     { id: "crystalline-col", category: "mutations", name: "Crystalline Mutation", desc: "Grown with sparkling crystal points.", icon: "🔮", obtained: false },
     { id: "cosmic-col", category: "mutations", name: "Cosmic Mutation", desc: "Pulsing with gravity-warping alien force.", icon: "🌌", obtained: false },
 
-    // Awards - Trophies
+    // ==================== AWARDS COLLECTIONS ====================
     { id: "cavern-cup", category: "awards", subCategory: "trophies", name: "Cavern Cup", desc: "Reach Character Level 10.", icon: "🥇", obtained: false, conditionType: "level", conditionValue: 10 },
-    { id: "cavern-cup-two", category: "awards", subCategory: "trophies", name: "Cavern Cup Two", desc: "Reach Character Level 20.", icon: "🥇", obtained: false, conditionType: "level", conditionValue: 20 },
     { id: "hard-worker", category: "awards", subCategory: "badges", name: "Hard Worker", desc: "Mine 100 total ores in caves.", icon: "🎖️", obtained: false, conditionType: "mines", conditionValue: 100 },
     { id: "wealthy-miner", category: "awards", subCategory: "badges", name: "Wealthy Miner", desc: "Accumulate 1,000 Gold Coins.", icon: "💰", obtained: false, conditionType: "money", conditionValue: 1000 }
 ];

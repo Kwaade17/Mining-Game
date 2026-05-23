@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const playerState = {
         username: "",           // Custom player display name
-        level: 1, xp: 0, xpNeeded: 100, money: 200, maxBagCapacity: 20,
+        level: 1, xp: 0, xpNeeded: 300, money: 200, maxBagCapacity: 10,
         currentEnergy: 100, maxEnergy: 100, activePickaxeMultiplier: 1.0,
         xpMultiplier: 1.0, inventory: [],
         soundsMuted: false,     // Tracks global audio state
@@ -449,11 +449,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rewardGold = 40 + Math.floor(Math.random() * 61); 
                 playerState.money += rewardGold;
 
-                // Fix: Corrected parenthesis syntax in dynamic money float call
+                // Fix: Corrected parenthesis syntax inside formatMoney call
                 spawnFloatingText(`+🪙 ${formatMoney(rewardGold)}`, e.clientX, e.clientY, 'float-gold');
                 showNotification("🎁 Gift Opened!", `Unlocked 🪙 ${formatMoney(rewardGold)} Coins from a Cavern Chest!`, "sell", 3500);
-                
-                SoundEngine.playCoin();
+
+                SoundEngine.playCoin(); // Triggers your custom coin sound natively
 
                 chest.remove();
                 saveGame();
@@ -492,6 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Dynamic countdown timer loop
     setInterval(() => {
         let changed = false;
         if (playerState.buffs) {
@@ -541,6 +542,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (navUsername) navUsername.textContent = displayName;
         if (sideUsername) sideUsername.textContent = displayName;
 
+        // NEW: Automatically check and unlock cavern discoveries
+        checkCaveUnlocks(); 
+        
         checkAchievements(); 
     }
 
@@ -638,9 +642,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 "sell", 
                 4000
             );
-            
-            SoundEngine.playCoin();
-            
+
+            // Play your custom selling coin chime
+            SoundEngine.playCoin(); 
+
             updateStatsUI();
             renderInventoryTray();
             saveGame();
@@ -652,12 +657,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const cave = cavesData.find(c => c.id === caveId);
         if (!cave) return;
 
+        // Interactive UX warning feedback on validation checks
         if (playerState.level < cave.requiredLevel) {
             SoundEngine.playError();
             showNotification("🔒 Cavern Locked!", `You need to reach Level ${cave.requiredLevel} to mine here.`, "level-up", 3000);
             return;
         }
         
+        // Dynamic Energy calculations based on active Rage buffs
         const activeCost = (playerState.buffs && playerState.buffs.rage > 0) ? Math.ceil(cave.energyCost / 2) : cave.energyCost;
 
         if (playerState.currentEnergy < activeCost) {
@@ -685,6 +692,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         pool.forEach(ore => {
             let weight = rarityWeights[ore.rarity] || 1000;
+            // Luck Brew active: double-rarity roll odds check
             if (playerState.buffs && playerState.buffs.luck > 0 && ore.rarity !== 'common') {
                 weight *= 2; 
             }
@@ -733,7 +741,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         playerState.inventory.push(newOre);
 
+        // ==================== NEW DYNAMIC MULTI-TIERED UNLOCKS ====================
+        const isNormal = (rolledVar.id === "normal") && (rolledMut.id === "none");
+        const hasVariantOnly = (rolledVar.id !== "normal") && (rolledMut.id === "none");
+        const hasMutationOnly = (rolledVar.id === "normal") && (rolledMut.id !== "none");
+        const isHybrid = (rolledVar.id !== "normal") && (rolledMut.id !== "none");
+
+        const oreBaseId = selectedOre.name.toLowerCase().replace(/\s+/g, '-');
+
+        // Unlock specific Ore progressive tiers
+        if (isNormal) {
+            unlockCollectionItem(`${oreBaseId}-normal`);
+        } else if (hasVariantOnly) {
+            unlockCollectionItem(`${oreBaseId}-variant`);
+        } else if (hasMutationOnly) {
+            unlockCollectionItem(`${oreBaseId}-mutation`);
+        } else if (isHybrid) {
+            unlockCollectionItem(`${oreBaseId}-hybrid`);
+        }
+
+        // Unlock base ore discovery card
         if (cave.collectionId) unlockCollectionItem(cave.collectionId);
+
+        // Unlock base mutations & variant categories
         if (rolledVar.collectionId) unlockCollectionItem(rolledVar.collectionId);
         if (rolledMut.collectionId) unlockCollectionItem(rolledMut.collectionId);
 
@@ -1020,18 +1050,17 @@ document.addEventListener('DOMContentLoaded', () => {
             unlockCollectionItem(item.collectionId);
         }
 
+        // Programmatic dynamic Buff Engine upgrade triggers
+        if (item.category === "boosts" && item.buffType && item.buffDuration) {
+            playerState.buffs[item.buffType] = item.buffDuration;
+        }
+
         if (item.category === "mining-speed") {
             playerState.activePickaxeMultiplier = item.multiplier;
         } else if (item.category === "bag-capacity") {
             playerState.maxBagCapacity = item.capacity;
         } else if (item.category === "energy") {
             playerState.currentEnergy = Math.min(playerState.maxEnergy, playerState.currentEnergy + item.energy);
-        } else if (item.id === "luck-brew") {
-            playerState.buffs.luck = 60; 
-        } else if (item.id === "rage-elixir") {
-            playerState.buffs.rage = 60; 
-        } else if (item.id === "xp-elixir") {
-            playerState.buffs.xpBoost = 45; 
         }
 
         SoundEngine.playCoin();
@@ -1066,6 +1095,7 @@ document.addEventListener('DOMContentLoaded', () => {
         parent.appendChild(grid);
     }
 
+    // Unified dynamic Collection Card builder
     function createColCard(item) {
         const card = document.createElement('div');
         card.className = 'col-card';
@@ -1104,7 +1134,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderCollections() {
         if (!colSectionsList) return;
         colSectionsList.innerHTML = '';
-        const categories = {"pickaxes": "⛏️ Pickaxes", "ores": "🪨 Ores", "mutations": "⚛️ Mutations", "awards": "🏆 Awards"};
+        const categories = {"caves": "🧗 Caves Discovery", "pickaxes": "⛏️ Pickaxes", "ores": "🪨 Ores Tiers", "mutations": "⚛️ Mutations", "awards": "🏆 Awards"};
 
         Object.keys(categories).forEach(catKey => {
             const section = document.createElement('section');
@@ -1112,10 +1142,12 @@ document.addEventListener('DOMContentLoaded', () => {
             section.setAttribute('data-category', catKey);
             section.innerHTML = `<h3 class="col-section-header">${categories[catKey]}</h3>`;
 
+            const grid = document.createElement('div');
+            grid.className = 'col-grid';
+
             if (catKey !== "awards") {
-                const grid = document.createElement('div');
-                grid.className = 'col-grid';
-                collectionsData.filter(c => c.category === catKey).forEach(item => {
+                const items = collectionsData.filter(c => c.category === catKey);
+                items.forEach(item => {
                     grid.appendChild(createColCard(item));
                 });
                 section.appendChild(grid);
@@ -1155,7 +1187,40 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 6000);
         }
     }
-
+    
+    // ==================== DYNAMIC CAVERN UNLOCK ENGINE ====================
+    
+    // Automatically checks and unlocks cavern discovery collection cards based on player level
+    function checkCaveUnlocks() {
+        cavesData.forEach(cave => {
+            if (playerState.level >= cave.requiredLevel && cave.caveCollectionId) {
+                const item = collectionsData.find(c => c.id === cave.caveCollectionId);
+                
+                // If the collection card is not unlocked yet, trigger the discovery
+                if (item && !item.obtained) {
+                    // Special Welcome Notification for first-time players discovering Cave 1
+                    if (cave.id === 1) {
+                        showNotification(
+                            "🧗 Cavern Discovered!", 
+                            `You have discovered the <strong>${cave.name}</strong>! Step inside and begin your journey.`, 
+                            "level-up", 
+                            6000
+                        );
+                    } else {
+                        // Standard notification for deeper cave layers
+                        showNotification(
+                            "🧗 Cavern Discovered!", 
+                            `You have unlocked and mapped the <strong>${cave.name}</strong> layer!`, 
+                            "level-up", 
+                            4000
+                        );
+                    }
+                    unlockCollectionItem(cave.caveCollectionId);
+                }
+            }
+        });
+    }
+    
     // ==================== UNIFIED DATA-DRIVEN ACHIEVEMENT ENGINE ====================
     function checkAchievements() {
         collectionsData.forEach(item => {
