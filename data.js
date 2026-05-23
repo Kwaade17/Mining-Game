@@ -200,7 +200,58 @@ const collectionsData = [
     { id: "toxic-col", category: "mutations", name: "Toxic Mutation", desc: "Glowing with radioactive isotopes.", icon: "🤢", obtained: false },
     { id: "crystalline-col", category: "mutations", name: "Crystalline Mutation", desc: "Grown with sparkling crystal points.", icon: "🔮", obtained: false },
     { id: "cosmic-col", category: "mutations", name: "Cosmic Mutation", desc: "Pulsing with gravity-warping alien force.", icon: "🌌", obtained: false },
-
-    { id: "cavern-cup", category: "awards", subCategory: "trophies", name: "Cavern Cup", desc: "Reaching Level 10.", icon: "🥇", obtained: false },
-    { id: "hard-worker", category: "awards", subCategory: "badges", name: "Hard Worker", desc: "Mine 100 total ores in caves.", icon: "🎖️", obtained: false }
+    
+    // Awards - Trophies (Quest Chests)
+    { 
+        id: "cavern-cup", 
+        category: "awards", 
+        subCategory: "trophies", 
+        name: "Cavern Cup", 
+        desc: "Reach Character Level 10.", 
+        icon: "🥇", 
+        obtained: false,
+        // Programmatic condition checks:
+        conditionType: "level", 
+        conditionValue: 10 
+    },
+    
+    // Awards - Badges (Quest Tasks)
+    { 
+        id: "hard-worker", 
+        category: "awards", 
+        subCategory: "badges", 
+        name: "Hard Worker", 
+        desc: "Mine 100 total ores in caves.", 
+        icon: "🎖️", 
+        obtained: false,
+        // Programmatic condition checks:
+        conditionType: "mines", 
+        conditionValue: 100 
+    },
+    
+    // NEW: Wealthy Miner Badge (Zero code edits required!)
+    { 
+        id: "wealthy-miner", 
+        category: "awards", 
+        subCategory: "badges", 
+        name: "Wealthy Miner", 
+        desc: "Accumulate 1,000 Gold Coins.", 
+        icon: "💰", 
+        obtained: false,
+        // Programmatic condition checks:
+        conditionType: "money", 
+        conditionValue: 1000 
+    },
+    
+    { 
+        id: "ore-hoarder", 
+        category: "awards", 
+        subCategory: "badges", 
+        name: "Ore Hoarder", 
+        desc: "Mine 500 total ores.", 
+        icon: "🎒", 
+        obtained: false, 
+        conditionType: "mines", 
+        conditionValue: 500
+    }
 ];

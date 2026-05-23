@@ -437,6 +437,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const displayName = playerState.username ? playerState.username : "Miner Joe";
         if (navUsername) navUsername.textContent = displayName;
         if (sideUsername) sideUsername.textContent = displayName;
+        
+        // NEW: Automatically check all award conditions whenever player statistics change
+        checkAchievements();
     }
 
     function awardXp(amount) {
@@ -456,8 +459,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 "level-up", 
                 5000
             );
-
-            if (playerState.level >= 10) unlockCollectionItem("cavern-cup");
 
             updateMapPageStructure();
         }
@@ -982,11 +983,29 @@ document.addEventListener('DOMContentLoaded', () => {
             saveGame();
         }
     }
+    
+    // ==================== UNIFIED DATA-DRIVEN ACHIEVEMENT ENGINE ====================
+    
+    // Loops through awards dynamically, checks conditions, and unlocks achievements
+    function checkAchievements() {
+        collectionsData.forEach(item => {
+            // Only process unobtained awards possessing a valid condition type
+            if (item.category === "awards" && !item.obtained && item.conditionType) {
+                let isEligible = false;
 
-    function updateHardWorkerBadge() {
-        if (totalMinesCount >= 100) {
-            unlockCollectionItem("hard-worker");
-        }
+                if (item.conditionType === "level" && playerState.level >= item.conditionValue) {
+                    isEligible = true;
+                } else if (item.conditionType === "mines" && totalMinesCount >= item.conditionValue) {
+                    isEligible = true;
+                } else if (item.conditionType === "money" && playerState.money >= item.conditionValue) {
+                    isEligible = true;
+                }
+
+                if (isEligible) {
+                    unlockCollectionItem(item.id);
+                }
+            }
+        });
     }
 
     // ==================== SEARCH/FILTER SYSTEM ====================
