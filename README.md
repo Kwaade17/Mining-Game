@@ -1,213 +1,162 @@
-# ⛏️ Underworld Miner — Development Guide
+```
+# ⛏️ Underworld Miner — Cavern Chronicles
 
-Welcome to **Underworld Miner**, a lightweight, responsive, data-driven web-based idle mining game. This guide explains the code structure, the gameplay systems, and how to extend the project.
+[![Game Version](https://img.shields.io/badge/Version-v1.4.0-gold.svg)](https://github.com/Kwaade17/Mining-Game)
+[![Platform](https://img.shields.io/badge/Platform-Web__Browser-blue.svg)](https://github.com/Kwaade17/Mining-Game)
+[![Language](https://img.shields.io/badge/Made%20With-HTML%20%7C%20CSS%20%7C%20JS-brightgreen.svg)](https://github.com/Kwaade17/Mining-Game)
+
+Welcome to **Underworld Miner**, a lightweight, responsive, and data-driven active incremental game. Step into the boots of Miner Joe and explore rich cavern layers, manage a real-time active inventory, trade raw ores at the marketplace, and unlock legendary artifacts to fill your prestigious collections gallery.
 
 ---
 
-## 📂 Project Structure
+## 📂 Project Architecture
 
-The project is organized into a small set of files plus an image folder:
+The application is engineered on a **Data-Driven UI Framework**. The user interface acts as a clean structural "shell," while all assets, stats, and cards are rendered dynamically via JavaScript [4.2]:
 
 ```text
-index.html    # Main layout and page structure
-style.css     # Responsive styling and layout rules
-data.js       # Game data: caves, shop items, variants, mutations, collections
-script.js     # Game logic, rendering, event handling, and UI updates
-Img/          # Graphics directory for background and icon assets
+├── index.html          # Clean, placeholder-free structural shell
+├── style.css           # Compressed stylesheet handling layout depths & animations
+├── data.js            # Offline database (Caves, shop items, mutations, collections)
+├── script.js          # Core game engine (Mining loops, pagination, inventory, views)
+└── Img/                # Graphics directory
+    ├── Icons/
+    │   ├── Shop/       # Upgrades and gear assets
+    │   └── Awards/     # Trophy, badge, and mutation assets
+    └── ...             # Cave background images
 ```
 
-### File responsibilities
-
-- `index.html`: base markup and named view containers for the main game, shop, and collections.
-- `style.css`: responsive layout, sidebar styling, card designs, and mobile behavior.
-- `data.js`: defines the game world and editable content.
-- `script.js`: handles UI rendering, mining calculations, inventory management, shop purchases, and navigation.
-
 ---
 
-## ⚙️ Local Setup
+## ⚙️ Game Core Calculations & Math
 
-This is a static web project, so you can run it directly from the file system or through a simple local server.
+Underworld Miner uses a sophisticated, multi-stage calculation sequence to determine the parameters and market value of every mined ore [4.2]:
 
-### Option 1: Open directly
-1. Open `index.html` in a browser.
-2. If images or scripts do not load, use a local server instead.
-
-### Option 2: Run a local server (recommended)
-If you have Python installed, run from the project folder:
-
-```bash
-python -m http.server 8000
+```
+                         [ Base Value ]             [ Base Weight ]
+                                │                          │
+                                ▼                          ▼
+                        [ Roll Variant ]           [ Roll Fluctuation ]
+                    (Base Value Multiplier)          (0.8x to 1.2x)
+                                │                          │
+                                ▼                          ▼
+                      Modified Base Value            Actual Weight
+                                └────────────┬─────────────┘
+                                             ▼
+                                     Sub-Total Value
+                                             │
+                                             ▼
+                                      [ Roll Mutation ]
+                                  (Final Value Multiplier)
+                                             │
+                                             ▼
+                                     Final/Total Value
 ```
 
-Then open `http://localhost:8000` in your browser.
+### 1. Base Value Modification (Variant Roll)
+Mining an ore rolls a specific **Variant** based on defined probability rates (`pr`):
+- **Normal (80%):** `x1.0` value multiplier
+- **Rust (10%):** `x5.0` value multiplier
+- **Pure (9%):** `x20.0` value multiplier
+- **Rainbow (1%):** `x50.0` value multiplier
+
+$$\text{Modified Base Value} = \text{Ore Base Value} \times \text{Variant Multiplier}$$
+
+### 2. Weight Variance
+The physical weight of the ore fluctuates dynamically around its defined base weight:
+$$\text{Actual Weight} = \text{Ore Base Weight} \times \text{Random Fluctuation (0.8 to 1.2)}$$
+
+### 3. Sub-Total Value
+$$\text{Sub-Total Value} = \text{Modified Base Value} \times \text{Actual Weight}$$
+
+### 4. Mutation Modification (Final Value)
+Finally, the engine rolls a **Mutation** (e.g. Spore, Toxic, Crystalline, Cosmic) which acts as a final multiplier on your sub-total:
+$$\text{Final/Total Value} = \text{Sub-Total Value} \times \text{Mutation Multiplier}$$
+
+- **None (80%):** `x1.0` final multiplier
+- **Spore (10%):** `x1.5` final multiplier
+- **Toxic (6%):** `x2.0` final multiplier
+- **Crystalline (3%):** `x3.0` final multiplier
+- **Cosmic (1%):** `x5.0` final multiplier
+
+*Unlocking these rare rolls instantly updates your collections gallery tab!*
 
 ---
 
-## 🔧 Development Workflow
+## 🚀 Release History & Changelog (v1.4.0)
 
-### 1. Inspect the app structure
-- `index.html` contains the sidebar, navbar, and view containers used by `script.js`.
-- `script.js` looks for elements by ID and class names, so keep those names consistent when editing HTML.
+We have heavily upgraded the game with several features, optimizations, and bug fixes:
 
-### 2. Change game content in `data.js`
-Most gameplay tuning happens here. The main data arrays are:
-- `cavesData`
-- `variantsData`
-- `mutationsData`
-- `shopData`
-- `collectionsData`
+### 🎮 Gameplay Additions
+- **Interactive Welcome Name Modal:** New players are greeted with a customized modal that gates gameplay until they input a display name. This updates their profile headers in real-time across the navbar and sidebar.
+- **Active Inventory Tray:** Added a scrolling inventory shelf directly on the main gameplay view. You can now see your active items, their mutated qualities, and sell them instantly at the marketplace without leaving the cavern map.
+- **Mystery Cavern Gifts (🎁):** Mining has a random $8\%$ chance to drop a floating gift chest. Clicking it rewards players with bonus coins.
+- **Anti-Spam Tap Protections:** Tapping the mystery gift instantly locks its pointer-events, preventing multi-touch gold exploits. 
+- **Defensive Mining Cooldowns:** Button triggers lock out spam clicks by showing a `"Mining..."` timer that decreases dynamically as you upgrade your pickaxe speed.
+- **Real-Time Sidebar XP Bar:** Added a sleek, gold XP progress bar underneath your sidebar avatar that updates smoothly as you earn mining experience.
+- **Dynamic Stats Pop-up Modal:** Clicking on any unlocked Cavern Card background or clicking "Read More" on any unlocked Collection card opens an animated frosted-glass popup showing deep lore and exact numerical stats.
 
-### 3. Adjust behavior in `script.js`
-Use `script.js` when you want to:
-- add new UI interactions
-- change mining logic or XP progression
-- modify shop purchase effects
-- update how views are shown and hidden
+### 🐛 Bug Fixes & Optimizations
+- **Sidebar Depth & Click-Hijacking Fix:** Raised the absolute `.sidebar` `z-index` depth to `140`, preventing invisible boundaries in the main game area from stealing sidebar menu clicks on mobile viewports.
+- **Viewport Height Scale Fix:** Re-engineered the map pagination limits using direct `window.innerWidth` programmatic evaluations. This prevents 3x3 grids from compressing into vertical columns on short screens.
+- **View Caching Override:** Modified the tab switcher to write inline `display` styles directly onto HTML views, bypassing persistent browser cache bugs completely.
+- **JSON Modular Database Structure:** Replaced structural string-guessing calculations with explicit `collectionId` data mappings, making additions 100% crash-free.
 
 ---
 
-## 🧠 Core Game Logic
+## ⚙️ Local Workspace Setup
 
-Mining results are computed using two multiplier stages:
-
-### 1) Variant roll
-Each mined ore roll uses a `variantsData` multiplier.
-- Normal (80%): x1.0
-- Rust (10%): x5.0
-- Pure (9%): x20.0
-- Rainbow (1%): x50.0
-
-### 2) Weight fluctuation
-Ore weight varies randomly between 0.8 and 1.2 of the base weight.
-
-### 3) Sub-total value
-`Sub-Total = Modified Base Value × Actual Weight`
-
-### 4) Mutation modifier
-`Final Value = Sub-Total × Mutation Multiplier`
-
-This system makes each mining result variable and allows rare drops to feel rewarding.
+To run your development environment on a PC:
+1. Open your project folder inside **VS Code**.
+2. Go to your Extensions tab (`Ctrl+Shift+X`), search for **Live Server**, and install it.
+3. Open `index.html` and click the **Go Live** button in your bottom-right status bar.
+4. This hosts a local development port. Every time you save any file in VS Code, your browser will instantly and automatically reload!
+5. Press **`F12`** inside your browser to monitor real-time variables and inspect performance.
 
 ---
 
-## 🎮 Gameplay Overview
+## 🛠️ Developer Extension Templates
 
-### Main Game
-- Click **Mine** on unlocked cave cards.
-- Mining consumes energy and adds ore to inventory.
-- If your bag is full, you must sell ores before mining more.
+To expand your game database, simply open `data.js` and append these templates inside their matching arrays:
 
-### Inventory
-- The inventory tray shows all mined ores.
-- Click **Sell All Ores** to convert inventory into coins.
-- The current bag capacity and used slots are displayed in the navbar.
-
-### Shop
-- Use coins to buy upgrades and energy items.
-- Some items are simulated IAP purchases and are rendered as special pass cards.
-- Buying capacity or energy updates the player state immediately.
-
-### Collections
-- The collections tab shows unlocked pickaxes, ores, and achievements.
-- Unlock progress is driven by mining results and upgrade purchases.
-
----
-
-## 🛠️ How to Extend the Game
-
-### Add a New Cave
-Open `data.js` and add an object to `cavesData`:
-
+### 1. Add a Cave
 ```javascript
 {
-  id: 10,
-  name: "Obsidian Abyss",
-  image: "Img/Obsidian Abyss.png",
-  requiredLevel: 12,
-  energyCost: 35,
-  xpReward: 400,
-  baseValue: 500,
-  baseWeight: 22.5,
-  oreName: "Obsidian Shard",
-  oreIcon: "💥"
+    id: 11,
+    name: "Obsidian Core",
+    image: "Img/Obsidian Core.png",
+    requiredLevel: 11,
+    energyCost: 35,
+    xpReward: 400,
+    baseValue: 500,
+    baseWeight: 22.5,
+    oreName: "Obsidian Shard",
+    oreIcon: "💥",
+    collectionId: "obsidian-col"
 }
 ```
 
-### Add a New Shop Item
-Add an entry to the `shopData` array in `data.js`:
-
+### 2. Add a Shop Upgrade
 ```javascript
 {
-  id: "titanium-pick",
-  category: "mining-speed",
-  name: "Titanium Pick",
-  desc: "+80% break speed.",
-  cost: 1500,
-  icon: "🔱",
-  multiplier: 1.80
+    id: "titanium-pick",
+    category: "mining-speed",
+    name: "Titanium Pick",
+    desc: "+80% break speed.",
+    cost: 1500,
+    icon: "🔱",
+    multiplier: 1.80,
+    collectionId: "titanium-col"
 }
 ```
 
-### Add a New Mutation
-Add an object to `mutationsData`:
-
+### 3. Add a Collection Card
 ```javascript
 {
-  id: "magnetic",
-  name: "Magnetic Mutation",
-  desc: "An ore pulsing with electromagnetic force.",
-  multiplier: 4.0,
-  pr: 0.02,
-  icon: "Icons/Awards/magnetic.png"
+    id: "titanium-col",
+    category: "pickaxes",
+    name: "Titanium Gear",
+    desc: "A pickaxe forged from indestructible titanium alloy.",
+    icon: "🔱",
+    obtained: false
 }
 ```
-
-### Add a New Collection Entry
-Add an entry to `collectionsData` with the right category:
-
-```javascript
-{
-  id: "titanium-col",
-  category: "pickaxes",
-  name: "Titanium Gear",
-  desc: "A pickaxe forged from indestructible titanium alloy.",
-  icon: "🔱",
-  obtained: false
-}
-```
-
-### Add a New Icon or Image
-Place the asset in `Img/` or `Img/Icons/`, and reference it from `data.js` or `style.css`.
-
----
-
-## ✅ Debugging Tips
-
-- If the app does not show the sidebar or menu, check `script.js` for event listeners on `menuToggle` and `sidebar`.
-- If a new cave image does not load, verify the filename exactly matches the `image` path in `data.js`.
-- If the shop or collections do not render, make sure IDs like `shopSectionsList` and `colSectionsList` exist in `index.html`.
-
----
-
-## 🏆 Unlocks & Achievements
-
-- Mining a new cave unlocks its base ore entry in `collectionsData`.
-- Rolling a rare variant unlocks the corresponding variant collection.
-- Rolling a rare mutation unlocks the mutation entry.
-- Reaching level 10 unlocks the **Deep Cavern Cup**.
-- Mining 100 ores unlocks the **Hard Worker** badge.
-
----
-
-## 🚀 Next Improvements
-
-Consider adding:
-
-- more caves and upgrade tiers
-- sound effects and animations
-- save/load using localStorage
-- a better shop currency system
-- daily rewards or quests
-
----
