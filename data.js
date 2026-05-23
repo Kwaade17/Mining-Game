@@ -1,15 +1,15 @@
 // ==================== CAVES DATABASE ====================
 const cavesData = [
     { id: 1, name: "Abyssal Hollow", image: "Img/Abyssal Hollow.png", requiredLevel: 1, energyCost: 5, xpReward: 10, baseValue: 10, baseWeight: 2.5, oreName: "Coal Ore", oreIcon: "🪨" },
-    { id: 2, name: "Azure Sinkhole", image: "Img/Azure Sinkhole.png", requiredLevel: 1, energyCost: 6, xpReward: 15, baseValue: 18, baseWeight: 3.0, oreName: "Copper Ore", oreIcon: "🟧" },
-    { id: 3, name: "Crystalline Chasm", image: "Img/Crystalline Chasm.png", requiredLevel: 2, energyCost: 8, xpReward: 25, baseValue: 30, baseWeight: 4.2, oreName: "Iron Ore", oreIcon: "⚙️" },
-    { id: 4, name: "Echoing Grotto", image: "Img/Echoing Grotto.png", requiredLevel: 3, energyCost: 10, xpReward: 40, baseValue: 45, baseWeight: 5.0, oreName: "Silver Ore", oreIcon: "🪙" },
-    { id: 5, name: "Gilded Labyrinth", image: "Img/Gilded Labyrinth.png", requiredLevel: 4, energyCost: 12, xpReward: 60, baseValue: 70, baseWeight: 6.5, oreName: "Gold Vein", oreIcon: "👑" },
-    { id: 6, name: "Glacial Crevasse", image: "Img/Glacial Crevasse.png", requiredLevel: 5, energyCost: 15, xpReward: 90, baseValue: 110, baseWeight: 8.0, oreName: "Emerald Gem", oreIcon: "💚" },
-    { id: 7, name: "The Chipped Vein", image: "Img/The Chipped Vein.png", requiredLevel: 6, energyCost: 18, xpReward: 130, baseValue: 160, baseWeight: 10.0, oreName: "Ruby Gem", oreIcon: "🟥" },
+    { id: 2, name: "Azure Sinkhole", image: "Img/Azure Sinkhole.png", requiredLevel: 2, energyCost: 6, xpReward: 15, baseValue: 18, baseWeight: 3.0, oreName: "Copper Ore", oreIcon: "🟧" },
+    { id: 3, name: "Crystalline Chasm", image: "Img/Crystalline Chasm.png", requiredLevel: 3, energyCost: 8, xpReward: 25, baseValue: 30, baseWeight: 4.2, oreName: "Iron Ore", oreIcon: "⚙️" },
+    { id: 4, name: "Echoing Grotto", image: "Img/Echoing Grotto.png", requiredLevel: 4, energyCost: 10, xpReward: 40, baseValue: 45, baseWeight: 5.0, oreName: "Silver Ore", oreIcon: "🪙" },
+    { id: 5, name: "Gilded Labyrinth", image: "Img/Gilded Labyrinth.png", requiredLevel: 5, energyCost: 12, xpReward: 60, baseValue: 70, baseWeight: 6.5, oreName: "Gold Vein", oreIcon: "👑" },
+    { id: 6, name: "Glacial Crevasse", image: "Img/Glacial Crevasse.png", requiredLevel: 6, energyCost: 15, xpReward: 90, baseValue: 110, baseWeight: 8.0, oreName: "Emerald Gem", oreIcon: "💚" },
+    { id: 7, name: "The Chipped Vein", image: "Img/The Chipped Vein.png", requiredLevel: 7, energyCost: 18, xpReward: 130, baseValue: 160, baseWeight: 10.0, oreName: "Ruby Gem", oreIcon: "🟥" },
     { id: 8, name: "The Ember Maw", image: "Img/The Ember Maw.png", requiredLevel: 8, energyCost: 22, xpReward: 180, baseValue: 240, baseWeight: 12.5, oreName: "Diamond Shard", oreIcon: "💎" },
-    { id: 9, name: "The Shattered Stratum", image: "Img/The Shattered Stratum.png", requiredLevel: 10, energyCost: 30, xpReward: 300, baseValue: 400, baseWeight: 18.0, oreName: "Obsidian Core", oreIcon: "🔥" },
-    { id: 10, name: "The Void Rift", image: "Img/The Void Rift.png", requiredLevel: 1, energyCost: 40, xpReward: 500, baseValue: 700, baseWeight: 25.0, oreName: "Void Essence", oreIcon: "🌑" }
+    { id: 9, name: "The Shattered Stratum", image: "Img/The Shattered Stratum.png", requiredLevel: 9, energyCost: 30, xpReward: 300, baseValue: 400, baseWeight: 18.0, oreName: "Obsidian Core", oreIcon: "🔥" },
+    { id: 10, name: "The Void Rift", image: "Img/The Void Rift.png", requiredLevel: 10, energyCost: 40, xpReward: 500, baseValue: 700, baseWeight: 25.0, oreName: "Void Essence", oreIcon: "🌑" }
 ];
 
 // ==================== ORE VARIANTS (BASE VALUE MULTIPLIERS) ====================
