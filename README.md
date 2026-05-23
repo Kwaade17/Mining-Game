@@ -10,7 +10,7 @@ Welcome to **Underworld Miner**, a lightweight, responsive, and data-driven acti
 
 ## 📂 Project Architecture
 
-The application is engineered on a **Data-Driven UI Framework**. The user interface acts as a clean structural "shell," while all assets, stats, and cards are rendered dynamically via JavaScript [4.2]:
+The application is engineered on a **Data-Driven UI Framework**. The user interface acts as a clean structural "shell," while all assets, stats, and cards are rendered dynamically via JavaScript:
 
 ```text
 ├── index.html          # Clean, placeholder-free structural shell (loads Marked.js)
@@ -28,7 +28,7 @@ The application is engineered on a **Data-Driven UI Framework**. The user interf
 
 ## ⚙️ Game Core Calculations & Math
 
-Underworld Miner uses a sophisticated, multi-stage calculation sequence to determine the parameters and market value of every mined ore [4.2]:
+Underworld Miner uses a sophisticated, multi-stage calculation sequence to determine the parameters and market value of every mined ore:
 
 ```
                    [ Base Value ]             [ Base Weight ]
@@ -86,22 +86,22 @@ $$\text{Final/Total Value} = \text{Sub-Total Value} \times \text{Mutation Multip
 We have heavily upgraded the game with several features, optimizations, and bug fixes:
 
 ### 🎮 Gameplay Additions
-- **Starting Username Input Overlay:** New players are greeted with a customized modal that gates gameplay until they input a display name [4.2].
-- **Live-Service Shop Badges:** Store cards now dynamically display a custom **`NEW`** corner-fold ribbon badge. It automatically checks if the item was added in the current major game version or released within the last 72 hours [4.2].
+- **Starting Username Input Overlay:** New players are greeted with a customized modal that gates gameplay until they input a display name.
+- **Live-Service Shop Badges:** Store cards now dynamically display a custom **`NEW`** corner-fold ribbon badge. It automatically checks if the item was added in the current major game version or released within the last 72 hours.
 - **Dynamic Cave Loot Pools:** Caves no longer have only one static drop. Every cave now features its own weighted, 8-ore randomized loot pool table.
-- **Variant Card Skins:** Unlocking rare ore variants (Rust, Pure, Rainbow) styles their cards inside your active inventory tray with custom glowing borders, shadows, and animated gradients [4.2].
-- **Inventory Info Modal Popups:** Tapping any mined ore card inside your horizontal tray opens a detail modal displaying its exact weight, variant, and sub-total values [4.2].
-- **Custom Account Profile Stats:** Clicking **Account** inside your profile dropdown now opens a detailed spec sheet summarizing your career mining statistics [4.2].
-- **Custom Sign Out Dialogue:** Clicking **Sign Out** triggers an styled, in-game confirmation modal (replacing the standard browser popup) to reset your progress [4.2].
-- **Real-Time Sidebar XP Bar:** Added a sleek, gold XP progress bar underneath your sidebar avatar that updates smoothly as you earn mining experience [4.2].
+- **Variant Card Skins:** Unlocking rare ore variants (Rust, Pure, Rainbow) styles their cards inside your active inventory tray with custom glowing borders, shadows, and animated gradients.
+- **Inventory Info Modal Popups:** Tapping any mined ore card inside your horizontal tray opens a detail modal displaying its exact weight, variant, and sub-total values.
+- **Custom Account Profile Stats:** Clicking **Account** inside your profile dropdown now opens a detailed spec sheet summarizing your career mining statistics.
+- **Custom Sign Out Dialogue:** Clicking **Sign Out** triggers an styled, in-game confirmation modal (replacing the standard browser popup) to reset your progress.
+- **Real-Time Sidebar XP Bar:** Added a sleek, gold XP progress bar underneath your sidebar avatar that updates smoothly as you earn mining experience.
 - **Double-Multiplier Math Engine:** Rewrote the ore generation formula to cleanly separate Variant multipliers (on base values) and Mutation multipliers (on final values).
 - **Anti-Spam Tap Protections:** Tapping the mystery gift instantly locks its pointer-events, preventing multi-touch gold exploits. 
-- **Offline Retro Sound Synth:** Built an offline synthesized Audio Engine using the HTML5 Web Audio API, generating retro clinks, chimes, and buzzes on user gestures [4.2].
+- **Offline Retro Sound Synth:** Built an offline synthesized Audio Engine using the HTML5 Web Audio API, generating retro clinks, chimes, and buzzes on user gestures.
 - **Global Scrollbar Styles:** Replaced default browser scrollbars with custom, thin, rounded gold-hover bars matching our game theme.
-- **Integrated Game Manual View:** Added a custom separated tab in your sidebar navigation that dynamically fetches, compiles, and renders this local `README.md` file using Marked.js [4.2].
-- **Physics-Based Particle Splashes (v1.6.0):** Mining any cave now triggers a burst of 6 individual, randomized gravity-simulated ore debris particles falling off-screen [4.2].
-- **Active Countdown Timers (v1.6.0):** Purchasing Luck Brews or Rage Elixirs displays real-time, pulsing progress badges above your cavern maps, actively doubling rare rolls and halving energy costs [4.2].
-- **Settings Mute Toggle (v1.6.0):** Tapping "Mute Sounds" in your profile menu now smoothly silences all game audio nodes in real-time, saving your preferences to local storage [4.2].
+- **Integrated Game Manual View:** Added a custom separated tab in your sidebar navigation that dynamically fetches, compiles, and renders this local `README.md` file using Marked.js.
+- **Physics-Based Particle Splashes (v1.6.0):** Mining any cave now triggers a burst of 6 individual, randomized gravity-simulated ore debris particles falling off-screen.
+- **Active Countdown Timers (v1.6.0):** Purchasing Luck Brews or Rage Elixirs displays real-time, pulsing progress badges above your cavern maps, actively doubling rare rolls and halving energy costs.
+- **Settings Mute Toggle (v1.6.0):** Tapping "Mute Sounds" in your profile menu now smoothly silences all game audio nodes in real-time, saving your preferences to local storage.
 
 ### 🐛 Bug Fixes & Optimizations
 - **Sidebar Depth & Click-Hijacking Fix:** Raised the absolute `.sidebar` `z-index` depth to `140`, preventing invisible boundaries in the main game area from stealing sidebar menu clicks on mobile viewports.
