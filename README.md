@@ -1,4 +1,3 @@
-```
 # ⛏️ Underworld Miner — Cavern Chronicles
 
 [![Game Version](https://img.shields.io/badge/Version-v1.4.0-gold.svg)](https://github.com/Kwaade17/Mining-Game)
@@ -32,24 +31,24 @@ The application is engineered on a **Data-Driven UI Framework**. The user interf
 Underworld Miner uses a sophisticated, multi-stage calculation sequence to determine the parameters and market value of every mined ore [4.2]:
 
 ```
-                         [ Base Value ]             [ Base Weight ]
-                                │                          │
-                                ▼                          ▼
-                        [ Roll Variant ]           [ Roll Fluctuation ]
-                    (Base Value Multiplier)          (0.8x to 1.2x)
-                                │                          │
-                                ▼                          ▼
-                      Modified Base Value            Actual Weight
-                                └────────────┬─────────────┘
-                                             ▼
-                                     Sub-Total Value
-                                             │
-                                             ▼
-                                      [ Roll Mutation ]
-                                  (Final Value Multiplier)
-                                             │
-                                             ▼
-                                     Final/Total Value
+            [ Base Value ]             [ Base Weight ]
+                  │                          │
+                  ▼                          ▼
+          [ Roll Variant ]           [ Roll Fluctuation ]
+      (Base Value Multiplier)          (0.8x to 1.2x)
+                  │                          │
+                  ▼                          ▼
+        Modified Base Value            Actual Weight
+                  └────────────┬─────────────┘
+                                ▼
+                        Sub-Total Value
+                                │
+                                ▼
+                        [ Roll Mutation ]
+                    (Final Value Multiplier)
+                                │
+                                ▼
+                        Final/Total Value
 ```
 
 ### 1. Base Value Modification (Variant Roll)
