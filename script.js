@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ==================== SESSION STATE ====================
     const playerState = {
+        username: "",           // Custom player display name
         level: 1, xp: 0, xpNeeded: 100, money: 200, maxBagCapacity: 20,
         currentEnergy: 100, maxEnergy: 100, activePickaxeMultiplier: 1.0,
         xpMultiplier: 1.0, inventory: []
@@ -13,6 +14,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const gameViews = document.querySelectorAll('.game-view');
     const userProfile = document.getElementById('userProfile');
 
+    // Profile Dropdown Options selectors
+    const dropdownAccount = document.getElementById('dropdownAccount');
+    const dropdownSettings = document.getElementById('dropdownSettings');
+    const dropdownSignOut = document.getElementById('dropdownSignOut');
+
+    // Username display selectors
+    const navUsername = document.getElementById('navUsername');
+    const sideUsername = document.getElementById('sideUsername');
+
+    // Welcome Name Modal selectors
+    const nameModal = document.getElementById('nameModal');
+    const usernameInput = document.getElementById('usernameInput');
+    const saveNameBtn = document.getElementById('saveNameBtn');
+
+    // Sidebar XP Progress elements
+    const sidebarXpFill = document.getElementById('sidebarXpFill');
+    const sidebarXpText = document.getElementById('sidebarXpText');
+
+    // Stats Labels
     const labelLevel = document.getElementById('player-level');
     const labelXp = document.getElementById('player-xp');
     const labelMoney = document.getElementById('player-money');
@@ -141,14 +161,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==================== DYNAMIC POPUP MODAL ENGINE ====================
-    
-    /**
-     * Dynamically populates and displays the unified detail modal
-     * @param {string} title - Modal Header Title
-     * @param {string} icon - Emoji Icon
-     * @param {string} description - Lore / Information text
-     * @param {Array} statsArray - Key-value pair metrics array [ { label: "Level", value: "2" } ]
-     */
     function openDetailModal(title, icon, description, statsArray = []) {
         if (!infoModal || !modalTitle || !modalIcon || !modalDescription || !modalStats) return;
 
@@ -156,7 +168,6 @@ document.addEventListener('DOMContentLoaded', () => {
         modalIcon.textContent = icon;
         modalDescription.textContent = description;
 
-        // Clear previous rows
         modalStats.innerHTML = '';
 
         if (statsArray.length > 0) {
@@ -171,20 +182,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 modalStats.appendChild(row);
             });
         } else {
-            modalStats.style.display = 'none'; // Hide if no metrics exist
+            modalStats.style.display = 'none';
         }
 
         infoModal.classList.add('active');
     }
 
-    // Close Modal triggers
     if (modalCloseBtn) {
         modalCloseBtn.addEventListener('click', () => {
             infoModal.classList.remove('active');
         });
     }
 
-    // Close Modal on overlay backdrop clicks
     if (infoModal) {
         infoModal.addEventListener('click', (e) => {
             if (e.target === infoModal) {
@@ -267,6 +276,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (labelEnergy) labelEnergy.textContent = `${Math.floor(playerState.currentEnergy)}%`;
         if (labelInvCount) labelInvCount.textContent = playerState.inventory.length;
         if (labelInvMax) labelInvMax.textContent = playerState.maxBagCapacity;
+
+        // Dynamic update of Sidebar XP progress bar
+        if (sidebarXpFill && sidebarXpText) {
+            const xpPercent = Math.min(100, (playerState.xp / playerState.xpNeeded) * 100);
+            sidebarXpFill.style.width = `${xpPercent}%`;
+            sidebarXpText.textContent = `XP: ${playerState.xp} / ${playerState.xpNeeded}`;
+        }
+
+        // Keep profile username labels in sync
+        const displayName = playerState.username ? playerState.username : "Miner Joe";
+        if (navUsername) navUsername.textContent = displayName;
+        if (sideUsername) sideUsername.textContent = displayName;
     }
 
     function awardXp(amount) {
@@ -423,9 +444,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     box.style.backgroundImage = `url('${cave.image}')`;
                     box.innerHTML = `<span class="box-title">${cave.name}</span><button class="box-btn" data-id="${cave.id}">Mine</button>`;
                     
-                    // NEW: Clicking on the active Cave Card Background displays its detailed stats
+                    // Clicking on the active Cave Card Background displays its detailed stats
                     box.addEventListener('click', (e) => {
-                        if (e.target.classList.contains('box-btn')) return; // Avoid popup if clicking "Mine" button
+                        if (e.target.classList.contains('box-btn')) return; 
 
                         const stats = [
                             { label: "Required Level", value: `Lvl ${cave.requiredLevel}` },
@@ -608,7 +629,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!item) return;
 
         if (item.isIAP) {
-            alert(`Purchase success for ${item.name}! (Simulated IAP)`);
+            showNotification(
+                "🎁 Purchase Successful!", 
+                `Unlocked ${item.name}! (Simulated IAP)`, 
+                "level-up", 
+                4000
+            );
             if (item.id === "double-xp-pass") playerState.xpMultiplier = 2.0;
             saveGame();
             renderShop();
@@ -616,7 +642,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (playerState.money < item.cost) {
-            alert("Not enough coins!");
+            showNotification(
+                "🪙 Insufficient Coins!", 
+                `You need 🪙 ${item.cost} to purchase ${item.name}.`, 
+                "sell", 
+                4000
+            );
             return;
         }
 
@@ -671,7 +702,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <p class="col-card-desc">${item.obtained ? item.desc : 'Keep mining layers to unlock details.'}</p>
             <button class="col-read-more" ${item.obtained ? '' : 'disabled'}>Read more</button>`;
         
-        // NEW: Clicking "Read More" on unlocked Collection Cards opens the detailed stats modal
         if (item.obtained) {
             const readMoreBtn = card.querySelector('.col-read-more');
             readMoreBtn.addEventListener('click', (e) => {
@@ -772,7 +802,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Filter Collection cards
     function filterCollectionItems() {
         const q = colSearchInput.value.toLowerCase().trim();
         const cat = colSectionFilter.value;
@@ -847,6 +876,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // ==================== DROPDOWN CLICK CONTROLLERS ====================
     if (userProfile) {
         userProfile.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -859,6 +889,82 @@ document.addEventListener('DOMContentLoaded', () => {
             userProfile.classList.remove('active');
         }
     });
+
+    // 1. Account Dropdown Option (Displays real-time stats inside unified modal)
+    if (dropdownAccount) {
+        dropdownAccount.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const stats = [
+                { label: "Level Progress", value: `Lvl ${playerState.level}` },
+                { label: "XP", value: `${playerState.xp} / ${playerState.xpNeeded}` },
+                { label: "Total Coins", value: `🪙 ${playerState.money}` },
+                { label: "Bag Space", value: `${playerState.inventory.length} / ${playerState.maxBagCapacity}` },
+                { label: "Active Pick speed multiplier", value: `${playerState.activePickaxeMultiplier}x` }
+            ];
+
+            openDetailModal(
+                "Miner Profile", 
+                "👤", 
+                `Cavern records and operational statistics for ${playerState.username ? playerState.username : "Miner Joe"}.`, 
+                stats
+            );
+        });
+    }
+
+    // 2. Settings Dropdown Option (Displays Toast confirmation)
+    if (dropdownSettings) {
+        dropdownSettings.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showNotification("⚙️ Settings Opened", "Settings and configurations are active.", "shop", 3000);
+        });
+    }
+
+    // 3. Sign Out Dropdown Option (Confirmation modal before reset)
+    if (dropdownSignOut) {
+        dropdownSignOut.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (confirm("Are you sure you want to Sign Out? This will completely clear your browser's local save file and reset progress!")) {
+                localStorage.clear();
+                window.location.reload();
+            }
+        });
+    }
+
+    // ==================== STARTING USERNAME INPUT MODAL CONTROLLER ====================
+    if (saveNameBtn && usernameInput && nameModal) {
+        saveNameBtn.addEventListener('click', () => {
+            const inputVal = usernameInput.value.trim();
+            // Fallback default name if left empty
+            playerState.username = inputVal ? inputVal : "Miner Joe";
+            
+            // Save state, update layouts, and dismiss the modal
+            saveGame();
+            updateStatsUI();
+            nameModal.classList.remove('active');
+
+            // Trigger customized welcome notification toast
+            showNotification(
+                `👋 Welcome ${playerState.username}!`, 
+                "Let's enter the caverns and mine some valuable resources!", 
+                "level-up", 
+                5000
+            );
+        });
+    }
+
+    // Checking if username is empty on startup
+    function checkUserRegistration() {
+        if (!playerState.username) {
+            if (nameModal) {
+                nameModal.classList.add('active');
+            }
+        }
+    }
 
     if (menuToggle && sidebar) {
         menuToggle.addEventListener('click', (e) => {
@@ -886,6 +992,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ==================== INITIALIZATION ====================
     loadGame(); // Restore progress from local storage on reload
+    checkUserRegistration(); // Call registration check on load
     updateMapPageStructure();
     updateStatsUI();
     renderInventoryTray();

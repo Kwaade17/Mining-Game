@@ -4,7 +4,7 @@ html, body { box-sizing: border-box; margin: 0; padding: 0; height: 100%; width:
 :root { --bg-dark: #121212; --stone-dark: #222222; --gold-accent: #ffcc00; --cave-btn: #3e3223; --cave-hover: #5a4933; --text-light: #f5f5f5; --text-muted: #aaaaaa; }
 body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); color: var(--text-light); display: flex; flex-direction: column; }
 
-/* ==================== NAVBAR & CONTROLS ==================== */
+/* ==================== NAVBAR ==================== */
 .navbar { height: 60px; background-color: #1a1a1a; border-bottom: 3px solid var(--gold-accent); display: flex; align-items: center; justify-content: space-between; padding: 0 10px; position: relative; z-index: 100; flex-shrink: 0; }
 .menu-toggle { background: none; border: none; color: var(--text-light); font-size: 1.5rem; cursor: pointer; padding: 5px; display: block; flex-shrink: 0; -webkit-tap-highlight-color: transparent; position: relative; z-index: 120; }
 .logo { font-size: 1.1rem; font-weight: bold; color: var(--gold-accent); text-transform: uppercase; display: none; }
@@ -26,14 +26,21 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
 .logout-item { color: #f87171; }
 .logout-item:hover { background-color: #311c1c; color: #fca5a5; }
 
-/* ==================== SIDEBAR ==================== */
+/* ==================== SIDEBAR & XP FILL ==================== */
 .game-wrapper { display: flex; flex: 1; position: relative; height: calc(100vh - 60px); overflow: hidden; }
-.sidebar { width: 250px; background-color: var(--stone-dark); border-right: 2px solid #333; display: flex; flex-direction: column; padding: 20px; gap: 25px; position: absolute; top: 0; left: 0; bottom: 0; z-index: 140; transform: translateX(-100%); transition: transform 0.3s ease; }
+.sidebar { width: 250px; background-color: var(--stone-dark); border-right: 2px solid #333; display: flex; flex-direction: column; padding: 20px; gap: 20px; position: absolute; top: 0; left: 0; bottom: 0; z-index: 140; transform: translateX(-100%); transition: transform 0.3s ease; }
 .sidebar.open { transform: translateX(0); }
-.sidebar-profile { display: flex; flex-direction: column; align-items: center; text-align: center; border-bottom: 1px solid #333; padding-bottom: 20px; }
+.sidebar-profile { display: flex; flex-direction: column; align-items: center; text-align: center; border-bottom: 1px solid #333; padding-bottom: 15px; }
 .sidebar-avatar-large { width: 64px; height: 64px; border-radius: 50%; background-color: #333; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; border: 2px solid var(--gold-accent); margin-bottom: 10px; }
 .sidebar-username { margin: 0; font-size: 1.1rem; }
 .sidebar-rank { margin: 4px 0 0 0; font-size: 0.8rem; color: var(--text-muted); }
+
+/* Sidebar XP Progress styling */
+.sidebar-xp-container { width: 100%; margin-top: 12px; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.sidebar-xp-bar { width: 90%; height: 6px; background-color: #111; border: 1px solid #444; border-radius: 3px; overflow: hidden; position: relative; }
+.sidebar-xp-fill { height: 100%; width: 0%; background-color: var(--gold-accent); transition: width 0.3s ease-in-out; }
+.sidebar-xp-text { font-size: 0.68rem; color: var(--text-muted); font-weight: bold; letter-spacing: 0.5px; }
+
 .sidebar-nav ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
 .nav-link { display: block; padding: 10px 15px; color: var(--text-light); text-decoration: none; border-radius: 6px; font-weight: 500; transition: all 0.2s; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .nav-link:hover, .nav-link.active { background-color: #333; color: var(--gold-accent); }
@@ -92,7 +99,6 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
 .scroll-container::before { content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 25px; background: linear-gradient(to right, #171717, transparent); z-index: 5; pointer-events: none; }
 .scroll-container::after { content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 25px; background: linear-gradient(to left, #171717, transparent); z-index: 5; pointer-events: none; }
 
-/* Corrected: Re-introduced layout rules for swipe shelves */
 .portrait-grid, .wider-grid { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 12px; padding: 4px 15px 12px 15px; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
 .portrait-grid::-webkit-scrollbar, .wider-grid::-webkit-scrollbar { height: 4px; }
 .portrait-grid::-webkit-scrollbar-thumb, .wider-grid::-webkit-scrollbar-thumb { background-color: #333; border-radius: 4px; }
@@ -144,7 +150,6 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
 .col-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; width: 100%; padding: 0 15px; box-sizing: border-box; }
 
 /* ==================== ACTIVE GAMEPLAY ANIMATIONS ==================== */
-/* Rising Floating Text animation */
 @keyframes floatUpFade {
     0% { transform: translate(-50%, 0); opacity: 1; scale: 1; }
     50% { opacity: 1; }
@@ -152,7 +157,7 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
 }
 
 .floating-text {
-    position: fixed; /* Binds coordinates relative to viewport tap point */
+    position: fixed; 
     z-index: 300;
     font-weight: 900;
     pointer-events: none;
@@ -162,14 +167,12 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
     font-size: 0.95rem;
 }
 
-/* Color codes inside floating animations */
 .float-gold { color: var(--gold-accent); }
 .float-energy { color: #38bdf8; }
 .float-xp { color: #c084fc; }
 .float-ore { color: #ffdca3; }
-.float-red { color: #f87171; } /* Added: Soft red warning color */
+.float-red { color: #f87171; }
 
-/* Bouncing Mystery Chest */
 @keyframes bounceShake {
     0%, 100% { transform: translateY(0) rotate(0deg); }
     50% { transform: translateY(-12px) rotate(-10deg); }
@@ -324,15 +327,15 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
 
 /* ==================== REUSABLE INFO MODAL SYSTEM ==================== */
 .modal-overlay {
-    display: none; /* Hidden by default */
+    display: none; 
     position: fixed;
     inset: 0;
     background-color: rgba(0, 0, 0, 0.8);
-    z-index: 500; /* Highest z-index above all alerts, sidebars, and navbars */
+    z-index: 500; /* Highest layer index */
     justify-content: center;
     align-items: center;
     padding: 20px;
-    backdrop-filter: blur(4px); /* Modern frosted-glass backdrop blur */
+    backdrop-filter: blur(4px); 
     -webkit-backdrop-filter: blur(4px);
 }
 
@@ -340,7 +343,6 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
     display: flex;
 }
 
-/* Modal Popup Card */
 .modal-card {
     background-color: var(--stone-dark);
     border: 2px solid var(--gold-accent);
@@ -420,7 +422,6 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
     line-height: 1.45;
 }
 
-/* Numeric Stat Grid Panel */
 .modal-stats {
     width: 100%;
     background-color: #161616;

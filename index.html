@@ -16,23 +16,28 @@
 
         <!-- Real-time Stats -->
         <div class="stats-container">
+            <!-- Level -->
             <div class="stat-item" title="Level (Experience)">
                 <span class="stat-label">Lvl</span> <span id="player-level">1</span> 
                 <span class="xp-text"> (<span id="player-xp">0</span> XP)</span>
             </div>
             
+            <!-- Money -->
             <div class="stat-item" title="Gold Coins">
-                <span class="stat-icon">🪙</span> <span id="player-money">0</span>
+                <span class="stat-icon">🪙</span> <span id="player-money">120</span>
             </div>
 
+            <!-- Ores Mined -->
             <div class="stat-item" title="Ores Mined">
                 <span class="stat-icon">🪨</span> <span id="ores-mined">0</span>
             </div>
 
+            <!-- Bag Capacity -->
             <div class="stat-item" title="Bag Capacity Limit">
                 <span class="stat-icon">🎒</span> <span id="bag-capacity">20</span>
             </div>
 
+            <!-- Energy Status -->
             <div class="stat-item" title="Energy Status">
                 <span class="stat-icon">⚡</span> <span id="player-energy">100%</span>
             </div>
@@ -40,14 +45,15 @@
 
         <!-- User Profile Widget with Dropdown -->
         <div class="user-profile" id="userProfile">
-            <span class="username">Miner Joe</span>
+            <span class="username" id="navUsername">Miner Joe</span>
             <div class="profile-avatar">👤</div>
             
+            <!-- Expandable Dropdown Panel -->
             <div class="profile-dropdown" id="profileDropdown">
-                <a href="#" class="dropdown-item">👤 Account</a>
-                <a href="#" class="dropdown-item">⚙️ Settings</a>
+                <a href="#" class="dropdown-item" id="dropdownAccount">👤 Account</a>
+                <a href="#" class="dropdown-item" id="dropdownSettings">⚙️ Settings</a>
                 <hr class="dropdown-divider">
-                <a href="#" class="dropdown-item logout-item">🚪 Sign Out</a>
+                <a href="#" class="dropdown-item logout-item" id="dropdownSignOut">🚪 Sign Out</a>
             </div>
         </div>
     </nav>
@@ -58,8 +64,16 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-profile">
                 <div class="sidebar-avatar-large">👤</div>
-                <h3 class="sidebar-username">Miner Joe</h3>
+                <h3 class="sidebar-username" id="sideUsername">Miner Joe</h3>
                 <p class="sidebar-rank">Novice Digger</p>
+                
+                <!-- Sidebar XP Progress Bar -->
+                <div class="sidebar-xp-container">
+                    <div class="sidebar-xp-bar">
+                        <div class="sidebar-xp-fill" id="sidebarXpFill"></div>
+                    </div>
+                    <span class="sidebar-xp-text" id="sidebarXpText">XP: 0 / 100</span>
+                </div>
             </div>
             <nav class="sidebar-nav">
                 <ul>
@@ -76,7 +90,7 @@
             <!-- 1. MAIN GAME VIEW -->
             <div id="view-game" class="game-view active">
                 <div class="map-wrapper">
-                    <!-- Cave Grid Container (Populated by JS) -->
+                    <!-- Cave Grid Container -->
                     <div class="container" id="caveContainer"></div>
                     
                     <!-- Map Navigation Footer -->
@@ -92,9 +106,7 @@
                             <h4 class="inventory-title">💼 Inventory (<span id="inv-count">0</span> / <span id="inv-max">20</span>)</h4>
                             <button class="sell-all-btn" id="sellAllBtn">Sell All Ores</button>
                         </div>
-                        <div class="inventory-scroll" id="inventoryScroll">
-                            <!-- Dynamically generated ore cards go here -->
-                        </div>
+                        <div class="inventory-scroll" id="inventoryScroll"></div>
                     </div>
                 </div>
             </div>
@@ -113,10 +125,7 @@
                             <option value="money-perks">Money Perks</option>
                         </select>
                     </div>
-
-                    <div class="shop-sections-list" id="shopSectionsList">
-                        <!-- Content dynamically loaded from data.js -->
-                    </div>
+                    <div class="shop-sections-list" id="shopSectionsList"></div>
                 </div>
             </div>
 
@@ -133,10 +142,7 @@
                             <option value="awards">Awards</option>
                         </select>
                     </div>
-
-                    <div class="col-sections-list" id="colSectionsList">
-                        <!-- Content dynamically loaded from data.js -->
-                    </div>
+                    <div class="col-sections-list" id="colSectionsList"></div>
                 </div>
             </div>
 
@@ -153,10 +159,21 @@
             <h3 class="modal-title" id="modalTitle">Item Details</h3>
             <div class="modal-body">
                 <p class="modal-description" id="modalDescription">Detailed information about the item goes here.</p>
-                <div class="modal-stats" id="modalStats">
-                    <!-- Dynamic key-value pairs (e.g., "Energy Cost: 5⚡") go here -->
-                </div>
+                <div class="modal-stats" id="modalStats"></div>
             </div>
+        </div>
+    </div>
+
+    <!-- Starting Username Modal -->
+    <div id="nameModal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 280px; gap: 10px;">
+            <div class="modal-icon-container">
+                <div class="modal-icon">👤</div>
+            </div>
+            <h3 class="modal-title">Welcome Miner</h3>
+            <p class="modal-description" style="margin-bottom: 5px;">Please enter your name to start your cavern journey:</p>
+            <input type="text" id="usernameInput" class="shop-search" placeholder="Miner Name..." style="text-align: center; max-width: 100%;">
+            <button class="card-buy-btn" id="saveNameBtn" style="width: auto; padding: 10px 20px; text-transform: uppercase;">Start Game</button>
         </div>
     </div>
 </body>
