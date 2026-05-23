@@ -40,11 +40,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentMapPage = 1, cavesPerPage = 9, maxMapPages = 1, totalMinesCount = 0;
 
     // ==================== PERSISTENT LOCAL STORAGE ENGINE ====================
-    
-    // Save current session metrics
     function saveGame() {
         localStorage.setItem('miner_save', JSON.stringify(playerState));
-        // Serialize and save dynamic obtained collections
         const colMap = {};
         collectionsData.forEach(item => {
             colMap[item.id] = item.obtained;
@@ -52,7 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('miner_col_save', JSON.stringify(colMap));
     }
 
-    // Load saved session on DOM boot
     function loadGame() {
         const savedState = localStorage.getItem('miner_save');
         if (savedState) {
@@ -80,8 +76,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==================== VISUAL EFFECTS ENGINE ====================
-    
-    // Spawns rising floating text at click coordinates
     function spawnFloatingText(text, x, y, colorClass = '') {
         const el = document.createElement('div');
         el.className = `floating-text ${colorClass}`;
@@ -90,13 +84,11 @@ document.addEventListener('DOMContentLoaded', () => {
         el.style.top = `${y}px`;
         document.body.appendChild(el);
         
-        // Auto-remove once CSS translation finishes
         setTimeout(() => {
             el.remove();
         }, 1200);
     }
 
-    // Spawn bouncing mystery gift on mining clicks (8% chance)
     function rollChestSpawn() {
         if (Math.random() <= 0.08) {
             const activeView = document.querySelector('.game-view.active');
@@ -107,18 +99,15 @@ document.addEventListener('DOMContentLoaded', () => {
             chest.innerHTML = '🎁';
 
             const rect = activeView.getBoundingClientRect();
-            // Bound chest randomized coordinates comfortably inside main map
             const randomX = Math.max(30, Math.random() * (rect.width - 70));
             const randomY = Math.max(90, Math.random() * (rect.height - 180));
 
             chest.style.left = `${randomX}px`;
             chest.style.top = `${randomY}px`;
 
-            // Open Chest on Tap
             chest.addEventListener('click', (e) => {
                 e.stopPropagation();
-                // Sells a random coin value reward
-                const rewardGold = 40 + Math.floor(Math.random() * 61); // 40 to 100 gold
+                const rewardGold = 40 + Math.floor(Math.random() * 61); 
                 playerState.money += rewardGold;
 
                 spawnFloatingText(`+🪙 ${rewardGold}`, e.clientX, e.clientY, 'float-gold');
@@ -130,7 +119,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             activeView.appendChild(chest);
 
-            // De-spawn after 7 seconds if missed
             setTimeout(() => {
                 chest.remove();
             }, 7000);
@@ -206,7 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
             playerState.money += totalGold;
             playerState.inventory = [];
             
-            // Spawn gain float text centered at click
             spawnFloatingText(`+🪙 ${totalGold}`, e.clientX, e.clientY, 'float-gold');
 
             updateStatsUI();
@@ -235,7 +222,6 @@ document.addEventListener('DOMContentLoaded', () => {
             finalValue: Math.floor(subTotal * rolledMut.multiplier), icon: cave.oreIcon
         });
 
-        // Trigger dynamic unlock checks
         unlockCollectionItem(`${cave.oreName.toLowerCase().split(' ')[0]}-col`);
         if (rolledVar.id !== "normal") unlockCollectionItem(`${rolledVar.id}-col`);
         if (rolledMut.id !== "none") unlockCollectionItem(`${rolledMut.id}-col`);
@@ -243,7 +229,6 @@ document.addEventListener('DOMContentLoaded', () => {
         totalMinesCount++;
         if (totalMinesCount >= 100) unlockCollectionItem("hard-worker");
 
-        // Spawn interactive visual feedbacks
         if (clickEvent) {
             const x = clickEvent.clientX;
             const y = clickEvent.clientY;
@@ -252,9 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
             spawnFloatingText(`+ ${cave.oreIcon} ${rolledVar.name !== 'Normal' ? rolledVar.name + ' ' : ''}${cave.oreName.split(' ')[0]}`, x, y - 20, 'float-ore');
         }
 
-        // Spawn gift chest chance
         rollChestSpawn();
-
         awardXp(cave.xpReward);
         renderInventoryTray();
         saveGame();
@@ -293,7 +276,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.stopPropagation();
                 const caveId = parseInt(btn.getAttribute('data-id'));
 
-                // Handle Upgrades Cooldown blocking spam click
                 btn.disabled = true;
                 btn.textContent = "Mining...";
                 mineCave(caveId, e);
@@ -534,7 +516,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Unlock badge achievements dynamically based on totals
     function updateHardWorkerBadge() {
         if (totalMinesCount >= 100) {
             unlockCollectionItem("hard-worker");
@@ -596,7 +577,48 @@ document.addEventListener('DOMContentLoaded', () => {
         colSectionFilter.addEventListener('change', filterCollectionItems);
     }
 
-    // ==================== TOGGLES & TRIGGERS ====================
+    // ==================== TAB SWITCHER & TOGGLES ====================
+    
+    // Set initial view visibility inline to prevent stylesheet timing issues
+    gameViews.forEach(view => {
+        if (view.classList.contains('active')) {
+            view.style.display = 'flex';
+        } else {
+            view.style.display = 'none';
+        }
+    });
+
+    // Tab switcher with absolute inline-style display overrides
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // Safe click propagation lock
+
+            // Toggle active styling on navigation list options
+            navLinks.forEach(item => item.classList.remove('active'));
+            link.classList.add('active');
+
+            // Force hide all viewport wrappers to prevent display conflicts
+            gameViews.forEach(view => {
+                view.classList.remove('active');
+                view.style.display = 'none'; // Overrides CSS caching bugs
+            });
+
+            // Force display active viewport
+            const targetId = link.getAttribute('data-view');
+            const targetView = document.getElementById(targetId);
+            if (targetView) {
+                targetView.classList.add('active');
+                targetView.style.display = 'flex'; // Overrides CSS caching bugs
+            }
+
+            // Auto-close sidebar on mobile viewports
+            if (window.innerWidth < 768 && sidebar) {
+                sidebar.classList.remove('open');
+            }
+        });
+    });
+
     if (userProfile) {
         userProfile.addEventListener('click', (e) => {
             e.stopPropagation();
