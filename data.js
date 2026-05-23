@@ -35,6 +35,7 @@ const shopData = [
     { id: "wooden-pick", category: "mining-speed", name: "Wooden Pick", desc: "+5% mining efficiency.", cost: 50, icon: "🪵", multiplier: 1.05, collectionId: "starter-tool" },
     { id: "iron-pick", category: "mining-speed", name: "Iron Pick", desc: "+20% mining efficiency.", cost: 150, icon: "⛏️", multiplier: 1.20, collectionId: "iron-digger" },
     { id: "drill-arm", category: "mining-speed", name: "Drill Arm", desc: "+50% mining efficiency.", cost: 500, icon: "🔋", multiplier: 1.50, collectionId: "drill-arm-col" },
+    { id: "steel-miner", category: "mining-speed", name: "Steel Miner", desc: "+70% mining efficiency.", cost: 900, icon: "🔗", multiplier: 1.70, collectionId: "steel-miner-col" },
     
     // Bag Capacity
     { id: "pouch-bag", category: "bag-capacity", name: "Pouch Bag", desc: "Increases bag limit to 30.", cost: 80, icon: "🎒", capacity: 30, collectionId: null },
@@ -69,6 +70,7 @@ const collectionsData = [
     { id: "starter-tool", category: "pickaxes", name: "Starter Tool", desc: "Rusty, wooden, but dependable gear.", icon: "🪵", obtained: true },
     { id: "iron-digger", category: "pickaxes", name: "Iron Digger", desc: "Wrought iron forged deep in dwarven kilns.", icon: "⛏️", obtained: false },
     { id: "drill-arm-col", category: "pickaxes", name: "Drill Arm Specialist", desc: "A fully mechanical drill arm attachment.", icon: "🔋", obtained: false },
+    { id: "steel-miner-col", category: "pickaxes", name: "Stronger than Steel", desc: "A pure steel chain axe that damages everything it hits.", icon: "🔗", obtained: false },
 
     // Ores
     { id: "coal-col", category: "ores", name: "Coal Nugget", desc: "Combustible fuel, found in early cave layers.", icon: "🪨", obtained: false },
