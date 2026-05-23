@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Mining Game</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="data.js" defer></script>
+    <script src="script.js" defer></script>
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <nav class="navbar">
+        <button class="menu-toggle" id="menuToggle" aria-label="Toggle Menu">☰</button>
+        <div class="logo">⛏| Mine</div>
+
+        <!-- Real-time Stats -->
+        <div class="stats-container">
+            <div class="stat-item" title="Level (Experience)">
+                <span class="stat-label">Lvl</span> <span id="player-level">1</span> 
+                <span class="xp-text"> (<span id="player-xp">0</span> XP)</span>
+            </div>
+            
+            <div class="stat-item" title="Gold Coins">
+                <span class="stat-icon">🪙</span> <span id="player-money">0</span>
+            </div>
+
+            <div class="stat-item" title="Ores Mined">
+                <span class="stat-icon">🪨</span> <span id="ores-mined">0</span>
+            </div>
+
+            <div class="stat-item" title="Bag Capacity Limit">
+                <span class="stat-icon">🎒</span> <span id="bag-capacity">20</span>
+            </div>
+
+            <div class="stat-item" title="Energy Status">
+                <span class="stat-icon">⚡</span> <span id="player-energy">100%</span>
+            </div>
+        </div>
+
+        <!-- User Profile Widget with Dropdown -->
+        <div class="user-profile" id="userProfile">
+            <span class="username">Miner Joe</span>
+            <div class="profile-avatar">👤</div>
+            
+            <div class="profile-dropdown" id="profileDropdown">
+                <a href="#" class="dropdown-item">👤 Account</a>
+                <a href="#" class="dropdown-item">⚙️ Settings</a>
+                <hr class="dropdown-divider">
+                <a href="#" class="dropdown-item logout-item">🚪 Sign Out</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Game Wrapper -->
+    <div class="game-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-profile">
+                <div class="sidebar-avatar-large">👤</div>
+                <h3 class="sidebar-username">Miner Joe</h3>
+                <p class="sidebar-rank">Novice Digger</p>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="#" class="nav-link active" data-view="view-game">🎮 Main Game</a></li>
+                    <li><a href="#" class="nav-link" data-view="view-shop">🛒 Shop</a></li>
+                    <li><a href="#" class="nav-link" data-view="view-collections">🏆 Collections</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Display Area -->
+        <main class="game-area">
+            
+            <!-- 1. MAIN GAME VIEW -->
+            <div id="view-game" class="game-view active">
+                <div class="map-wrapper">
+                    <!-- Cave Grid Container (Populated by JS) -->
+                    <div class="container" id="caveContainer"></div>
+                    
+                    <!-- Map Navigation Footer -->
+                    <div class="map-navigation">
+                        <button class="nav-btn" id="prevMapBtn">◀ Prev</button>
+                        <span id="mapPageLabel" class="map-page-label">Map 1 / 1</span>
+                        <button class="nav-btn" id="nextMapBtn">Next ▶</button>
+                    </div>
+
+                    <!-- Horizontal Inventory Tray -->
+                    <div class="inventory-tray">
+                        <div class="inventory-header">
+                            <h4 class="inventory-title">💼 Inventory (<span id="inv-count">0</span> / <span id="inv-max">20</span>)</h4>
+                            <button class="sell-all-btn" id="sellAllBtn">Sell All Ores</button>
+                        </div>
+                        <div class="inventory-scroll" id="inventoryScroll">
+                            <!-- Dynamically generated ore cards go here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. SHOP VIEW -->
+            <div id="view-shop" class="game-view">
+                <div class="shop-wrapper">
+                    <div class="shop-controls">
+                        <input type="text" id="shopSearchInput" class="shop-search" placeholder="Search shop items...">
+                        <select id="shopSectionFilter" class="shop-filter">
+                            <option value="all">All Sections</option>
+                            <option value="mining-speed">Mining Speed</option>
+                            <option value="bag-capacity">Bag Capacity</option>
+                            <option value="energy">Energy</option>
+                            <option value="boosts">Boosts/Potions</option>
+                            <option value="money-perks">Money Perks</option>
+                        </select>
+                    </div>
+
+                    <div class="shop-sections-list" id="shopSectionsList">
+                        <!-- Content dynamically loaded from data.js -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. COLLECTIONS VIEW -->
+            <div id="view-collections" class="game-view">
+                <div class="col-wrapper">
+                    <div class="col-controls">
+                        <input type="text" id="colSearchInput" class="col-search" placeholder="Search collections...">
+                        <select id="colSectionFilter" class="col-filter">
+                            <option value="all">All Categories</option>
+                            <option value="pickaxes">Pickaxes</option>
+                            <option value="ores">Ores</option>
+                            <option value="mutations">Mutations</option>
+                            <option value="awards">Awards</option>
+                        </select>
+                    </div>
+
+                    <div class="col-sections-list" id="colSectionsList">
+                        <!-- Content dynamically loaded from data.js -->
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+</body>
+</html>
