@@ -213,4 +213,3 @@ Consider adding:
 ---
 
 If you want, I can also convert this README into a full developer handbook with a roadmap, contribution section, and feature list.
-```
