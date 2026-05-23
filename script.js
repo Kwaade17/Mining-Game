@@ -76,8 +76,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==================== INTERACTIVE NOTIFICATION SYSTEM ====================
-    
-    // Global notification container setup
     let notificationContainer = document.querySelector('.notification-container');
     if (!notificationContainer) {
         notificationContainer = document.createElement('div');
@@ -85,19 +83,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(notificationContainer);
     }
 
-    /**
-     * Spawns an animated, interactive notification toast
-     * @param {string} title - Header text
-     * @param {string} message - Body text description
-     * @param {string} type - Variant style class ('level-up', 'sell', 'shop', 'collection')
-     * @param {number} duration - Auto-close timer limit in milliseconds
-     * @param {object|null} action - Optional button { label: "Click", callback: () => {} }
-     */
     function showNotification(title, message, type = '', duration = 4000, action = null) {
         const toast = document.createElement('div');
         toast.className = `toast-notification toast-${type}`;
 
-        // Toast layout construction
         toast.innerHTML = `
             <div class="toast-header">
                 <span class="toast-title">${title}</span>
@@ -107,7 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="toast-progress" style="animation-duration: ${duration}ms;"></div>
         `;
 
-        // Add interactive action button if specified
         if (action) {
             const actionBtn = document.createElement('button');
             actionBtn.className = 'toast-action-btn';
@@ -120,33 +108,27 @@ document.addEventListener('DOMContentLoaded', () => {
             toast.appendChild(actionBtn);
         }
 
-        // Close animation handler
         function closeToast() {
             if (toast.classList.contains('exiting')) return;
             toast.classList.add('exiting');
-            // Remove from DOM once slideOut finishes
             setTimeout(() => {
                 toast.remove();
             }, 300);
         }
 
-        // Close hooks
         toast.querySelector('.toast-close-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             closeToast();
         });
 
-        // Auto-close timer
-        const autoCloseTimeout = setTimeout(closeToast, duration);
-
+        setTimeout(closeToast, duration);
         notificationContainer.appendChild(toast);
     }
 
-    // Helper redirect to navigate views programmatically
     function navigateToView(viewId) {
         const targetLink = document.querySelector(`.nav-link[data-view="${viewId}"]`);
         if (targetLink) {
-            targetLink.click(); // Simulates a programmatic click on the sidebar link
+            targetLink.click();
         }
     }
 
@@ -182,10 +164,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             chest.addEventListener('click', (e) => {
                 e.stopPropagation();
+                
+                // Fix: Instantly lock clicks to block mobile multi-tap exploits
+                chest.style.pointerEvents = 'none';
+
                 const rewardGold = 40 + Math.floor(Math.random() * 61); 
                 playerState.money += rewardGold;
 
-                // Spawn interactive feedback
                 spawnFloatingText(`+🪙 ${rewardGold}`, e.clientX, e.clientY, 'float-gold');
                 showNotification("🎁 Gift Opened!", `Unlocked 🪙 ${rewardGold} Coins from a Cavern Chest!`, "sell", 3500);
 
@@ -233,7 +218,6 @@ document.addEventListener('DOMContentLoaded', () => {
             playerState.maxEnergy = Math.floor(playerState.maxEnergy * 1.1);
             playerState.currentEnergy = playerState.maxEnergy;
 
-            // Trigger Level-Up Notification toast
             showNotification(
                 "🎉 Level Up!", 
                 `Awesome! You reached Level ${playerState.level}! Max Energy increased to ${playerState.maxEnergy}%!`, 
@@ -242,6 +226,8 @@ document.addEventListener('DOMContentLoaded', () => {
             );
 
             if (playerState.level >= 10) unlockCollectionItem("cavern-cup");
+
+            updateMapPageStructure();
         }
         updateStatsUI();
         saveGame();
@@ -262,11 +248,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.style.borderColor = 'var(--gold-accent)';
                 card.style.boxShadow = '0 0 4px rgba(255, 204, 0, 0.4)';
             }
+            // Safe fallback value check for loaded legacy save data
+            const goldVal = ore.finalValue !== undefined ? ore.finalValue : 10;
             card.innerHTML = `
                 <span class="loot-icon">${ore.icon}</span>
                 <div class="loot-details">
                     <span class="loot-name">${ore.variant !== 'Normal' ? ore.variant + ' ' : ''}${ore.name}</span>
-                    <span class="loot-meta">${ore.actualWeight}kg | 🪙${ore.finalValue}${ore.mutation !== 'Normal' ? ' (' + ore.mutation + ')' : ''}</span>
+                    <span class="loot-meta">${ore.actualWeight}kg | 🪙${goldVal}${ore.mutation !== 'Normal' ? ' (' + ore.mutation + ')' : ''}</span>
                 </div>`;
             inventoryScroll.appendChild(card);
         });
@@ -277,13 +265,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const count = playerState.inventory.length;
             if (count === 0) return;
             let totalGold = 0;
-            playerState.inventory.forEach(o => totalGold += o.finalValue);
+            playerState.inventory.forEach(o => {
+                // Safe fallback value check for loaded legacy save data
+                totalGold += o.finalValue !== undefined ? o.finalValue : 10;
+            });
             playerState.money += totalGold;
             playerState.inventory = [];
             
             spawnFloatingText(`+🪙 ${totalGold}`, e.clientX, e.clientY, 'float-gold');
             
-            // Trigger Sell Notification toast
             showNotification(
                 "🪙 Ores Sold!", 
                 `Traded ${count} ores at market for 🪙 ${totalGold} Coins!`, 
@@ -300,7 +290,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==================== CORE MINING CALCULATOR ====================
     function mineCave(caveId, clickEvent) {
         const cave = cavesData.find(c => c.id === caveId);
-        if (!cave || playerState.level < cave.requiredLevel || playerState.currentEnergy < cave.energyCost || playerState.inventory.length >= playerState.maxBagCapacity) return;
+        if (!cave) return;
+
+        // Interactive UX warning feedback on validation checks
+        if (playerState.level < cave.requiredLevel) {
+            showNotification("🔒 Cavern Locked!", `You need to reach Level ${cave.requiredLevel} to mine here.`, "level-up", 3000);
+            return;
+        }
+        if (playerState.currentEnergy < cave.energyCost) {
+            showNotification("⚡ Out of Energy!", "Eat some food or buy Stamina Brews from the Shop to restore energy.", "shop", 3000);
+            if (clickEvent) spawnFloatingText("No Energy! ⚡", clickEvent.clientX, clickEvent.clientY, "float-red");
+            return;
+        }
+        if (playerState.inventory.length >= playerState.maxBagCapacity) {
+            showNotification("🎒 Bag Full!", "Click 'Sell All Ores' below to empty your inventory and earn coins.", "sell", 3000);
+            if (clickEvent) spawnFloatingText("Bag Full! 🎒", clickEvent.clientX, clickEvent.clientY, "float-red");
+            return;
+        }
 
         playerState.currentEnergy -= cave.energyCost;
         const rolledVar = rollWeightedSelection(variantsData);
@@ -317,15 +323,13 @@ document.addEventListener('DOMContentLoaded', () => {
             finalValue: Math.floor(subTotal * rolledMut.multiplier), icon: cave.oreIcon
         });
 
-        // Trigger dynamic unlock checks
-        unlockCollectionItem(`${cave.oreName.toLowerCase().split(' ')[0]}-col`);
-        if (rolledVar.id !== "normal") unlockCollectionItem(`${rolledVar.id}-col`);
-        if (rolledMut.id !== "none") unlockCollectionItem(`${rolledMut.id}-col`);
+        if (cave.collectionId) unlockCollectionItem(cave.collectionId);
+        if (rolledVar.collectionId) unlockCollectionItem(rolledVar.collectionId);
+        if (rolledMut.collectionId) unlockCollectionItem(rolledMut.collectionId);
 
         totalMinesCount++;
         if (totalMinesCount >= 100) unlockCollectionItem("hard-worker");
 
-        // Spawn interactive visual feedbacks
         if (clickEvent) {
             const x = clickEvent.clientX;
             const y = clickEvent.clientY;
@@ -334,9 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
             spawnFloatingText(`+ ${cave.oreIcon} ${rolledVar.name !== 'Normal' ? rolledVar.name + ' ' : ''}${cave.oreName.split(' ')[0]}`, x, y - 20, 'float-ore');
         }
 
-        // Spawn gift chest chance
         rollChestSpawn();
-
         awardXp(cave.xpReward);
         renderInventoryTray();
         saveGame();
@@ -375,14 +377,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.stopPropagation();
                 const caveId = parseInt(btn.getAttribute('data-id'));
 
+                // Defensive Cooldown execution
                 btn.disabled = true;
                 btn.textContent = "Mining...";
-                mineCave(caveId, e);
 
-                setTimeout(() => {
-                    btn.disabled = false;
-                    btn.textContent = "Mine";
-                }, 1000 / playerState.activePickaxeMultiplier);
+                try {
+                    mineCave(caveId, e);
+                } catch (error) {
+                    console.error("Mining logic execution failed: ", error);
+                } finally {
+                    // This block always triggers, preventing the cooldown from locking up
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        btn.textContent = "Mine";
+                    }, 1000 / playerState.activePickaxeMultiplier);
+                }
             });
         });
     }
@@ -536,16 +545,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         playerState.money -= item.cost;
+        if (item.collectionId) {
+            unlockCollectionItem(item.collectionId);
+        }
+
         if (item.category === "mining-speed") {
             playerState.activePickaxeMultiplier = item.multiplier;
-            unlockCollectionItem("iron-digger");
         } else if (item.category === "bag-capacity") {
             playerState.maxBagCapacity = item.capacity;
         } else if (item.category === "energy") {
             playerState.currentEnergy = Math.min(playerState.maxEnergy, playerState.currentEnergy + item.energy);
         }
 
-        // Trigger Shop Purchase Toast
         showNotification(
             "🛒 Item Purchased!", 
             `Successfully obtained ${item.name}! Applied active stat adjustments.`, 
@@ -617,7 +628,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (item && !item.obtained) {
             item.obtained = true;
 
-            // Trigger Collection Unlock Toast
             showNotification(
                 "🏆 Collection Unlocked!", 
                 `New entry unlocked: ${item.name}! Check your gallery details.`, 
@@ -625,7 +635,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 6000,
                 {
                     label: "View Gallery",
-                    callback: () => navigateToView("view-collections") // Redirect to Collections tab
+                    callback: () => navigateToView("view-collections") 
                 }
             );
 
