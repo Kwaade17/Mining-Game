@@ -211,5 +211,3 @@ Consider adding:
 - daily rewards or quests
 
 ---
-
-If you want, I can also convert this README into a full developer handbook with a roadmap, contribution section, and feature list.
