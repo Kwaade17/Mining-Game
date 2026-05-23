@@ -132,7 +132,7 @@ const cavesData = [
     }
 ];
 
-// ==================== ORE VARIANTS (BASE VALUE MULTIPLIERS) ====================
+// ==================== ORE VARIANTS ====================
 const variantsData = [
     { id: "normal", name: "Normal", multiplier: 1.0, pr: 0.80, collectionId: null },   
     { id: "rust",   name: "Rust",   multiplier: 5.0, pr: 0.10, collectionId: "rust-col" },   
@@ -140,7 +140,7 @@ const variantsData = [
     { id: "rainbow",name: "Rainbow",multiplier: 50.0, pr: 0.01, collectionId: "rainbow-col" }   
 ];
 
-// ==================== ORE MUTATIONS (FINAL VALUE MULTIPLIERS) ====================
+// ==================== ORE MUTATIONS ====================
 const mutationsData = [
     { id: "none", name: "Normal", desc: "A standard ore with no mutated traits.", multiplier: 1.0, pr: 0.80, icon: "Icons/Awards/none.png", collectionId: null },
     { id: "spore", name: "Spore Mutation", desc: "An ore covered in glowing organic cave spores.", multiplier: 1.5, pr: 0.10, icon: "Icons/Awards/spore.png", collectionId: "spore-col" },
@@ -154,35 +154,24 @@ const shopData = [
     // Mining Speed
     { id: "wooden-pick", category: "mining-speed", name: "Wooden Pick", desc: "+5% mining efficiency.", cost: 50, icon: "🪵", multiplier: 1.05, collectionId: "starter-tool" },
     { id: "iron-pick", category: "mining-speed", name: "Iron Pick", desc: "+20% mining efficiency.", cost: 150, icon: "⛏️", multiplier: 1.20, collectionId: "iron-digger" },
-    
-    // Persistent new badge triggered by specific active version (GAME_VERSION = 1.5.0)
     { id: "drill-arm", category: "mining-speed", name: "Drill Arm", desc: "+50% mining efficiency.", cost: 500, icon: "🔋", multiplier: 1.50, collectionId: "drill-arm-col", versionAdded: "1.5.0" },
     
     // Bag Capacity
     { id: "pouch-bag", category: "bag-capacity", name: "Pouch Bag", desc: "Increases bag limit to 30.", cost: 80, icon: "🎒", capacity: 30, collectionId: null },
     { id: "cargo-bag", category: "bag-capacity", name: "Cargo Bag", desc: "Increases bag limit to 60.", cost: 300, icon: "💼", capacity: 60, collectionId: null },
     { id: "steel-trunk", category: "bag-capacity", name: "Steel Trunk", desc: "Increases bag limit to 120.", cost: 800, icon: "📦", capacity: 120, collectionId: null },
+    { id: "courier-bag", category: "bag-capacity", name: "Courier Bag", desc: "Increases bag limit to 500.", cost: 1500, icon: "🛵", capacity: 500, collectionId: null, versionAdded: "1.5.0" },
     
-    // Energy Upgrades (Persistent new badge triggered by release date)
+    // Energy Upgrades
     { id: "raw-apple", category: "energy", name: "Raw Apple", desc: "Restores 15 Energy.", cost: 10, icon: "🍏", energy: 15, collectionId: null, releaseDate: "2026-05-23" },
     { id: "stamina-brew", category: "energy", name: "Stamina Brew", desc: "Restores 50 Energy.", cost: 75, icon: "🧪", energy: 50, collectionId: null },
     { id: "cooked-meat", category: "energy", name: "Cooked Meat", desc: "Restores 100 Energy.", cost: 180, icon: "🥩", energy: 100, collectionId: null },
+    { id: "magic-berry", category: "energy", name: "Magic Berry", desc: "Restores 800 Energy.", cost: 2500, icon: "🍓", energy: 800, collectionId: null, releaseDate: "2026-05-23" },
 
     // Boosts / Potions
-    { id: "luck-brew", category: "boosts", name: "Luck Brew", desc: "Double gem roll chance.", cost: 120, icon: "⭐", collectionId: null },
-    { id: "rage-elixir", category: "boosts", name: "Rage Elixir", desc: "Cuts mining costs by 50%.", cost: 200, icon: "🔥", collectionId: null },
-
-    // Packs
-    { id: "starter-bundle", category: "packs", name: "Starter Bundle", desc: "Unlock 500 Coins & custom skin.", cost: "$1.99", icon: "💎", isIAP: true, collectionId: null },
-    { id: "prospector-chest", category: "packs", name: "Prospector Chest", desc: "Unlock 2500 Coins & 5 Brews.", cost: "$4.99", icon: "🪙", isIAP: true, collectionId: null },
-
-    // Subscriptions
-    { id: "weekly-vip", category: "subscriptions", name: "Weekly VIP", desc: "Daily energy and pick speed.", cost: "$0.99/w", icon: "👑", isIAP: true, collectionId: null },
-    { id: "monthly-elite", category: "subscriptions", name: "Monthly Elite", desc: "Daily gems and max capacity.", cost: "$2.99/m", icon: "⚜️", isIAP: true, collectionId: null },
-
-    // Passes
-    { id: "underworld-pass", category: "passes", name: "Season 1 Underworld Pass", desc: "Unlocks the Underworld Pass and access to Tier Rewards.", cost: "$5.99", icon: "🎫", isIAP: true, collectionId: null },
-    { id: "double-xp-pass", category: "passes", name: "Double XP Permanent Pass", desc: "Permanently doubles all experience earned from mining.", cost: "$2.99", icon: "⚡", isIAP: true, collectionId: null }
+    { id: "luck-brew", category: "boosts", name: "Luck Brew", desc: "Double gem roll chance.", cost: 120, icon: "⭐", collectionId: null, buffType: "luck", buffDuration: 60 },
+    { id: "rage-elixir", category: "boosts", name: "Rage Elixir", desc: "Cuts mining costs by 50%.", cost: 200, icon: "🔥", collectionId: null, buffType: "rage", buffDuration: 60 },
+    { id: "xp-elixir", category: "boosts", name: "XP Elixir", desc: "Double XP gained for 45s.", cost: 150, icon: "🧪", collectionId: null, buffType: "xpBoost", buffDuration: 45, versionAdded: "1.5.0" }
 ];
 
 // ==================== COLLECTIONS GALLERY DATABASE ====================
@@ -215,6 +204,7 @@ const collectionsData = [
 
     // Awards - Trophies
     { id: "cavern-cup", category: "awards", subCategory: "trophies", name: "Cavern Cup", desc: "Reach Character Level 10.", icon: "🥇", obtained: false, conditionType: "level", conditionValue: 10 },
+    { id: "cavern-cup-two", category: "awards", subCategory: "trophies", name: "Cavern Cup Two", desc: "Reach Character Level 20.", icon: "🥇", obtained: false, conditionType: "level", conditionValue: 20 },
     { id: "hard-worker", category: "awards", subCategory: "badges", name: "Hard Worker", desc: "Mine 100 total ores in caves.", icon: "🎖️", obtained: false, conditionType: "mines", conditionValue: 100 },
     { id: "wealthy-miner", category: "awards", subCategory: "badges", name: "Wealthy Miner", desc: "Accumulate 1,000 Gold Coins.", icon: "💰", obtained: false, conditionType: "money", conditionValue: 1000 }
 ];

@@ -10,7 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
         soundsMuted: false,     // Tracks global audio state
         buffs: {
             luck: 0,            // Dynamic luck timer in seconds
-            rage: 0             // Dynamic rage cost timer in seconds
+            rage: 0,            // Dynamic rage cost timer in seconds
+            xpBoost: 0          // Dynamic XP boost timer in seconds
         }
     };
 
@@ -106,7 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         playTone(freq, type, duration, gainStart) {
             this.init();
-            // Block all audio nodes if player has muted audio
             if (!this.ctx || playerState.soundsMuted) return;
             try {
                 const osc = this.ctx.createOscillator();
@@ -178,7 +178,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 Object.assign(playerState, parsed);
                 
-                // Keep dropdown settings text matched upon startup load
+                // Fix: Initialize buffs object if missing from older save formats
+                if (!playerState.buffs) {
+                    playerState.buffs = { luck: 0, rage: 0, xpBoost: 0 };
+                }
+
                 if (dropdownSettings) {
                     dropdownSettings.textContent = playerState.soundsMuted ? "🔈 Unmute Sounds" : "🔊 Mute Sounds";
                 }
@@ -393,31 +397,27 @@ document.addEventListener('DOMContentLoaded', () => {
             el.style.top = `${y}px`;
             document.body.appendChild(el);
 
-            // Compute random polar coordinates velocity vectors
             const angle = Math.random() * Math.PI * 2;
             const force = 3 + Math.random() * 6;
             const vx = Math.cos(angle) * force;
-            const vy = Math.sin(angle) * force - 4; // Launches slightly upward initially
+            const vy = Math.sin(angle) * force - 4; 
 
             let currentX = x, currentY = y, currentVy = vy;
 
-            // Physics interval ticking loop
             const physicsInterval = setInterval(() => {
                 currentX += vx;
-                currentVy += 0.6; // Gravity factor simulation
+                currentVy += 0.6; 
                 currentY += currentVy;
 
                 el.style.left = `${currentX}px`;
                 el.style.top = `${currentY}px`;
 
-                // Self-destruct once it falls out of viewport frame
                 if (currentY > window.innerHeight + 50) {
                     clearInterval(physicsInterval);
                     el.remove();
                 }
             }, 30);
 
-            // Backup garbage collection
             setTimeout(() => {
                 clearInterval(physicsInterval);
                 el.remove();
@@ -449,8 +449,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rewardGold = 40 + Math.floor(Math.random() * 61); 
                 playerState.money += rewardGold;
 
+                // Fix: Corrected parenthesis syntax in dynamic money float call
                 spawnFloatingText(`+🪙 ${formatMoney(rewardGold)}`, e.clientX, e.clientY, 'float-gold');
                 showNotification("🎁 Gift Opened!", `Unlocked 🪙 ${formatMoney(rewardGold)} Coins from a Cavern Chest!`, "sell", 3500);
+                
+                SoundEngine.playCoin();
 
                 chest.remove();
                 saveGame();
@@ -466,36 +469,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==================== ACTIVE TIMERS ENGINE ====================
-    
     function renderBuffsUI() {
         if (!buffsContainer) return;
         buffsContainer.innerHTML = '';
 
-        if (playerState.buffs.luck > 0) {
-            const badge = document.createElement('div');
-            badge.className = 'buff-badge';
-            badge.innerHTML = `🍀 Luck: ${playerState.buffs.luck}s`;
-            buffsContainer.appendChild(badge);
-        }
+        const buffLabels = {
+            luck: "🍀 Luck",
+            rage: "🔥 Rage",
+            xpBoost: "✨ Double XP"
+        };
 
-        if (playerState.buffs.rage > 0) {
-            const badge = document.createElement('div');
-            badge.className = 'buff-badge';
-            badge.innerHTML = `🔥 Rage: ${playerState.buffs.rage}s`;
-            buffsContainer.appendChild(badge);
-        }
+        if (!playerState.buffs) return;
+
+        Object.keys(playerState.buffs).forEach(key => {
+            const duration = playerState.buffs[key];
+            if (duration > 0) {
+                const badge = document.createElement('div');
+                badge.className = 'buff-badge';
+                badge.innerHTML = `${buffLabels[key] || key.toUpperCase()}: ${duration}s`;
+                buffsContainer.appendChild(badge);
+            }
+        });
     }
 
-    // 1-second system ticking loop for active countdown timers
     setInterval(() => {
         let changed = false;
-        if (playerState.buffs.luck > 0) {
-            playerState.buffs.luck--;
-            changed = true;
-        }
-        if (playerState.buffs.rage > 0) {
-            playerState.buffs.rage--;
-            changed = true;
+        if (playerState.buffs) {
+            Object.keys(playerState.buffs).forEach(key => {
+                if (playerState.buffs[key] > 0) {
+                    playerState.buffs[key]--;
+                    changed = true;
+                }
+            });
         }
         if (changed) {
             renderBuffsUI();
@@ -540,7 +545,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function awardXp(amount) {
-        playerState.xp += amount * playerState.xpMultiplier;
+        const activeMultiplier = (playerState.buffs && playerState.buffs.xpBoost > 0) ? playerState.xpMultiplier * 2 : playerState.xpMultiplier;
+        playerState.xp += amount * activeMultiplier;
+        
         if (playerState.xp >= playerState.xpNeeded) {
             playerState.xp -= playerState.xpNeeded;
             playerState.level += 1;
@@ -631,7 +638,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 "sell", 
                 4000
             );
-
+            
+            SoundEngine.playCoin();
+            
             updateStatsUI();
             renderInventoryTray();
             saveGame();
@@ -649,8 +658,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // Dynamic Energy calculations based on active Rage buffs
-        const activeCost = playerState.buffs.rage > 0 ? Math.ceil(cave.energyCost / 2) : cave.energyCost;
+        const activeCost = (playerState.buffs && playerState.buffs.rage > 0) ? Math.ceil(cave.energyCost / 2) : cave.energyCost;
 
         if (playerState.currentEnergy < activeCost) {
             SoundEngine.playError();
@@ -667,13 +675,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         playerState.currentEnergy -= activeCost;
 
-        // Roll dynamic ore from loot pool
         const pool = cave.lootPool;
         let totalWeight = 0;
+        
+        if (!pool) {
+            console.error("Critical: Cave lootPool is undefined! Fallback executed.");
+            return;
+        }
+
         pool.forEach(ore => {
             let weight = rarityWeights[ore.rarity] || 1000;
-            // Luck Brew active double-rarity roll check
-            if (playerState.buffs.luck > 0 && ore.rarity !== 'common') {
+            if (playerState.buffs && playerState.buffs.luck > 0 && ore.rarity !== 'common') {
                 weight *= 2; 
             }
             totalWeight += weight;
@@ -685,7 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         for (let ore of pool) {
             let weight = rarityWeights[ore.rarity] || 1000;
-            if (playerState.buffs.luck > 0 && ore.rarity !== 'common') {
+            if (playerState.buffs && playerState.buffs.luck > 0 && ore.rarity !== 'common') {
                 weight *= 2;
             }
             cumulativeWeight += weight;
@@ -737,7 +749,6 @@ document.addEventListener('DOMContentLoaded', () => {
             spawnFloatingText(`+${cave.xpReward} XP`, x + 30, y, 'float-xp');
             spawnFloatingText(`+ ${selectedOre.icon} ${rolledVar.name !== 'Normal' ? rolledVar.name + ' ' : ''}${selectedOre.name.split(' ')[0]}`, x, y - 20, 'float-ore');
             
-            // Spawn dynamic bouncy mining particles
             spawnMineParticles(x, y, selectedOre.icon);
         }
 
@@ -746,7 +757,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderInventoryTray();
         saveGame();
 
-        // Smooth-scrolling horizontal tray focused on new item
         setTimeout(() => {
             if (inventoryScroll) {
                 inventoryScroll.scrollTo({
@@ -756,7 +766,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, 100);
 
-        // Remove the ephemeral "NEW" badge from active list after 5 seconds
         setTimeout(() => {
             newOre.isNew = false;
             renderInventoryTray();
@@ -789,10 +798,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         SoundEngine.playClick();
 
+                        const poolLength = cave.lootPool ? cave.lootPool.length : 1;
+
                         const stats = [
                             { label: "Required Level", value: `Lvl ${cave.requiredLevel}` },
                             { label: "Energy Cost", value: `${cave.energyCost}⚡` },
-                            { label: "Standard Ore Pool", value: `${cave.lootPool.length} Ores` },
+                            { label: "Standard Ore Pool", value: `${poolLength} Ores` },
                             { label: "XP Reward", value: `+${cave.xpReward} XP` }
                         ];
                         openDetailModal(
@@ -1016,9 +1027,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (item.category === "energy") {
             playerState.currentEnergy = Math.min(playerState.maxEnergy, playerState.currentEnergy + item.energy);
         } else if (item.id === "luck-brew") {
-            playerState.buffs.luck = 60; // Triggers 60-second active luck boost
+            playerState.buffs.luck = 60; 
         } else if (item.id === "rage-elixir") {
-            playerState.buffs.rage = 60; // Triggers 60-second active rage boost
+            playerState.buffs.rage = 60; 
+        } else if (item.id === "xp-elixir") {
+            playerState.buffs.xpBoost = 45; 
         }
 
         SoundEngine.playCoin();
@@ -1033,7 +1046,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saveGame();
         updateStatsUI();
         renderShop();
-        renderBuffsUI(); // Dynamically updates visual timers on buy
+        renderBuffsUI(); 
         updateMapPageStructure();
     }
 
@@ -1143,10 +1156,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function updateHardWorkerBadge() {
-        if (totalMinesCount >= 100) {
-            unlockCollectionItem("hard-worker");
-        }
+    // ==================== UNIFIED DATA-DRIVEN ACHIEVEMENT ENGINE ====================
+    function checkAchievements() {
+        collectionsData.forEach(item => {
+            if (item.category === "awards" && !item.obtained && item.conditionType) {
+                let isEligible = false;
+                if (item.conditionType === "level" && playerState.level >= item.conditionValue) isEligible = true;
+                else if (item.conditionType === "mines" && totalMinesCount >= item.conditionValue) isEligible = true;
+                else if (item.conditionType === "money" && playerState.money >= item.conditionValue) isEligible = true;
+                if (isEligible) unlockCollectionItem(item.id);
+            }
+        });
     }
 
     // ==================== SEARCH/FILTER SYSTEM ====================
@@ -1173,21 +1193,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function filterCollectionItems() {
-        const q = colSearchInput.value.toLowerCase().trim();
-        const cat = colSectionFilter.value;
-
+        const q = colSearchInput.value.toLowerCase().trim(), cat = colSectionFilter.value;
         colSectionsList.querySelectorAll('.col-section').forEach(sec => {
-            const secCat = sec.getAttribute('data-category');
-            const matchCat = (cat === 'all' || secCat === cat);
-            const cards = sec.querySelectorAll('.col-card');
-            let visibleCount = 0;
+            const secCat = sec.getAttribute('data-category'), matchCat = (cat === 'all' || secCat === cat);
+            const cards = sec.querySelectorAll('.col-card'); let visibleCount = 0;
 
             cards.forEach(card => {
-                const titleEl = card.querySelector('.col-card-title');
-                const titleText = titleEl ? titleEl.textContent.toLowerCase() : '';
-                const matchSearch = titleText.includes(q);
-
-                card.style.display = matchSearch ? '' : 'none';
+                const titleEl = card.querySelector('.col-card-title'), titleText = titleEl ? titleEl.textContent.toLowerCase() : '';
+                const matchSearch = titleText.includes(q); card.style.display = matchSearch ? '' : 'none';
                 if (matchSearch) visibleCount++;
             });
             sec.style.display = (matchCat && visibleCount > 0) ? '' : 'none';
@@ -1206,6 +1219,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ==================== TAB SWITCHER & TOGGLES ====================
     
+    // Set initial view visibility inline to prevent stylesheet timing issues
     gameViews.forEach(view => {
         if (view.classList.contains('active')) {
             view.style.display = 'flex';
@@ -1214,37 +1228,44 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Tab switcher with absolute inline-style display overrides
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            e.stopPropagation(); 
+            e.stopPropagation(); // Safe click propagation lock
             SoundEngine.playClick();
 
+            // Toggle active styling on navigation list options
             navLinks.forEach(item => item.classList.remove('active'));
             link.classList.add('active');
 
+            // Force hide all viewport wrappers to prevent display conflicts
             gameViews.forEach(view => {
                 view.classList.remove('active');
-                view.style.display = 'none'; 
+                view.style.display = 'none'; // Overrides CSS caching bugs
             });
 
+            // Force display active viewport
             const targetId = link.getAttribute('data-view');
             const targetView = document.getElementById(targetId);
             if (targetView) {
                 targetView.classList.add('active');
-                targetView.style.display = 'flex'; 
+                targetView.style.display = 'flex'; // Overrides CSS caching bugs
                 
+                // Fetch and render local README.md dynamically if navigating to manual
                 if (targetId === "view-readme") {
                     loadReadmeFile();
                 }
             }
 
+            // Auto-close sidebar on mobile viewports
             if (window.innerWidth < 768 && sidebar) {
                 sidebar.classList.remove('open');
             }
         });
     });
 
+    // ==================== DROPDOWN CLICK CONTROLLERS ====================
     if (userProfile) {
         userProfile.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1258,6 +1279,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 1. Account Dropdown Option (Displays real-time stats inside unified modal)
     if (dropdownAccount) {
         dropdownAccount.addEventListener('click', (e) => {
             e.preventDefault();
@@ -1310,6 +1332,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             SoundEngine.playError();
             
+            // Custom confirmation modal popup
             openDetailModal(
                 "Reset Cavern Progress?",
                 "🚪",
@@ -1326,22 +1349,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ==================== STARTING USERNAME INPUT MODAL CONTROLLER ====================
     if (saveNameBtn && usernameInput && nameModal) {
         saveNameBtn.addEventListener('click', () => {
             SoundEngine.playCoin();
-            const inputVal = usernameInput.value.trim();
-            playerState.username = inputVal ? inputVal : "Miner Joe";
-            
-            saveGame();
-            updateStatsUI();
-            nameModal.classList.remove('active');
-
-            showNotification(
-                `👋 Welcome ${playerState.username}!`, 
-                "Let's enter the caverns and mine some valuable resources!", 
-                "level-up", 
-                5000
-            );
+            const inputVal = usernameInput.value.trim(); playerState.username = inputVal ? inputVal : "Miner Joe";
+            saveGame(); updateStatsUI(); nameModal.classList.remove('active');
+            showNotification(`👋 Welcome ${playerState.username}!`, "Let's enter the caverns and mine some valuable resources!", "level-up", 5000);
         });
     }
 
@@ -1378,13 +1392,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 100);
     });
 
+    // ==================== INITIAL GESTURE TRIGGER ====================
     document.body.addEventListener('click', () => {
         SoundEngine.init();
     }, { once: true });
 
     // ==================== INITIALIZATION ====================
-    loadGame(); 
-    checkUserRegistration(); 
+    loadGame(); // Restore progress from local storage on reload
+    checkUserRegistration(); // Call registration check on load
     updateMapPageStructure();
     updateStatsUI();
     renderInventoryTray();
