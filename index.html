@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="style.css">
     <script src="data.js" defer></script>
     <script src="script.js" defer></script>
+    <!-- Marked.js Markdown Parser CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
     <!-- Top Navigation Bar -->
@@ -76,10 +78,19 @@
                 </div>
             </div>
             <nav class="sidebar-nav">
+                <!-- Core Gameplay Links -->
                 <ul>
                     <li><a href="#" class="nav-link active" data-view="view-game">🎮 Main Game</a></li>
                     <li><a href="#" class="nav-link" data-view="view-shop">🛒 Shop</a></li>
                     <li><a href="#" class="nav-link" data-view="view-collections">🏆 Collections</a></li>
+                </ul>
+                
+                <!-- Sidebar Divider for separated button -->
+                <hr class="sidebar-divider">
+                
+                <!-- Separated Document Link -->
+                <ul>
+                    <li><a href="#" class="nav-link" data-view="view-readme">📖 Game Manual</a></li>
                 </ul>
             </nav>
         </aside>
@@ -143,6 +154,15 @@
                         </select>
                     </div>
                     <div class="col-sections-list" id="colSectionsList"></div>
+                </div>
+            </div>
+
+            <!-- 4. README MANUAL VIEW -->
+            <div id="view-readme" class="game-view">
+                <div class="readme-wrapper">
+                    <div class="readme-content" id="readmeContent">
+                        <p style="color: #666; text-align: center; margin: auto;">Loading manual...</p>
+                    </div>
                 </div>
             </div>
 

@@ -1,8 +1,25 @@
-/* Box sizing and global text selection lock */
+/* Box sizing, global text selection lock, and custom scrollbar overrides */
 html, body { box-sizing: border-box; margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; user-select: none; -webkit-user-select: none; -ms-user-select: none; cursor: default; }
 *, *:before, *:after { box-sizing: inherit; }
 :root { --bg-dark: #121212; --stone-dark: #222222; --gold-accent: #ffcc00; --cave-btn: #3e3223; --cave-hover: #5a4933; --text-light: #f5f5f5; --text-muted: #aaaaaa; }
 body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); color: var(--text-light); display: flex; flex-direction: column; }
+
+/* ==================== THEMATIC GLOBAL SCROLLBARS ==================== */
+::-webkit-scrollbar {
+    width: 6px;  /* Vertical scrollbar width */
+    height: 6px; /* Horizontal scrollbar height */
+}
+::-webkit-scrollbar-track {
+    background-color: #111;
+}
+::-webkit-scrollbar-thumb {
+    background-color: var(--cave-btn);
+    border: 1px solid #111;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--gold-accent);
+}
 
 /* ==================== NAVBAR ==================== */
 .navbar { height: 60px; background-color: #1a1a1a; border-bottom: 3px solid var(--gold-accent); display: flex; align-items: center; justify-content: space-between; padding: 0 10px; position: relative; z-index: 100; flex-shrink: 0; }
@@ -41,6 +58,9 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
 .sidebar-xp-fill { height: 100%; width: 0%; background-color: var(--gold-accent); transition: width 0.3s ease-in-out; }
 .sidebar-xp-text { font-size: 0.68rem; color: var(--text-muted); font-weight: bold; letter-spacing: 0.5px; }
 
+/* Separated divider in sidebar navigation list */
+.sidebar-divider { border: 0; border-top: 1.5px solid #333; margin: 10px 0; width: 100%; }
+
 .sidebar-nav ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
 .nav-link { display: block; padding: 10px 15px; color: var(--text-light); text-decoration: none; border-radius: 6px; font-weight: 500; transition: all 0.2s; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .nav-link:hover, .nav-link.active { background-color: #333; color: var(--gold-accent); }
@@ -74,8 +94,6 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
 .sell-all-btn { background-color: #2e7d32; color: white; border: none; font-size: 0.75rem; font-weight: bold; padding: 4px 10px; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
 .sell-all-btn:hover { background-color: #1b5e20; }
 .inventory-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; min-height: 52px; }
-.inventory-scroll::-webkit-scrollbar { height: 4px; }
-.inventory-scroll::-webkit-scrollbar-thumb { background-color: #444; border-radius: 4px; }
 .loot-item { display: flex; align-items: center; background-color: #1a1a1a; border: 1px solid #444; border-radius: 6px; padding: 4px 8px; gap: 8px; flex-shrink: 0; }
 .loot-icon { font-size: 1.2rem; }
 .loot-details { display: flex; flex-direction: column; }
@@ -94,15 +112,12 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
 .section-header, .col-section-header { color: var(--gold-accent); margin: 0; font-size: 1.1rem; border-bottom: 2px solid #333; padding-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
 .sub-section-header, .col-sub-header { color: var(--text-muted); margin: 8px 0 2px 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
 
-/* ==================== SCROLL CONTAINER EDGE FADE SYSTEM ==================== */
+/* Scroll Container Edge Fade System */
 .scroll-container { position: relative; width: 100%; overflow: hidden; }
 .scroll-container::before { content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 25px; background: linear-gradient(to right, #171717, transparent); z-index: 5; pointer-events: none; }
 .scroll-container::after { content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 25px; background: linear-gradient(to left, #171717, transparent); z-index: 5; pointer-events: none; }
 
 .portrait-grid, .wider-grid { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 12px; padding: 4px 15px 12px 15px; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
-.portrait-grid::-webkit-scrollbar, .wider-grid::-webkit-scrollbar { height: 4px; }
-.portrait-grid::-webkit-scrollbar-thumb, .wider-grid::-webkit-scrollbar-thumb { background-color: #333; border-radius: 4px; }
-.portrait-grid::-webkit-scrollbar-thumb:hover, .wider-grid::-webkit-scrollbar-thumb:hover { background-color: var(--gold-accent); }
 
 /* ==================== SHARED CARD LAYOUTS ==================== */
 .portrait-card, .wider-card, .col-card { background-color: var(--stone-dark); border: 2px solid #333; border-radius: 12px; padding: 12px 8px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; flex-shrink: 0; text-align: center; transition: border-color 0.2s; }
@@ -193,13 +208,13 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
 /* ==================== DYNAMIC TOAST NOTIFICATIONS ==================== */
 .notification-container {
     position: fixed;
-    top: 70px; /* Sits cleanly below the navbar */
+    top: 70px; 
     right: 15px;
-    z-index: 400; /* Stays above absolute sidebars and maps */
+    z-index: 400; 
     display: flex;
     flex-direction: column;
     gap: 10px;
-    pointer-events: none; /* Allows clicks to pass through the empty container */
+    pointer-events: none; 
     max-width: calc(100% - 30px);
     width: 320px;
 }
@@ -214,7 +229,7 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
     flex-direction: column;
     position: relative;
     box-shadow: 0 10px 25px rgba(0,0,0,0.6);
-    pointer-events: auto; /* Restores clicks inside the toast itself */
+    pointer-events: auto; 
     animation: slideInRight 0.3s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
     overflow: hidden;
 }
@@ -452,6 +467,116 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
 .modal-stat-val {
     color: var(--text-light);
     font-weight: bold;
+}
+
+/* ==================== GAME MANUAL VIEW STYLING ==================== */
+.readme-wrapper {
+    width: 100%;
+    max-width: 650px;
+    margin: 0 auto;
+    background-color: var(--stone-dark);
+    border: 2px solid #333;
+    border-radius: 12px;
+    padding: 25px 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    max-height: 100%;
+}
+
+/* Markdown Typography styling inside Game Manual view */
+.readme-content {
+    text-align: left;
+    line-height: 1.6;
+    font-size: 0.85rem;
+    color: var(--text-light);
+}
+
+.readme-content h1, .readme-content h2, .readme-content h3 {
+    color: var(--gold-accent);
+    margin-top: 20px;
+    margin-bottom: 10px;
+    border-bottom: 1.5px solid #333;
+    padding-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.readme-content h1 { font-size: 1.3rem; }
+.readme-content h2 { font-size: 1.1rem; }
+.readme-content h3 { font-size: 0.92rem; }
+
+.readme-content p {
+    margin: 0 0 12px 0;
+    color: #ccc;
+    font-size: 0.8rem;
+}
+
+.readme-content ul, .readme-content ol {
+    margin: 0 0 15px 0;
+    padding-left: 20px;
+}
+
+.readme-content li {
+    margin-bottom: 6px;
+    color: #ccc;
+    font-size: 0.8rem;
+}
+
+.readme-content code {
+    background-color: #111;
+    color: #fca5a5;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.8rem;
+}
+
+.readme-content pre {
+    background-color: #111;
+    border: 1px solid #333;
+    padding: 12px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 15px 0;
+}
+
+.readme-content pre code {
+    background: none;
+    padding: 0;
+    color: #a7f3d0;
+    font-size: 0.75rem;
+}
+
+.readme-content hr {
+    border: 0;
+    border-top: 1.5px solid #333;
+    margin: 20px 0;
+}
+
+.readme-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+}
+
+.readme-content th, .readme-content td {
+    border: 1px solid #333;
+    padding: 8px 12px;
+    font-size: 0.75rem;
+}
+
+.readme-content th {
+    background-color: #1a1a1a;
+    color: var(--gold-accent);
+    text-align: left;
+}
+
+.readme-content blockquote {
+    border-left: 4px solid var(--gold-accent);
+    margin: 15px 0;
+    padding-left: 15px;
+    color: var(--text-muted);
+    font-style: italic;
 }
 
 /* ==================== RESPONSIVE RULES ==================== */

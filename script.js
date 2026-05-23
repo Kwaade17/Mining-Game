@@ -65,7 +65,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalDescription = document.getElementById('modalDescription');
     const modalStats = document.getElementById('modalStats');
 
+    // Game Manual Element selectors
+    const readmeContent = document.getElementById('readmeContent');
+
     let currentMapPage = 1, cavesPerPage = 9, maxMapPages = 1, totalMinesCount = 0;
+    let readmeLoaded = false; // Prevents fetching multiple times unnecessarily
 
     // ==================== PERSISTENT LOCAL STORAGE ENGINE ====================
     function saveGame() {
@@ -136,9 +140,11 @@ document.addEventListener('DOMContentLoaded', () => {
             toast.appendChild(actionBtn);
         }
 
+        // Close animation handler
         function closeToast() {
             if (toast.classList.contains('exiting')) return;
             toast.classList.add('exiting');
+            // Remove from DOM once slideOut finishes
             setTimeout(() => {
                 toast.remove();
             }, 300);
@@ -200,6 +206,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 infoModal.classList.remove('active');
             }
         });
+    }
+
+    // ==================== GAME MANUAL PARSER (README.MD FETCH) ====================
+    
+    // Dynamically fetches, parses, and renders the local README.md
+    function loadReadmeFile() {
+        if (readmeLoaded || !readmeContent) return;
+
+        fetch('README.md')
+            .then(response => {
+                if (!response.ok) throw new Error("Could not load README.md file from project root.");
+                return response.text();
+            })
+            .then(markdownText => {
+                // Parse markdown content inside Marked.js library compiler
+                if (window.marked) {
+                    readmeContent.innerHTML = window.marked.parse(markdownText);
+                    readmeLoaded = true;
+                } else {
+                    // Pre-formatted plain-text fallback if CDN fails
+                    readmeContent.innerHTML = `<pre style="font-family: inherit; font-size: 0.8rem; white-space: pre-wrap;">${markdownText}</pre>`;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                readmeContent.innerHTML = `
+                    <div style="text-align: center; margin: auto;">
+                        <span style="font-size: 2rem;">⚠️</span>
+                        <p style="color: #f87171; font-size: 0.85rem; margin-top: 10px;">
+                            Failed to load Game Manual.<br>
+                            Ensure you are running your browser via VS Code <strong>Live Server</strong> and that <code>README.md</code> is placed in your project directory.
+                        </p>
+                    </div>`;
+            });
     }
 
     // ==================== VISUAL EFFECTS ENGINE ====================
@@ -284,7 +324,6 @@ document.addEventListener('DOMContentLoaded', () => {
             sidebarXpText.textContent = `XP: ${playerState.xp} / ${playerState.xpNeeded}`;
         }
 
-        // Keep profile username labels in sync
         const displayName = playerState.username ? playerState.username : "Miner Joe";
         if (navUsername) navUsername.textContent = displayName;
         if (sideUsername) sideUsername.textContent = displayName;
@@ -867,6 +906,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (targetView) {
                 targetView.classList.add('active');
                 targetView.style.display = 'flex'; // Overrides CSS caching bugs
+                
+                // Fetch and render local README.md dynamically if navigating to manual
+                if (targetId === "view-readme") {
+                    loadReadmeFile();
+                }
             }
 
             // Auto-close sidebar on mobile viewports
@@ -939,15 +983,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (saveNameBtn && usernameInput && nameModal) {
         saveNameBtn.addEventListener('click', () => {
             const inputVal = usernameInput.value.trim();
-            // Fallback default name if left empty
             playerState.username = inputVal ? inputVal : "Miner Joe";
             
-            // Save state, update layouts, and dismiss the modal
             saveGame();
             updateStatsUI();
             nameModal.classList.remove('active');
 
-            // Trigger customized welcome notification toast
             showNotification(
                 `👋 Welcome ${playerState.username}!`, 
                 "Let's enter the caverns and mine some valuable resources!", 
@@ -957,7 +998,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Checking if username is empty on startup
     function checkUserRegistration() {
         if (!playerState.username) {
             if (nameModal) {
