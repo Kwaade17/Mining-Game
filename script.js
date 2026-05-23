@@ -37,6 +37,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const colSectionFilter = document.getElementById('colSectionFilter');
     const colSectionsList = document.getElementById('colSectionsList');
 
+    // Modal selectors
+    const infoModal = document.getElementById('infoModal');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+    const modalIcon = document.getElementById('modalIcon');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalDescription = document.getElementById('modalDescription');
+    const modalStats = document.getElementById('modalStats');
+
     let currentMapPage = 1, cavesPerPage = 9, maxMapPages = 1, totalMinesCount = 0;
 
     // ==================== PERSISTENT LOCAL STORAGE ENGINE ====================
@@ -132,6 +140,59 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ==================== DYNAMIC POPUP MODAL ENGINE ====================
+    
+    /**
+     * Dynamically populates and displays the unified detail modal
+     * @param {string} title - Modal Header Title
+     * @param {string} icon - Emoji Icon
+     * @param {string} description - Lore / Information text
+     * @param {Array} statsArray - Key-value pair metrics array [ { label: "Level", value: "2" } ]
+     */
+    function openDetailModal(title, icon, description, statsArray = []) {
+        if (!infoModal || !modalTitle || !modalIcon || !modalDescription || !modalStats) return;
+
+        modalTitle.textContent = title;
+        modalIcon.textContent = icon;
+        modalDescription.textContent = description;
+
+        // Clear previous rows
+        modalStats.innerHTML = '';
+
+        if (statsArray.length > 0) {
+            modalStats.style.display = 'flex';
+            statsArray.forEach(stat => {
+                const row = document.createElement('div');
+                row.className = 'modal-stat-row';
+                row.innerHTML = `
+                    <span class="modal-stat-label">${stat.label}</span>
+                    <span class="modal-stat-val">${stat.value}</span>
+                `;
+                modalStats.appendChild(row);
+            });
+        } else {
+            modalStats.style.display = 'none'; // Hide if no metrics exist
+        }
+
+        infoModal.classList.add('active');
+    }
+
+    // Close Modal triggers
+    if (modalCloseBtn) {
+        modalCloseBtn.addEventListener('click', () => {
+            infoModal.classList.remove('active');
+        });
+    }
+
+    // Close Modal on overlay backdrop clicks
+    if (infoModal) {
+        infoModal.addEventListener('click', (e) => {
+            if (e.target === infoModal) {
+                infoModal.classList.remove('active');
+            }
+        });
+    }
+
     // ==================== VISUAL EFFECTS ENGINE ====================
     function spawnFloatingText(text, x, y, colorClass = '') {
         const el = document.createElement('div');
@@ -165,7 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
             chest.addEventListener('click', (e) => {
                 e.stopPropagation();
                 
-                // Fix: Instantly lock clicks to block mobile multi-tap exploits
                 chest.style.pointerEvents = 'none';
 
                 const rewardGold = 40 + Math.floor(Math.random() * 61); 
@@ -248,7 +308,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.style.borderColor = 'var(--gold-accent)';
                 card.style.boxShadow = '0 0 4px rgba(255, 204, 0, 0.4)';
             }
-            // Safe fallback value check for loaded legacy save data
             const goldVal = ore.finalValue !== undefined ? ore.finalValue : 10;
             card.innerHTML = `
                 <span class="loot-icon">${ore.icon}</span>
@@ -266,7 +325,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (count === 0) return;
             let totalGold = 0;
             playerState.inventory.forEach(o => {
-                // Safe fallback value check for loaded legacy save data
                 totalGold += o.finalValue !== undefined ? o.finalValue : 10;
             });
             playerState.money += totalGold;
@@ -364,6 +422,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     box.className = 'box';
                     box.style.backgroundImage = `url('${cave.image}')`;
                     box.innerHTML = `<span class="box-title">${cave.name}</span><button class="box-btn" data-id="${cave.id}">Mine</button>`;
+                    
+                    // NEW: Clicking on the active Cave Card Background displays its detailed stats
+                    box.addEventListener('click', (e) => {
+                        if (e.target.classList.contains('box-btn')) return; // Avoid popup if clicking "Mine" button
+
+                        const stats = [
+                            { label: "Required Level", value: `Lvl ${cave.requiredLevel}` },
+                            { label: "Energy Cost", value: `${cave.energyCost}⚡` },
+                            { label: "Standard Ore", value: `${cave.oreIcon} ${cave.oreName}` },
+                            { label: "Base Value", value: `🪙 ${cave.baseValue}` },
+                            { label: "Base Weight", value: `${cave.baseWeight} kg` },
+                            { label: "XP Reward", value: `+${cave.xpReward} XP` }
+                        ];
+                        openDetailModal(
+                            cave.name, 
+                            cave.oreIcon, 
+                            `A deep mining layer containing rich resources. Mine here using your pickaxe to collect valuable raw ${cave.oreName}.`, 
+                            stats
+                        );
+                    });
                 }
             } else {
                 box.className = 'box disabled';
@@ -377,7 +455,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.stopPropagation();
                 const caveId = parseInt(btn.getAttribute('data-id'));
 
-                // Defensive Cooldown execution
                 btn.disabled = true;
                 btn.textContent = "Mining...";
 
@@ -386,7 +463,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) {
                     console.error("Mining logic execution failed: ", error);
                 } finally {
-                    // This block always triggers, preventing the cooldown from locking up
                     setTimeout(() => {
                         btn.disabled = false;
                         btn.textContent = "Mine";
@@ -594,6 +670,29 @@ document.addEventListener('DOMContentLoaded', () => {
             <h4 class="col-card-title">${item.obtained ? item.name : 'Unknown'}</h4>
             <p class="col-card-desc">${item.obtained ? item.desc : 'Keep mining layers to unlock details.'}</p>
             <button class="col-read-more" ${item.obtained ? '' : 'disabled'}>Read more</button>`;
+        
+        // NEW: Clicking "Read More" on unlocked Collection Cards opens the detailed stats modal
+        if (item.obtained) {
+            const readMoreBtn = card.querySelector('.col-read-more');
+            readMoreBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                
+                const stats = [
+                    { label: "Category", value: item.category.toUpperCase() }
+                ];
+                if (item.subCategory) {
+                    stats.push({ label: "Sub-Type", value: item.subCategory.toUpperCase() });
+                }
+                
+                openDetailModal(
+                    item.name, 
+                    item.icon, 
+                    item.desc, 
+                    stats
+                );
+            });
+        }
+
         return card;
     }
 
@@ -673,6 +772,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Filter Collection cards
     function filterCollectionItems() {
         const q = colSearchInput.value.toLowerCase().trim();
         const cat = colSectionFilter.value;
