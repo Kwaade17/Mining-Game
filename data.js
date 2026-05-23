@@ -8,7 +8,8 @@ const cavesData = [
     { id: 6, name: "Glacial Crevasse", image: "Img/Glacial Crevasse.png", requiredLevel: 5, energyCost: 15, xpReward: 90, baseValue: 110, baseWeight: 8.0, oreName: "Emerald Gem", oreIcon: "💚" },
     { id: 7, name: "The Chipped Vein", image: "Img/The Chipped Vein.png", requiredLevel: 6, energyCost: 18, xpReward: 130, baseValue: 160, baseWeight: 10.0, oreName: "Ruby Gem", oreIcon: "🟥" },
     { id: 8, name: "The Ember Maw", image: "Img/The Ember Maw.png", requiredLevel: 8, energyCost: 22, xpReward: 180, baseValue: 240, baseWeight: 12.5, oreName: "Diamond Shard", oreIcon: "💎" },
-    { id: 9, name: "The Shattered Stratum", image: "Img/The Shattered Stratum.png", requiredLevel: 10, energyCost: 30, xpReward: 300, baseValue: 400, baseWeight: 18.0, oreName: "Obsidian Core", oreIcon: "🔥" }
+    { id: 9, name: "The Shattered Stratum", image: "Img/The Shattered Stratum.png", requiredLevel: 10, energyCost: 30, xpReward: 300, baseValue: 400, baseWeight: 18.0, oreName: "Obsidian Core", oreIcon: "🔥" },
+    { id: 10, name: "The Void Rift", image: "Img/The Void Rift.png", requiredLevel: 1, energyCost: 40, xpReward: 500, baseValue: 700, baseWeight: 25.0, oreName: "Void Essence", oreIcon: "🌑" }
 ];
 
 // ==================== ORE VARIANTS (BASE VALUE MULTIPLIERS) ====================
@@ -39,7 +40,9 @@ const shopData = [
     { id: "pouch-bag", category: "bag-capacity", name: "Pouch Bag", desc: "Increases bag limit to 30.", cost: 80, icon: "🎒", capacity: 30 },
     { id: "cargo-bag", category: "bag-capacity", name: "Cargo Bag", desc: "Increases bag limit to 60.", cost: 300, icon: "💼", capacity: 60 },
     { id: "steel-trunk", category: "bag-capacity", name: "Steel Trunk", desc: "Increases bag limit to 120.", cost: 80, icon: "📦", capacity: 120 },
-    
+    { id: "gold-chest", category: "bag-capacity", name: "Gold Chest", desc: "Increases bag limit to 240.", cost: 200, icon: "🪙", capacity: 240 },
+    { id: "diamond-vault", category: "bag-capacity", name: "Diamond Vault", desc: "Increases bag limit to 480.", cost: 500, icon: "💎", capacity: 480 },
+        
     // Energy Upgrades
     { id: "raw-apple", category: "energy", name: "Raw Apple", desc: "Restores 15 Energy.", cost: 10, icon: "🍏", energy: 15 },
     { id: "stamina-brew", category: "energy", name: "Stamina Brew", desc: "Restores 50 Energy.", cost: 75, icon: "🧪", energy: 50 },
@@ -79,9 +82,11 @@ const collectionsData = [
     { id: "toxic-col", category: "mutations", name: "Toxic Mutation", desc: "Glowing with radioactive isotopes.", icon: "🤢", obtained: false },
     { id: "crystalline-col", category: "mutations", name: "Crystalline Mutation", desc: "Grown with sparkling crystal points.", icon: "💎", obtained: false },
     { id: "cosmic-col", category: "mutations", name: "Cosmic Mutation", desc: "Pulsing with gravity-warping alien force.", icon: "🌌", obtained: false },
+    { id: "void-col", category: "mutations", name: "Void Mutation", desc: "Shrouded in mysterious cosmic void.", icon: "🌑", obtained: false },
 
     // Awards - Trophies
     { id: "cavern-cup", category: "awards", subCategory: "trophies", name: "Deep Cavern Cup", desc: "Reaching Cave Layer 10.", icon: "🥇", obtained: false },
+    { id: "ore-collector", category: "awards", subCategory: "trophies", name: "Ore Collector Trophy", desc: "Collect 100 total ores in caves.", icon: "🏆", obtained: false },
     
     // Awards - Badges
     { id: "hard-worker", category: "awards", subCategory: "badges", name: "Hard Worker", desc: "Mine 100 total ores in caves.", icon: "🎖️", obtained: false }
