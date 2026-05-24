@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ==================== SESSION STATE ====================
-    const GAME_VERSION = "1.8.6"; // Active version used to check shop updates
+    const GAME_VERSION = "1.8.9"; // Active version used to check shop updates
     
     const playerState = {
         username: "", // Custom player display name
@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Stats Labels
     const labelLevel = document.getElementById('player-level');
+    const sidebarLevel = document.getElementById('sidebarLevel'); // <-- ADD THIS SELECTOR
     const labelXp = document.getElementById('player-xp');
     const labelMoney = document.getElementById('player-money');
     const labelTokens = document.getElementById('player-tokens'); // <-- ADD THIS Selector
@@ -650,6 +651,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateStatsUI() {
         if (labelLevel) labelLevel.textContent = playerState.level;
+        if (sidebarLevel) sidebarLevel.textContent = `Lvl. ${playerState.level}`; // <-- ADD THIS LINE
         if (labelXp) labelXp.textContent = playerState.xp;
         
         if (labelMoney) labelMoney.textContent = formatMoney(playerState.money, true);
@@ -1396,7 +1398,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const premiumCategories = ["money-perks", "packs", "subscriptions", "passes"];
         const isPremium = premiumCategories.includes(item.category);
 
-        // 2. Currency Validation
+        // 2. Currency Validation (Simplifies back to standard item.cost checks)
         if (isPremium) {
             if (playerState.tokens < item.cost) {
                 SoundEngine.playError();
@@ -1432,13 +1434,14 @@ document.addEventListener('DOMContentLoaded', () => {
             playerState.buffs[item.buffType] = item.buffDuration;
         }
 
-        // 3. Apply Upgrades & Premium Statuses
+        // 3. Apply Upgrades & Premium Rewards
         if (item.category === "mining-speed") {
             playerState.activePickaxeMultiplier = item.multiplier;
         } else if (item.category === "bag-capacity") {
             playerState.maxBagCapacity = item.capacity;
         } else if (item.category === "energy") {
-            playerState.currentEnergy = Math.min(playerState.maxEnergy, playerState.currentEnergy + item.energy);
+            // OPTION 1: Direct accumulation allows energy to overflow beyond maxEnergy (no limits, no waste!)
+            playerState.currentEnergy += item.energy;
         } else if (item.category === "money-perks") {
             if (item.id === "magnet-badge") {
                 playerState.hasMagnet = true;
@@ -1469,9 +1472,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         SoundEngine.playCoin();
 
+        // Updated Notification to reflect the full energy restored
         showNotification(
             "🛒 Item Purchased!", 
-            `Successfully obtained ${item.name}! Applied active stat adjustments.`, 
+            `Successfully obtained ${item.name}! Paid 🪙 ${formatMoney(item.cost)} Coins to restore +${item.energy}⚡ energy.`, 
             "shop", 
             4000
         );
@@ -1549,81 +1553,95 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderCollections() {
         if (!colSectionsList) return;
         colSectionsList.innerHTML = '';
-        const categories = {"caves": "🧗 Caves Discovery", "pickaxes": "⛏️ Pickaxes", "ores": "🪨 Ores Tiers", "mutations": "⚛️ Mutations", "awards": "🏆 Awards"};
+        
+        try {
+            const categories = {"caves": "🧗 Caves Discovery", "pickaxes": "⛏️ Pickaxes", "ores": "🪨 Ores Tiers", "mutations": "⚛️ Mutations", "awards": "🏆 Awards"};
 
-        Object.keys(categories).forEach(catKey => {
-            const section = document.createElement('section');
-            section.className = 'col-section';
-            section.setAttribute('data-category', catKey);
-            section.innerHTML = `<h3 class="col-section-header">${categories[catKey]}</h3>`;
+            Object.keys(categories).forEach(catKey => {
+                const section = document.createElement('section');
+                section.className = 'col-section';
+                section.setAttribute('data-category', catKey);
+                section.innerHTML = `<h3 class="col-section-header">${categories[catKey]}</h3>`;
 
-            if (catKey !== "awards" && catKey !== "ores") {
-                const grid = document.createElement('div');
-                grid.className = 'col-grid';
-                collectionsData.filter(c => c.category === catKey).forEach(item => {
-                    grid.appendChild(createColCard(item));
-                });
-                section.appendChild(grid);
-            } else if (catKey === "ores") {
-                // Programmatically generate 320 cards based on our cave loot pools!
-                cavesData.forEach(cave => {
-                    const subHeader = document.createElement('h4');
-                    subHeader.className = 'col-sub-header';
-                    subHeader.textContent = `🪨 ${cave.name} Ores`;
-                    section.appendChild(subHeader);
-
+                if (catKey !== "awards" && catKey !== "ores") {
                     const grid = document.createElement('div');
                     grid.className = 'col-grid';
-
-                    // Safety Guard: Verify cave lootPool exists to prevent rendering crashes
-                    if (cave.lootPool) {
-                        cave.lootPool.forEach(ore => {
-                            const oreBaseId = ore.name.toLowerCase().replace(/\s+/g, '-');
-                            const tiers = [
-                                { id: `${oreBaseId}-normal`, suffix: "Normal", tierLabel: "Common", desc: `Standard unrefined ${ore.name} sample.` },
-                                { id: `${oreBaseId}-variant`, suffix: "Variant (Rare)", tierLabel: "Rare", desc: `High density polished ${ore.name} variant.` },
-                                { id: `${oreBaseId}-mutation`, suffix: "Mutated (Epic)", tierLabel: "Epic", desc: `${ore.name} sample displaying high energetic spore/toxic mutations.` },
-                                { id: `${oreBaseId}-hybrid`, suffix: "Hybrid (Legendary)", tierLabel: "Legendary", desc: `Legendary combination drop: variant mutated ${ore.name}!` }
-                            ];
-
-                            tiers.forEach(tier => {
-                                const isObtained = playerState.unlockedOres[tier.id] === true;
-                                const card = document.createElement('div');
-                                card.className = 'col-card';
-                                card.innerHTML = `
-                                    <div class="col-icon-circle">${isObtained ? ore.icon : '❓'}</div>
-                                    <h4 class="col-card-title">${isObtained ? ore.name + ' - ' + tier.suffix : 'Unknown'}</h4>
-                                    <p class="col-card-desc">${isObtained ? tier.desc : 'Mine in ' + cave.name + ' to unlock details.'}</p>
-                                    <button class="col-read-more" ${isObtained ? '' : 'disabled'}>Read more</button>
-                                `;
-
-                                // Pop up details modal when read more is clicked on unlocked items
-                                if (isObtained) {
-                                    card.querySelector('.col-read-more').addEventListener('click', (e) => {
-                                        e.stopPropagation();
-                                        SoundEngine.playClick();
-                                        const stats = [
-                                            { label: "Cavern", value: cave.name },
-                                            { label: "Rarity Tier", value: ore.rarity.toUpperCase() },
-                                            { label: "Card Grade", value: tier.tierLabel.toUpperCase() },
-                                            { label: "Base Weight", value: `${ore.baseWeight} kg` },
-                                            { label: "Base Value", value: `🪙 ${ore.baseValue}` }
-                                        ];
-                                        openDetailModal(`${ore.name} (${tier.suffix})`, ore.icon, tier.desc, stats);
-                                    });
-                                }
-                                grid.appendChild(card);
-                            });
-                        });
-                    }
+                    collectionsData.filter(c => c.category === catKey).forEach(item => {
+                        grid.appendChild(createColCard(item));
+                    });
                     section.appendChild(grid);
-                });
-            } else {
-                renderColSubSection(section, '🏆 Trophies (Quest Chests)', 'trophies');
-                renderColSubSection(section, '🏷️ Badges (Quest Tasks)', 'badges');
-            }
-            colSectionsList.appendChild(section);
-        });
+                } else if (catKey === "ores") {
+                    // Programmatically generate 320 cards based on our cave loot pools!
+                    cavesData.forEach(cave => {
+                        try {
+                            const subHeader = document.createElement('h4');
+                            subHeader.className = 'col-sub-header';
+                            subHeader.textContent = `🪨 ${cave.name} Ores`;
+                            section.appendChild(subHeader);
+
+                            const grid = document.createElement('div');
+                            grid.className = 'col-grid';
+
+                            if (cave.lootPool) {
+                                cave.lootPool.forEach(ore => {
+                                    try {
+                                        const oreBaseId = ore.name.toLowerCase().replace(/\s+/g, '-');
+                                        const tiers = [
+                                            { id: `${oreBaseId}-normal`, suffix: "Normal", tierLabel: "Common", desc: `Standard unrefined ${ore.name} sample.` },
+                                            { id: `${oreBaseId}-variant`, suffix: "Variant (Rare)", tierLabel: "Rare", desc: `High density polished ${ore.name} variant.` },
+                                            { id: `${oreBaseId}-mutation`, suffix: "Mutated (Epic)", tierLabel: "Epic", desc: `${ore.name} sample displaying high energetic spore/toxic mutations.` },
+                                            { id: `${oreBaseId}-hybrid`, suffix: "Hybrid (Legendary)", tierLabel: "Legendary", desc: `Legendary combination drop: variant mutated ${ore.name}!` }
+                                        ];
+
+                                        tiers.forEach(tier => {
+                                            const isObtained = playerState.unlockedOres && playerState.unlockedOres[tier.id] === true;
+                                            const card = document.createElement('div');
+                                            card.className = 'col-card';
+                                            card.innerHTML = `
+                                                <div class="col-icon-circle">${isObtained ? ore.icon : '❓'}</div>
+                                                <h4 class="col-card-title">${isObtained ? ore.name + ' - ' + tier.suffix : 'Unknown'}</h4>
+                                                <p class="col-card-desc">${isObtained ? tier.desc : 'Mine in ' + cave.name + ' to unlock details.'}</p>
+                                                <button class="col-read-more" ${isObtained ? '' : 'disabled'}>Read more</button>
+                                            `;
+
+                                            if (isObtained) {
+                                                const readBtn = card.querySelector('.col-read-more');
+                                                if (readBtn) {
+                                                    readBtn.addEventListener('click', (e) => {
+                                                        e.stopPropagation();
+                                                        SoundEngine.playClick();
+                                                        const stats = [
+                                                            { label: "Cavern", value: cave.name },
+                                                            { label: "Rarity Tier", value: ore.rarity.toUpperCase() },
+                                                            { label: "Card Grade", value: tier.tierLabel.toUpperCase() },
+                                                            { label: "Base Weight", value: `${ore.baseWeight} kg` },
+                                                            { label: "Base Value", value: `🪙 ${ore.baseValue}` }
+                                                        ];
+                                                        openDetailModal(`${ore.name} (${tier.suffix})`, ore.icon, tier.desc, stats);
+                                                    });
+                                                }
+                                            }
+                                            grid.appendChild(card);
+                                        });
+                                    } catch (oreError) {
+                                        console.error("Error rendering ore tier card:", oreError, ore);
+                                    }
+                                });
+                            }
+                            section.appendChild(grid);
+                        } catch (caveError) {
+                            console.error("Error rendering cave collections:", caveError, cave);
+                        }
+                    });
+                } else {
+                    renderColSubSection(section, '🏆 Trophies (Quest Chests)', 'trophies');
+                    renderColSubSection(section, '🏷️ Badges (Quest Tasks)', 'badges');
+                }
+                colSectionsList.appendChild(section);
+            });
+        } catch (globalError) {
+            console.error("Error rendering collections view:", globalError);
+        }
     }
 
     function unlockCollectionItem(itemId) {
@@ -1849,40 +1867,45 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // ==================== COIN TO TOKEN CONVERSION CONTROLLER ====================
     const convertOneBtn = document.getElementById('convertOneBtn');
-    const convertTenBtn = document.getElementById('convertTenBtn');
+    const convertAllBtn = document.getElementById('convertAllBtn'); // <-- Updated Selector
+
+    // Token Exchange Rate Constant (1 Token = 10,000 Gold Coins)
+    const TOKEN_EXCHANGE_RATE = 10000;
 
     if (convertOneBtn) {
         convertOneBtn.addEventListener('click', () => {
-            const cost = 500;
-            if (playerState.money >= cost) {
-                playerState.money -= cost;
+            if (playerState.money >= TOKEN_EXCHANGE_RATE) {
+                playerState.money -= TOKEN_EXCHANGE_RATE;
                 playerState.tokens += 1;
                 SoundEngine.playCoin();
-                showNotification("Exchange Successful!", "Converted 🪙 500 Coins into 🎟️ 1 Premium Token!", "shop", 3000);
+                showNotification("Exchange Successful!", `Converted 🪙 ${formatMoney(TOKEN_EXCHANGE_RATE)} Coins into 🎟️ 1 Premium Token!`, "shop", 3000);
                 saveGame();
                 updateStatsUI();
                 renderShop();
             } else {
                 SoundEngine.playError();
-                showNotification("Insufficient Coins!", "You need 🪙 500 Coins to convert 1 Token.", "sell", 3000);
+                showNotification("Insufficient Coins!", `You need 🪙 ${formatMoney(TOKEN_EXCHANGE_RATE)} Coins to convert 1 Token.`, "sell", 3000);
             }
         });
     }
 
-    if (convertTenBtn) {
-        convertTenBtn.addEventListener('click', () => {
-            const cost = 5000;
-            if (playerState.money >= cost) {
-                playerState.money -= cost;
-                playerState.tokens += 10;
+    if (convertAllBtn) {
+        convertAllBtn.addEventListener('click', () => {
+            // Calculate how many tokens the player can buy with their entire balance
+            const tokensToBuy = Math.floor(playerState.money / TOKEN_EXCHANGE_RATE);
+            
+            if (tokensToBuy > 0) {
+                const totalCost = tokensToBuy * TOKEN_EXCHANGE_RATE;
+                playerState.money -= totalCost;
+                playerState.tokens += tokensToBuy;
                 SoundEngine.playCoin();
-                showNotification("Exchange Successful!", "Converted 🪙 5,000 Coins into 🎟️ 10 Premium Tokens!", "shop", 3000);
+                showNotification("Exchange Successful!", `Converted 🪙 ${formatMoney(totalCost)} Coins into 🎟️ ${tokensToBuy} Premium Tokens!`, "shop", 3000);
                 saveGame();
                 updateStatsUI();
                 renderShop();
             } else {
                 SoundEngine.playError();
-                showNotification("Insufficient Coins!", "You need 🪙 5,000 Coins to convert 10 Tokens.", "sell", 3000);
+                showNotification("Insufficient Coins!", `You need at least 🪙 ${formatMoney(TOKEN_EXCHANGE_RATE)} Coins to exchange for a Token.`, "sell", 3000);
             }
         });
     }

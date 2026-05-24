@@ -861,7 +861,8 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
 }
 
 /* ==================== CARD LAYOUT PROTECTION ==================== */
-.card-buy-btn, .wider-card-btn {
+/* FIXED: Target ONLY buttons inside standard shop cards, preventing modal buttons from being truncated */
+.portrait-card .card-buy-btn, .wider-card .wider-card-btn {
     width: 90% !important;
     max-width: 140px; /* Prevents button from stretching the card borders */
     overflow: hidden;
@@ -872,4 +873,14 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
 /* Give cards some vertical spacing protection */
 .portrait-card, .wider-card {
     box-sizing: border-box;
+}
+
+/* ==================== SIDEBAR LEVEL STYLE ==================== */
+/* FIXED: Adjusted margin to prevent overlapping the player rank text */
+.sidebar-level {
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: var(--gold-accent);
+    margin: 10px 0 12px 0; /* Comfortable 10px space below the rank, and 12px space above the progress bar */
+    text-align: center;
 }
