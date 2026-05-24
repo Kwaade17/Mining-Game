@@ -170,7 +170,11 @@ const shopData = [
     // Boosts / Potions
     { id: "luck-brew", category: "boosts", name: "Luck Brew", desc: "Double gem roll chance.", cost: 120, icon: "⭐", collectionId: null, buffType: "luck", buffDuration: 60 },
     { id: "rage-elixir", category: "boosts", name: "Rage Elixir", desc: "Cuts mining costs by 50%.", cost: 200, icon: "🔥", collectionId: null, buffType: "rage", buffDuration: 60 },
-    { id: "xp-elixir", category: "boosts", name: "XP Elixir", desc: "Double XP gained for 45s.", cost: 150, icon: "🧪", collectionId: null, buffType: "xpBoost", buffDuration: 45 }
+    { id: "xp-elixir", category: "boosts", name: "XP Elixir", desc: "Double XP gained for 45s.", cost: 150, icon: "🧪", collectionId: null, buffType: "xpBoost", buffDuration: 45 },
+    
+    // Money Perks
+    { id: "merchant-badge", category: "money-perks", name: "Merchant Badge", desc: "+10% gold from selling ores.", cost: 350, icon: "📛", multiplier: 1.10, collectionId: null },
+    { id: "golden-ring", category: "money-perks", name: "Golden Ring", desc: "+25% gold from selling ores.", cost: 1200, icon: "💍", multiplier: 1.25, collectionId: null }
 ];
 
 // ==================== COLLECTIONS GALLERY DATABASE ====================

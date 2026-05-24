@@ -3,12 +3,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const GAME_VERSION = "1.7.0"; // Active version used to check shop updates
     
     const playerState = {
-        username: "",           // Custom player display name
+        username: "", // Custom player display name
         level: 1, xp: 0, xpNeeded: 100, money: 200, maxBagCapacity: 20,
         currentEnergy: 100, maxEnergy: 100, activePickaxeMultiplier: 1.0,
-        xpMultiplier: 1.0, inventory: [],
-        soundsMuted: false,     // Tracks global audio state
-        unlockedOres: {},       // Dictionary tracking 320 progressive dynamic ore cards
+        xpMultiplier: 1.0, 
+        sellMultiplier: 1.0, // <-- ADD THIS LINE
+        inventory: [],
+        soundsMuted: false, // Tracks global audio state
+        unlockedOres: {}, // Dictionary tracking 320 progressive dynamic ore cards
         buffs: {
             luck: 0,            // Dynamic luck timer in seconds
             rage: 0,            // Dynamic rage cost timer in seconds
@@ -181,14 +183,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Fix: Initialize buffs and unlockedOres if missing from older save formats
                 if (!playerState.buffs) {
-                    playerState.buffs = { luck: 0, rage: 0, xpBoost: 0 };
+                   playerState.buffs = { luck: 0, rage: 0, xpBoost: 0 };
                 }
                 if (!playerState.unlockedOres) {
-                    playerState.unlockedOres = {};
+                   playerState.unlockedOres = {};
                 }
-
-                if (dropdownSettings) {
-                    dropdownSettings.textContent = playerState.soundsMuted ? "🔈 Unmute Sounds" : "🔊 Mute Sounds";
+                if (playerState.sellMultiplier === undefined) {
+                   playerState.sellMultiplier = 1.0; // <-- ADD THIS LINE
                 }
             } catch (err) {
                 console.error("Save load failed: ", err);
@@ -580,75 +581,110 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderInventoryTray() {
         if (!inventoryScroll) return;
         inventoryScroll.innerHTML = '';
+    
+        labelInvCount.textContent = playerState.inventory.length;
+        labelInvMax.textContent = playerState.maxBagCapacity;
+    
         if (playerState.inventory.length === 0) {
-            inventoryScroll.innerHTML = '<span style="color: #666; font-size: 0.75rem; margin: auto;">Your bag is empty. Start mining!</span>';
+            inventoryScroll.innerHTML = `<div class="empty-inv" style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">Bag is Empty</div>`;
             return;
         }
-        playerState.inventory.forEach(ore => {
+    
+        playerState.inventory.forEach((item, index) => {
             const card = document.createElement('div');
             
-            card.className = `loot-item variant-${ore.variant.toLowerCase()}`;
-
-            const goldVal = ore.finalValue !== undefined ? ore.finalValue : 10;
+            // 1. Set the visual skin tier based on your stored variant string
+            const variantId = item.variant ? item.variant.toLowerCase() : 'normal';
+            card.className = `loot-item variant-${variantId}`;
+            
+            // 2. Calculate the sell price using your precalculated finalValue and sellMultiplier
+            const itemPrice = Math.floor((item.finalValue || item.baseValue) * playerState.sellMultiplier);
+    
+            // 3. Extract the weight value directly from your stored actualWeight
+            const displayWeight = item.actualWeight ? item.actualWeight.toFixed(2) : (item.baseWeight || 0.0).toFixed(2);
+    
+            // 4. Build the dynamic title prefix (omitting 'Normal' and cleaning up the " Mutation" suffix)
+            let prefix = '';
+            if (item.variant && item.variant !== 'Normal') {
+                prefix += `${item.variant} `;
+            }
+            if (item.mutation && item.mutation !== 'Normal') {
+                // Clean the name dynamically (e.g. "Spore Mutation" becomes "Spore")
+                const cleanMutation = item.mutation.replace(' Mutation', '');
+                prefix += `${cleanMutation} `;
+            }
+    
+            // Render the card displaying both the price and the weight
             card.innerHTML = `
-                ${ore.isNew ? '<span class="new-badge">New</span>' : ''}
-                <span class="loot-icon">${ore.icon}</span>
+                ${item.isNew ? '<span class="new-badge">New</span>' : ''}
+                <span class="loot-icon">${item.icon || '🪨'}</span>
                 <div class="loot-details">
-                    <span class="loot-name">${ore.variant !== 'Normal' ? ore.variant + ' ' : ''}${ore.name}</span>
-                    <span class="loot-meta">${ore.actualWeight}kg | 🪙${formatMoney(goldVal)}${ore.mutation !== 'Normal' ? ' (' + ore.mutation + ')' : ''}</span>
-                </div>`;
-
-            card.addEventListener('click', (e) => {
-                e.stopPropagation();
+                    <span class="loot-name">${prefix}${item.name}</span>
+                    <span class="loot-meta">🪙 ${formatMoney(itemPrice)} | ⚖️ ${displayWeight} kg</span>
+                </div>
+            `;
+    
+            // Click to view modal details
+            card.addEventListener('click', () => {
                 SoundEngine.playClick();
-
+                
+                // Clear new status badge if clicked
+                if (item.isNew) {
+                    item.isNew = false;
+                    saveGame();
+                    renderInventoryTray();
+                }
+    
+                // Safe lookup for description from global database if a mutation is present
+                let description = `A standard mined specimen of ${item.name}.`;
+                if (item.mutation && item.mutation !== 'Normal') {
+                    const foundMutation = mutationsData.find(m => m.name === item.mutation);
+                    if (foundMutation) {
+                        description = foundMutation.desc;
+                    }
+                }
+    
                 const stats = [
-                    { label: "Variant Grade", value: ore.variant.toUpperCase() },
-                    { label: "Mutation Factor", value: ore.mutation.toUpperCase() },
-                    { label: "Rarity Tier", value: ore.rarity.toUpperCase() },
-                    { label: "Weight", value: `${ore.actualWeight} kg` },
-                    { label: "Sub-Total Value", value: `🪙 ${formatMoney(ore.subTotalValue)}` },
-                    { label: "Final Sell Price", value: `🪙 ${formatMoney(ore.finalValue)}` }
+                    { label: "Base Value", value: `🪙 ${formatMoney(item.baseValue)}` },
+                    { label: "Weight", value: `⚖️ ${displayWeight} kg` },
+                    { label: "Variant", value: `${item.variant || 'Normal'} (x${item.variantMultiplier || 1})` },
+                    { label: "Mutation", value: `${item.mutation || 'Normal'} (x${item.mutationMultiplier || 1})` },
+                    { label: "Sell Multiplier", value: `x${playerState.sellMultiplier.toFixed(2)}` },
+                    { label: "Total Value", value: `🪙 ${formatMoney(itemPrice)}` }
                 ];
-
-                openDetailModal(
-                    `${ore.variant !== 'Normal' ? ore.variant + ' ' : ''}${ore.name}`,
-                    ore.icon,
-                    `A fine specimen of mined cavern resource. Standard multiplier modifiers applied.`,
-                    stats
-                );
+    
+                // This now uses the prefix with the cleaned mutation name
+                openDetailModal(`${prefix}${item.name}`, item.icon || '🪨', description, stats);
             });
-
+    
             inventoryScroll.appendChild(card);
         });
     }
 
     if (sellAllBtn) {
-        sellAllBtn.addEventListener('click', (e) => {
-            const count = playerState.inventory.length;
-            if (count === 0) return;
-            let totalGold = 0;
-            playerState.inventory.forEach(o => {
-                totalGold += o.finalValue !== undefined ? o.finalValue : 10;
+        sellAllBtn.addEventListener('click', () => {
+            if (playerState.inventory.length === 0) {
+                SoundEngine.playError();
+                showNotification("Inventory Empty", "You have no ores to sell!", "error");
+                return;
+            }
+        
+            let totalEarned = 0;
+            playerState.inventory.forEach(item => {
+                // Calculate item price directly using your stored finalValue
+                const itemPrice = Math.floor((item.finalValue || item.baseValue) * playerState.sellMultiplier);
+                totalEarned += itemPrice;
             });
-            playerState.money += totalGold;
+        
+            playerState.money += totalEarned;
             playerState.inventory = [];
-            
-            spawnFloatingText(`+🪙 ${formatMoney(totalGold)}`, e.clientX, e.clientY, 'float-gold');
-            
-            showNotification(
-                "🪙 Ores Sold!", 
-                `Traded ${count} ores at market for 🪙 ${formatMoney(totalGold)} Coins!`, 
-                "sell", 
-                4000
-            );
-
-            // Play your custom selling coin chime
-            SoundEngine.playCoin(); 
-
+        
+            SoundEngine.playCoin();
+            showNotification("Ores Sold!", `Earned 🪙 ${formatMoney(totalEarned)} Coins!`, "sell", 3000);
+        
+            saveGame();
             updateStatsUI();
             renderInventoryTray();
-            saveGame();
         });
     }
 
@@ -1077,6 +1113,9 @@ document.addEventListener('DOMContentLoaded', () => {
             playerState.activePickaxeMultiplier = item.multiplier;
         } else if (item.category === "bag-capacity") {
             playerState.maxBagCapacity = item.capacity;
+        } else if (item.category === "money-perks") {
+            // Keeps the highest multiplier owned
+            playerState.sellMultiplier = Math.max(playerState.sellMultiplier, item.multiplier);
         } else if (item.category === "energy") {
             playerState.currentEnergy = Math.min(playerState.maxEnergy, playerState.currentEnergy + item.energy);
         }
