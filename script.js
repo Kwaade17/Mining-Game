@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ==================== SESSION STATE ====================
-    const GAME_VERSION = "1.8.9"; // Active version used to check shop updates
+    const GAME_VERSION = "1.9.0"; // Active version used to check shop updates
     
     const playerState = {
         username: "", // Custom player display name
@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
         hasStarterBundle: false, // <-- ADD THIS
         hasMinerPack: false,     // <-- ADD THIS
         tokenSubTimer: 0,   // <-- ADD THIS
+        lastClaimTime: 0,    // <-- ADD THIS (Daily Claim timestamp)
         currentEnergy: 100, maxEnergy: 100, activePickaxeMultiplier: 1.0,
         xpMultiplier: 1.0, 
         sellMultiplier: 1.0, // <-- ADD THIS LINE
@@ -282,6 +283,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (playerState.hasMinerPack === undefined) {
                    playerState.hasMinerPack = false;
                 }
+                if (playerState.lastClaimTime === undefined) {
+                   playerState.lastClaimTime = 0; // <-- ADD THIS
+                }
             } catch (err) {
                 console.error("Save load failed: ", err);
             }
@@ -410,8 +414,10 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.textContent = customAction.label;
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                customAction.callback();
                 infoModal.classList.remove('active');
+                setTimeout(() => {
+                    customAction.callback();
+                }, 100); 
             });
             modalStats.style.display = 'flex';
             modalStats.appendChild(btn);
@@ -419,7 +425,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         infoModal.classList.add('active');
     }
-
+    
     if (modalCloseBtn) {
         modalCloseBtn.addEventListener('click', () => {
             SoundEngine.playClick();
@@ -696,6 +702,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const displayName = playerState.username ? playerState.username : "Miner Joe";
         if (navUsername) navUsername.textContent = displayName;
         if (sideUsername) sideUsername.textContent = displayName;
+        
+        // Dynamic Claim Button Cooldown Text Update
+        if (dailyClaimBtn) {
+           const now = Date.now();
+           const cooldown = 24 * 60 * 60 * 1000;
+           const timePassed = now - playerState.lastClaimTime;
+        
+           if (timePassed < cooldown) {
+               const timeLeft = cooldown - timePassed;
+               const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+               const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+               dailyClaimBtn.innerHTML = `<i class="fa-solid fa-hourglass-half"></i> ${hours}h ${minutes}m left`;
+               dailyClaimBtn.style.opacity = "0.75";
+               dailyClaimBtn.style.borderColor = "#444";
+               dailyClaimBtn.style.color = "var(--text-muted)";
+           } else {
+               dailyClaimBtn.innerHTML = `<i class="fa-solid fa-gift"></i> Claim Gift`;
+               dailyClaimBtn.style.opacity = "1";
+               dailyClaimBtn.style.borderColor = "var(--gold-accent)";
+               dailyClaimBtn.style.color = "var(--gold-accent)";
+           }
+        }
 
         checkAchievements(); 
     }
@@ -707,15 +735,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (playerState.xp >= playerState.xpNeeded) {
             playerState.xp -= playerState.xpNeeded;
             playerState.level += 1;
-            playerState.xpNeeded = Math.floor(playerState.xpNeeded * 1.5);
-            playerState.maxEnergy = Math.floor(playerState.maxEnergy * 1.1);
+            
+            // NERF: Increased progression difficulty from 1.5x to 1.6x curve
+            playerState.xpNeeded = Math.floor(playerState.xpNeeded * 1.6);
+            
+            // BUFF: Increased energy growth from 1.1x to 1.15x per level
+            playerState.maxEnergy = Math.floor(playerState.maxEnergy * 1.15);
             playerState.currentEnergy = playerState.maxEnergy;
+
+            // BUFF: Award +1 Premium Token on every level up!
+            playerState.tokens += 1;
 
             SoundEngine.playLevelUp();
 
             showNotification(
                 "🎉 Level Up!", 
-                `Awesome! You reached Level ${playerState.level}! Max Energy increased to ${playerState.maxEnergy}%!`, 
+                `Awesome! You reached Level ${playerState.level}! Gained +1 Premium Token and Max Energy increased to ${playerState.maxEnergy}%!`, 
                 "level-up", 
                 5000
             );
@@ -950,6 +985,17 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         playerState.inventory.push(newOre);
+
+        // ==================== SECRET ACHIEVEMENTS TRIGGERS ====================
+        // 1. Ethereal Gaze Secret Unlock (Mine an Ethereal mutation)
+        if (rolledMut.id === "ethereal") {
+            unlockCollectionItem("secret-ethereal");
+        }
+
+        // 2. Void Emperor Secret Unlock (Mine 'The Void Heart' from the Void Rift)
+        if (selectedOre.name === "The Void Heart") {
+            unlockCollectionItem("secret-void-emperor");
+        }
 
         // ==================== NEW DYNAMIC MULTI-TIERED UNLOCKS ====================
         const isNormal = (rolledVar.id === "normal") && (rolledMut.id === "none");
@@ -1468,14 +1514,35 @@ document.addEventListener('DOMContentLoaded', () => {
             if (item.id === "double-xp-pass") {
                 playerState.xpMultiplier = 2.0;
             }
+        } else if (item.category === "energy") {
+            // Direct accumulation allows energy to overflow beyond maxEnergy
+            playerState.currentEnergy += item.energy;
+            
+            // 3. Infinite Overcharge Secret Unlock (Current energy exceeds 500% max energy)
+            if (playerState.currentEnergy >= playerState.maxEnergy * 5) {
+               unlockCollectionItem("secret-overcharge");
+            }
         }
 
         SoundEngine.playCoin();
 
-        // Updated Notification to reflect the full energy restored
+        // Dynamically tailor the notification text based on the purchased item's category
+        let notificationText = `Successfully obtained ${item.name}! Applied active stat adjustments.`;
+        const currencyIcon = isPremium ? "🎟️" : "🪙";
+        
+        if (item.category === "energy") {
+            notificationText = `Successfully obtained ${item.name}! Paid 🪙 ${formatMoney(item.cost)} Coins to restore +${item.energy}⚡ energy.`;
+        } else if (item.category === "packs") {
+            notificationText = `Successfully opened ${item.name}! Resource bundles have been successfully claimed.`;
+        } else if (item.category === "subscriptions" || item.category === "passes") {
+            notificationText = `Successfully activated ${item.name}! Passive accounts adjustments are now active.`;
+        } else {
+            notificationText = `Successfully obtained ${item.name}! Paid ${currencyIcon} ${formatMoney(item.cost)} for the upgrade.`;
+        }
+
         showNotification(
             "🛒 Item Purchased!", 
-            `Successfully obtained ${item.name}! Paid 🪙 ${formatMoney(item.cost)} Coins to restore +${item.energy}⚡ energy.`, 
+            notificationText, 
             "shop", 
             4000
         );
@@ -1528,12 +1595,44 @@ document.addEventListener('DOMContentLoaded', () => {
                     stats.push({ label: "Sub-Type", value: item.subCategory.toUpperCase() });
                 }
                 
-                // NEW: Dynamic check. If the data object has a multiplier, show it!
-                if (item.multiplier) {
+                // Achievement tier
+                if (item.tier) {
+                    stats.push({ label: "Achievement Tier", value: item.tier });
+                }
+
+                // DYNAMIC LOOKUP (FIXED): Map card index to matching cavesData index
+                if (item.category === "caves") {
+                    const caveCards = collectionsData.filter(c => c.category === "caves");
+                    const cardIndex = caveCards.findIndex(c => c.id === item.id);
+                    if (cardIndex !== -1) {
+                        const foundCave = cavesData[cardIndex];
+                        if (foundCave) {
+                            stats.push({ label: "Required Level", value: `Lvl ${foundCave.requiredLevel}` });
+                            stats.push({ label: "Mining Energy Cost", value: `${foundCave.energyCost}⚡` });
+                            stats.push({ label: "XP Awarded", value: `+${foundCave.xpReward} XP` });
+                            if (foundCave.lootPool) {
+                                stats.push({ label: "Discoverable Ores", value: `${foundCave.lootPool.length} Species` });
+                            }
+                        }
+                    }
+                }
+
+                // DYNAMIC LOOKUP (FIXED): Strip the "-col" suffix to match mutationsData ID
+                if (item.category === "mutations") {
+                    const cleanMutationId = item.id.replace("-col", "");
+                    const foundMutation = mutationsData.find(m => m.id === cleanMutationId);
+                    if (foundMutation) {
+                        stats.push({ label: "Rarity Multiplier", value: `x${foundMutation.multiplier.toFixed(1)}` });
+                        stats.push({ label: "Roll Spawn Rate", value: `${(foundMutation.pr * 100).toFixed(3)}%` });
+                    }
+                }
+                
+                // If the data object has a multiplier (for Badges), show it!
+                if (item.multiplier && item.category !== "mutations" && item.category !== "caves") {
                     stats.push({ label: "Final Multiplier", value: item.multiplier });
                 }
                 
-                // NEW: Dynamic check. If the data object has a speed bonus, show it!
+                // If the data object has a speed bonus, show it!
                 if (item.speedBonus) {
                     stats.push({ label: "Mining Efficiency", value: item.speedBonus });
                 }
@@ -1549,7 +1648,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return card;
     }
-
+    
     function renderCollections() {
         if (!colSectionsList) return;
         colSectionsList.innerHTML = '';
@@ -1824,11 +1923,12 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             e.stopPropagation();
             
-            // Toggle global sound system
             playerState.soundsMuted = !playerState.soundsMuted;
             
-            // Dynamic labels update on click
-            dropdownSettings.textContent = playerState.soundsMuted ? "🔈 Unmute Sounds" : "🔊 Mute Sounds";
+            // Correctly toggling between the Solid Font Awesome volume icons
+            dropdownSettings.innerHTML = playerState.soundsMuted 
+                ? `<i class="fa-solid fa-volume-xmark fa-fw"></i> Unmute Sounds` 
+                : `<i class="fa-solid fa-volume-high fa-fw"></i> Mute Sounds`;
 
             showNotification(
                 playerState.soundsMuted ? "🔈 Caverns Silenced" : "🔊 Caverns Active", 
@@ -1910,13 +2010,80 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // ==================== SEQUENTIAL TUTORIAL ENGINE (NEW USER) ====================
+    function startTutorial() {
+        // Step 1: Welcome & Mining
+        const step1Action = {
+            label: "Next Step: Inventory",
+            callback: () => {
+                // Step 2: Selling & Bag Management
+                const step2Action = {
+                    label: "Next Step: Upgrades",
+                    callback: () => {
+                        // Step 3: Shop & Currencies
+                        const step3Action = {
+                            label: "Next Step: Collections",
+                            callback: () => {
+                                // Step 4: Progress & Gallery
+                                const step4Action = {
+                                    label: "Let's Dig! ⛏️",
+                                    callback: () => {
+                                        showNotification("🎉 Tutorial Complete!", "Your underground adventure begins now. Collect them all!", "level-up", 4000);
+                                        SoundEngine.playLevelUp();
+                                    }
+                                };
+                                openDetailModal(
+                                    "Cavern Gallery",
+                                    "🏆",
+                                    "The Collections view logs the 320 programmatically unlocked ore cards, trophies, and milestones you obtain. Complete goals to unlock high-tier badges!",
+                                    [],
+                                    step4Action
+                                );
+                            }
+                        };
+                        openDetailModal(
+                            "The Town Shop",
+                            "🛒",
+                            "Spend your Coins here on pickaxes, capacity bags, energy foods, and active buff potions. Use the Token Exchange at the top to buy VIP Subscriptions and Badges!",
+                            [],
+                            step3Action
+                        );
+                    }
+                };
+                openDetailModal(
+                    "Mined Resources",
+                    "🎒",
+                    "Mined items appear in your bottom Inventory Tray. Click any item card to inspect its unique weight and mutation multipliers. Click the green 'Sell All' button to earn Gold Coins!",
+                    [],
+                    step2Action
+                );
+            }
+        };
+
+        openDetailModal(
+            "Underworld Operations",
+            "⛏️",
+            "Welcome to the Caverns! Click on any unlocked Cavern Box and click 'Mine' to spend Energy and gain XP. Each strike has a chance to yield mutated gems!",
+            [],
+            step1Action
+        );
+    }
+
     // ==================== STARTING USERNAME INPUT MODAL CONTROLLER ====================
     if (saveNameBtn && usernameInput && nameModal) {
         saveNameBtn.addEventListener('click', () => {
             SoundEngine.playCoin();
-            const inputVal = usernameInput.value.trim(); playerState.username = inputVal ? inputVal : "Miner Joe";
-            saveGame(); updateStatsUI(); nameModal.classList.remove('active');
+            const inputVal = usernameInput.value.trim(); 
+            playerState.username = inputVal ? inputVal : "Miner Joe";
+            saveGame(); 
+            updateStatsUI(); 
+            nameModal.classList.remove('active');
+            
+            // Welcome notification
             showNotification(`👋 Welcome ${playerState.username}!`, "Let's enter the caverns and mine some valuable resources!", "level-up", 5000);
+            
+            // Trigger the step-by-step tutorial tour immediately after name submission
+            setTimeout(startTutorial, 800);
         });
     }
 
@@ -1935,7 +2102,61 @@ document.addEventListener('DOMContentLoaded', () => {
             sidebar.classList.toggle('open');
         });
     }
+    
+    // ==================== DAILY CLAIM CONTROLLER ====================
+    const dailyClaimBtn = document.getElementById('dailyClaimBtn');
 
+    if (dailyClaimBtn) {
+        dailyClaimBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            SoundEngine.playClick();
+
+            const now = Date.now();
+            const cooldown = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+            const timePassed = now - playerState.lastClaimTime;
+
+            if (timePassed < cooldown) {
+                // Calculation of remaining cooldown hours and minutes
+                const timeLeft = cooldown - timePassed;
+                const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                
+                SoundEngine.playError();
+                showNotification(
+                    "⏳ Claim Cooldown", 
+                    `Your Daily Gift is charging. Come back in <strong>${hours}h ${minutes}m</strong>!`, 
+                    "shop", 
+                    3500
+                );
+            } else {
+                // Random prizes scaling with player level
+                const goldReward = 500 + Math.floor(Math.random() * 1001) + (playerState.level * 50);
+                const tokenReward = 1 + Math.floor(Math.random() * 3);
+
+                playerState.money += goldReward;
+                playerState.tokens += tokenReward;
+                playerState.lastClaimTime = now;
+
+                SoundEngine.playLevelUp();
+                
+                // Detailed reward modal popup
+                openDetailModal(
+                    "Daily Cavern Chest",
+                    "🎁",
+                    "Congratulations! You popped open your loyalty daily container. Inside you discovered rich resources to fuel your progression!",
+                    [
+                        { label: "Coins Awarded", value: `🪙 +${formatMoney(goldReward)}` },
+                        { label: "Tokens Awarded", value: `🎟️ +${tokenReward}` }
+                    ]
+                );
+
+                saveGame();
+                updateStatsUI();
+                renderShop();
+            }
+        });
+    }
+    
     const gameArea = document.querySelector('.game-area');
     if (gameArea && sidebar) {
         gameArea.addEventListener('click', () => {

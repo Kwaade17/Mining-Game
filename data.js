@@ -108,7 +108,7 @@ const cavesData = [
       { name: "Underworld Core", rarity: "mythic", baseValue: 7200, baseWeight: 26.0, icon: "🔱" }
     ]
   },
-  { id: 10, name: "The Void Fracture", image: "Img/The Void Fracture.png", requiredLevel: 55, energyCost: 75, xpReward: 60, collectionId: "fracture-col", caveCollectionId: "cave-9-col",
+  { id: 10, name: "The Void Fracture", image: "Img/The Void Fracture.png", requiredLevel: 55, energyCost: 75, xpReward: 60, collectionId: "fracture-col", caveCollectionId: "cave-10-col",
     lootPool: [
       { name: "Void Shard", rarity: "common", baseValue: 230, baseWeight: 10.5, icon: "💎" },
       { name: "Fractured Slate", rarity: "common", baseValue: 310, baseWeight: 11.8, icon: "🧱" },
@@ -120,7 +120,7 @@ const cavesData = [
       { name: "Eye of the Void", rarity: "mythic", baseValue: 10500, baseWeight: 30.0, icon: "👁️" }
     ]
   },
-  { id: 11, name: "The Void Rift", image: "Img/The Void Rift.png", requiredLevel: 66, energyCost: 90, xpReward: 75, collectionId: "void-col", caveCollectionId: "cave-10-col",
+  { id: 11, name: "The Void Rift", image: "Img/The Void Rift.png", requiredLevel: 66, energyCost: 90, xpReward: 75, collectionId: "void-col", caveCollectionId: "cave-11-col",
     lootPool: [
       { name: "Void Essence", rarity: "common", baseValue: 300, baseWeight: 12.0, icon: "🌑" },
       { name: "Singularity Dust", rarity: "common", baseValue: 400, baseWeight: 13.5, icon: "🌪️" },
@@ -132,7 +132,7 @@ const cavesData = [
       { name: "The Void Heart", rarity: "mythic", baseValue: 14000, baseWeight: 35.0, icon: "🧿" }
     ]
   },
-  { id: 12, name: "Supernova Crucible", image: "Img/Supernova Crucible.png", requiredLevel: 80, energyCost: 110, xpReward: 90, collectionId: "supernova-col", caveCollectionId: "cave-11-col",
+  { id: 12, name: "Supernova Crucible", image: "Img/Supernova Crucible.png", requiredLevel: 80, energyCost: 110, xpReward: 90, collectionId: "supernova-col", caveCollectionId: "cave-12-col",
     lootPool: [
       { name: "Stellar Dust", rarity: "common", baseValue: 400, baseWeight: 14.0, icon: "✨" },
       { name: "Stellarite Shard", rarity: "common", baseValue: 520, baseWeight: 16.0, icon: "⭐" },
@@ -245,6 +245,8 @@ const collectionsData = [
     { id: "cave-8-col", category: "caves", name: "The Ember Discovery", desc: "Survived the superheated maw housing raw diamond shards.", icon: "🔥", obtained: false },
     { id: "cave-9-col", category: "caves", name: "The Stratum Discovery", desc: "Reached the deep tectonic shattering layer containing obsidian cores.", icon: "🖤", obtained: false },
     { id: "cave-10-col", category: "caves", name: "The Void Discovery", desc: "Breached the event horizon rift where the void core pulses.", icon: "🧿", obtained: false },
+    { id: "cave-11-col", category: "caves", name: "The Void Rift Discovery", desc: "Reached the deep rift filled with cosmic stars.", icon: "🕳️", obtained: false }, // <-- ADD THIS LINE
+    { id: "cave-12-col", category: "caves", name: "Supernova Crucible Discovery", desc: "Reached the heart of the star filled with blazing heat.", icon: "💥", obtained: false }, // <-- ADD THIS LINE
 
     // Mutations (Merged with Variant Unlocks)
     { id: "rust-col", category: "mutations", name: "Rust Variant", desc: "An old oxidization coating on standard cave ores.", icon: "🟫", obtained: false, multiplier: 5.0 },
@@ -263,8 +265,25 @@ const collectionsData = [
     { id: "singularity-col", category: "mutations", name: "Singularity Mutation", desc: "An ore warped by the infinite density of a black hole.", icon: "🧿", obtained: false, multiplier: 25.0 },
     { id: "ethereal-col", category: "mutations", name: "Ethereal Mutation", desc: "Pulsing with transparent, ghostly celestial energy.", icon: "👻", obtained: false, multiplier: 50.0 },
 
-    // Awards - Trophies
-    { id: "cavern-cup", category: "awards", subCategory: "trophies", name: "Cavern Cup", desc: "Reach Character Level 10.", icon: "🥇", obtained: false, conditionType: "level", conditionValue: 10 },
-    { id: "hard-worker", category: "awards", subCategory: "badges", name: "Hard Worker", desc: "Mine 100 total ores in caves.", icon: "🎖️", obtained: false, conditionType: "mines", conditionValue: 100 },
-    { id: "wealthy-miner", category: "awards", subCategory: "badges", name: "Wealthy Miner", desc: "Accumulate 1,000 Gold Coins.", icon: "💰", obtained: false, conditionType: "money", conditionValue: 1000 }
+    // Awards - Trophies & Badges (Updated to v1.9.0)
+    { id: "cavern-cup", category: "awards", subCategory: "trophies", name: "Cavern Cup", desc: "Reach Character Level 10.", icon: "🥇", obtained: false, conditionType: "level", conditionValue: 10, tier: "Bronze" },
+    { id: "character-lvl-25", category: "awards", subCategory: "trophies", name: "Master Digger", desc: "Reach Character Level 25.", icon: "👑", obtained: false, conditionType: "level", conditionValue: 25, tier: "Silver" },
+    { id: "character-lvl-50", category: "awards", subCategory: "trophies", name: "Cavern Sovereign", desc: "Reach Character Level 50.", icon: "💎", obtained: false, conditionType: "level", conditionValue: 50, tier: "Gold" },
+    { id: "character-lvl-80", category: "awards", subCategory: "trophies", name: "Grandmaster Miner", desc: "Reach Character Level 80.", icon: "🏆", obtained: false, conditionType: "level", conditionValue: 80, tier: "Platinum" },
+  
+    { id: "hard-worker", category: "awards", subCategory: "badges", name: "Hard Worker", desc: "Mine 100 total ores in caves.", icon: "🎖️", obtained: false, conditionType: "mines", conditionValue: 100, tier: "Bronze" },
+    { id: "mines-500", category: "awards", subCategory: "badges", name: "Drill Specialist", desc: "Mine 500 total ores in caves.", icon: "⚙️", obtained: false, conditionType: "mines", conditionValue: 500, tier: "Silver" },
+    { id: "mines-1500", category: "awards", subCategory: "badges", name: "Ecosystem Demolisher", desc: "Mine 1,500 total ores in caves.", icon: "🌋", obtained: false, conditionType: "mines", conditionValue: 1500, tier: "Gold" },
+  
+    { id: "wealthy-miner", category: "awards", subCategory: "badges", name: "Wealthy Miner", desc: "Accumulate 1,000 Gold Coins.", icon: "💰", obtained: false, conditionType: "money", conditionValue: 1000, tier: "Bronze" },
+    { id: "wealthy-25k", category: "awards", subCategory: "badges", name: "Rich Prospector", desc: "Accumulate 25,000 Gold Coins.", icon: "💳", obtained: false, conditionType: "money", conditionValue: 25000, tier: "Silver" },
+    { id: "wealthy-100k", category: "awards", subCategory: "badges", name: "Coin Hoarder", desc: "Accumulate 100,000 Gold Coins.", icon: "🏛️", obtained: false, conditionType: "money", conditionValue: 100000, tier: "Gold" },
+    { id: "wealthy-1m", category: "awards", subCategory: "badges", name: "Underworld Tycoon", desc: "Accumulate 1,000,000 Gold Coins.", icon: "💎", obtained: false, conditionType: "money", conditionValue: 1000000, tier: "Platinum" },
+  
+    // SECRET HARD ACHIEVEMENTS (NEW)
+    { id: "secret-ethereal", category: "awards", subCategory: "trophies", name: "Ethereal Gaze", desc: "Hidden: Successfully roll and mine an Ethereal Mutated ore (x50 value multiplier).", icon: "👁️‍qu", obtained: false, tier: "Secret" },
+    { id: "secret-overcharge", category: "awards", subCategory: "trophies", name: "Infinite Overcharge", desc: "Hidden: Stack your current energy to over 500% beyond maximum capacity.", icon: "🌌", obtained: false, tier: "Secret" },
+    { id: "secret-void-emperor", category: "awards", subCategory: "trophies", name: "Void Emperor", desc: "Hidden: Extract the ultra-rare 'The Void Heart' mythic gem from the Void Rift.", icon: "🖤", obtained: false, tier: "Secret" },
+    { id: "secret-broken-limits", category: "awards", subCategory: "trophies", name: "Broken Limits", desc: "Hidden: Save up and purchase the legendary 'Void Breaker' pickaxe.", icon: "💥", obtained: false, tier: "Secret" },
+    { id: "secret-sovereign", category: "awards", subCategory: "trophies", name: "VIP Sovereign", desc: "Hidden: Purchase the VIP Token Membership subscription.", icon: "🎖️", obtained: false, tier: "Secret" }
 ];

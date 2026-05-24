@@ -9,12 +9,16 @@
     <script src="script.js" defer></script>
     <!-- Marked.js Markdown Parser CDN -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Font Awesome Vector Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <!-- Top Navigation Bar -->
     <header class="navbar">
-        <button class="menu-toggle" id="menuToggle" aria-label="Toggle Menu">☰</button>
-        <div class="logo">⛏️ Mining Game</div>
+        <button class="menu-toggle" id="menuToggle" aria-label="Toggle Menu">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="logo"><i class="fa-solid fa-pickaxe"></i> Mining Game</div>
 
         <!-- Centered XP Progress Bar Container inside Nav -->
         <div class="nav-xp-container" id="navXpContainer">
@@ -57,9 +61,9 @@
             <span class="username" id="navUsername">Miner Joe</span>
             <div class="profile-circle">👤</div>
             <div class="profile-dropdown">
-                <a href="#" class="dropdown-item" id="dropdownAccount">👤 Account</a>
-                <a href="#" class="dropdown-item" id="dropdownSettings">🔊 Mute Sounds</a>
-                <a href="#" class="dropdown-item logout-item" id="dropdownSignOut">🚪 Sign Out</a>
+                <a href="#" class="dropdown-item" id="dropdownAccount"><i class="fa-solid fa-user fa-fw"></i> Account</a>
+                <a href="#" class="dropdown-item" id="dropdownSettings"><i class="fa-solid fa-volume-high fa-fw"></i> Mute Sounds</a>
+                <a href="#" class="dropdown-item logout-item" id="dropdownSignOut"><i class="fa-solid fa-right-from-bracket fa-fw"></i> Sign Out</a>
             </div>
         </div>
     </header>
@@ -87,7 +91,7 @@
                 <div class="sidebar-avatar-large">👤</div>
                 <h3 class="sidebar-username" id="sideUsername">Miner Joe</h3>
                 <p class="sidebar-rank">Novice Digger</p>
-                <p class="sidebar-level" id="sidebarLevel">Lvl. 1</p> <!-- <-- INSERT THIS LINE -->
+                <p class="sidebar-level" id="sidebarLevel">Lvl. 1</p>
                 
                 <!-- Sidebar XP Progress Bar -->
                 <div class="sidebar-xp-container">
@@ -96,13 +100,18 @@
                     </div>
                     <span class="sidebar-xp-text" id="sidebarXpText">XP: 0 / 100</span>
                 </div>
+
+                <!-- DAILY CLAIM BUTTON (NEW FEATURE) -->
+                <button id="dailyClaimBtn" style="background-color: var(--cave-btn); color: var(--gold-accent); border: 1px solid var(--gold-accent); margin-top: 12px; width: 100%; text-align: center; font-size: 0.75rem; padding: 6px 10px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                    <i class="fa-solid fa-gift"></i> Daily Claim
+                </button>
             </div>
             <nav class="sidebar-nav">
                 <!-- Core Gameplay Links -->
                 <ul>
-                    <li><a href="#" class="nav-link active" data-view="view-game">🎮 Main Game</a></li>
-                    <li><a href="#" class="nav-link" data-view="view-shop">🛒 Shop</a></li>
-                    <li><a href="#" class="nav-link" data-view="view-collections">🏆 Collections</a></li>
+                    <li><a href="#" class="nav-link active" data-view="view-game"><i class="fa-solid fa-gamepad fa-fw"></i> Main Game</a></li>
+                    <li><a href="#" class="nav-link" data-view="view-shop"><i class="fa-solid fa-cart-shopping fa-fw"></i> Shop</a></li>
+                    <li><a href="#" class="nav-link" data-view="view-collections"><i class="fa-solid fa-trophy fa-fw"></i> Collections</a></li>
                 </ul>
                 
                 <!-- Sidebar Divider for separated button -->
@@ -110,7 +119,7 @@
                 
                 <!-- Separated Document Link -->
                 <ul>
-                    <li><a href="#" class="nav-link" data-view="view-readme">📖 Game Manual</a></li>
+                    <li><a href="#" class="nav-link" data-view="view-readme"><i class="fa-solid fa-book fa-fw"></i> Game Manual</a></li>
                 </ul>
             </nav>
         </aside>
