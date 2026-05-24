@@ -859,3 +859,17 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
         display: none !important;
     }
 }
+
+/* ==================== CARD LAYOUT PROTECTION ==================== */
+.card-buy-btn, .wider-card-btn {
+    width: 90% !important;
+    max-width: 140px; /* Prevents button from stretching the card borders */
+    overflow: hidden;
+    text-overflow: ellipsis; /* Gracefully truncates text if it ever overflows */
+    white-space: nowrap;    /* Prevents button text wrapping */
+}
+
+/* Give cards some vertical spacing protection */
+.portrait-card, .wider-card {
+    box-sizing: border-box;
+}

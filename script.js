@@ -1160,16 +1160,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     const isOwned = isShopItemOwned(item);
                     const canBuy = canBuyShopItem(item);
                     
+                    // Locate inside renderShopSubSection:
                     let buttonHtml = '';
                     if (isOwned) {
                         buttonHtml = `<button class="wider-card-btn" style="background-color: #1f2937; color: #4b5563; border-color: #374151; pointer-events: none; cursor: default;">✓ OWNED</button>`;
                     } else if (!canBuy) {
                         buttonHtml = `<button class="wider-card-btn" style="background-color: #111827; color: #4b5563; border-color: #1f2937; pointer-events: none; cursor: default;">🔒 LOCKED</button>`;
                     } else {
-                        buttonHtml = `<button class="wider-card-btn" data-id="${item.id}">${currencyIcon} ${formatMoney(item.cost)}</button>`;
+                        // ADDED: pass true to formatMoney for compact display on buttons (e.g. 🎟️ 10)
+                        buttonHtml = `<button class="wider-card-btn" data-id="${item.id}">${currencyIcon} ${formatMoney(item.cost, true)}</button>`;
                     }
 
-                    // FIXED: Ensuring innerHTML is written with capital HTML to render properly
+                    // FIXED: Ensuring innerHTML is written with capital HTML torender properly
                     card.innerHTML = `
                         ${showNew ? '<span class="new-badge">New</span>' : ''}
                         <div class="rounded-image-icon">${item.icon || '📦'}</div>
@@ -1281,13 +1283,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         const isOwned = isShopItemOwned(item);
                         const canBuy = canBuyShopItem(item);
 
+                        // Locate inside renderShop (under catKey !== "money-perks" loop):
                         let buttonHtml = '';
                         if (isOwned) {
                             buttonHtml = `<button class="card-buy-btn" style="background-color: #1f2937; color: #4b5563; border-color: #374151; pointer-events: none; cursor: default;">✓ OWNED</button>`;
                         } else if (!canBuy) {
                             buttonHtml = `<button class="card-buy-btn" style="background-color: #111827; color: #4b5563; border-color: #1f2937; pointer-events: none; cursor: default;">🔒 LOCKED</button>`;
                         } else {
-                            buttonHtml = `<button class="card-buy-btn" data-id="${item.id}">🪙 ${formatMoney(item.cost)}</button>`;
+                            // ADDED: pass true to formatMoney for compact display on buttons (e.g. 🪙 1.8M)
+                            buttonHtml = `<button class="card-buy-btn" data-id="${item.id}">🪙 ${formatMoney(item.cost, true)}</button>`;
                         }
 
                         // FIXED: Ensuring innerHTML is written with capital HTML to render properly
