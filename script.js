@@ -1,13 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ==================== SESSION STATE ====================
-    const GAME_VERSION = "1.5.0"; // Active version used to check shop updates
+    const GAME_VERSION = "1.7.0"; // Active version used to check shop updates
     
     const playerState = {
         username: "",           // Custom player display name
-        level: 1, xp: 0, xpNeeded: 300, money: 200, maxBagCapacity: 10,
+        level: 1, xp: 0, xpNeeded: 100, money: 200, maxBagCapacity: 20,
         currentEnergy: 100, maxEnergy: 100, activePickaxeMultiplier: 1.0,
         xpMultiplier: 1.0, inventory: [],
         soundsMuted: false,     // Tracks global audio state
+        unlockedOres: {},       // Dictionary tracking 320 progressive dynamic ore cards
         buffs: {
             luck: 0,            // Dynamic luck timer in seconds
             rage: 0,            // Dynamic rage cost timer in seconds
@@ -178,9 +179,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 Object.assign(playerState, parsed);
                 
-                // Fix: Initialize buffs object if missing from older save formats
+                // Fix: Initialize buffs and unlockedOres if missing from older save formats
                 if (!playerState.buffs) {
                     playerState.buffs = { luck: 0, rage: 0, xpBoost: 0 };
+                }
+                if (!playerState.unlockedOres) {
+                    playerState.unlockedOres = {};
                 }
 
                 if (dropdownSettings) {
@@ -492,7 +496,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Dynamic countdown timer loop
     setInterval(() => {
         let changed = false;
         if (playerState.buffs) {
@@ -542,9 +545,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (navUsername) navUsername.textContent = displayName;
         if (sideUsername) sideUsername.textContent = displayName;
 
-        // NEW: Automatically check and unlock cavern discoveries
-        checkCaveUnlocks(); 
-        
         checkAchievements(); 
     }
 
@@ -657,14 +657,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const cave = cavesData.find(c => c.id === caveId);
         if (!cave) return;
 
-        // Interactive UX warning feedback on validation checks
         if (playerState.level < cave.requiredLevel) {
             SoundEngine.playError();
             showNotification("🔒 Cavern Locked!", `You need to reach Level ${cave.requiredLevel} to mine here.`, "level-up", 3000);
             return;
         }
         
-        // Dynamic Energy calculations based on active Rage buffs
         const activeCost = (playerState.buffs && playerState.buffs.rage > 0) ? Math.ceil(cave.energyCost / 2) : cave.energyCost;
 
         if (playerState.currentEnergy < activeCost) {
@@ -692,7 +690,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         pool.forEach(ore => {
             let weight = rarityWeights[ore.rarity] || 1000;
-            // Luck Brew active: double-rarity roll odds check
             if (playerState.buffs && playerState.buffs.luck > 0 && ore.rarity !== 'common') {
                 weight *= 2; 
             }
@@ -748,24 +745,45 @@ document.addEventListener('DOMContentLoaded', () => {
         const isHybrid = (rolledVar.id !== "normal") && (rolledMut.id !== "none");
 
         const oreBaseId = selectedOre.name.toLowerCase().replace(/\s+/g, '-');
+        let rolledCardId = `${oreBaseId}-normal`;
 
-        // Unlock specific Ore progressive tiers
-        if (isNormal) {
-            unlockCollectionItem(`${oreBaseId}-normal`);
-        } else if (hasVariantOnly) {
-            unlockCollectionItem(`${oreBaseId}-variant`);
+        // Determine rolled card tier ID
+        if (hasVariantOnly) {
+            rolledCardId = `${oreBaseId}-variant`;
         } else if (hasMutationOnly) {
-            unlockCollectionItem(`${oreBaseId}-mutation`);
+            rolledCardId = `${oreBaseId}-mutation`;
         } else if (isHybrid) {
-            unlockCollectionItem(`${oreBaseId}-hybrid`);
+            rolledCardId = `${oreBaseId}-hybrid`;
         }
 
-        // Unlock base ore discovery card
-        if (cave.collectionId) unlockCollectionItem(cave.collectionId);
+        // Programmatically unlock the dynamic progressive ore card inside your save dictionary
+        if (!playerState.unlockedOres[rolledCardId]) {
+            playerState.unlockedOres[rolledCardId] = true;
+            
+            showNotification(
+                "🏆 Collection Unlocked!", 
+                `New card unlocked: <strong>${selectedOre.icon} ${selectedOre.name} (${isNormal ? 'Common' : hasVariantOnly ? 'Rare' : hasMutationOnly ? 'Epic' : 'Legendary'})</strong>!`, 
+                "collection", 
+                6000,
+                {
+                    label: "View Gallery",
+                    callback: () => navigateToView("view-collections") 
+                }
+            );
+            SoundEngine.playUnlock();
+            
+            // Fix: Re-render collections view to instantly display unlocked ores
+            renderCollections();
+        }
 
-        // Unlock base mutations & variant categories
+        if (cave.collectionId) unlockCollectionItem(cave.collectionId);
         if (rolledVar.collectionId) unlockCollectionItem(rolledVar.collectionId);
         if (rolledMut.collectionId) unlockCollectionItem(rolledMut.collectionId);
+
+        // Also unlock the new separate Cave Collection card using the Cave's name
+        if (cave.caveCollectionId) {
+            unlockCollectionItem(cave.caveCollectionId);
+        }
 
         totalMinesCount++;
         if (totalMinesCount >= 100) unlockCollectionItem("hard-worker");
@@ -1112,11 +1130,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.stopPropagation();
                 SoundEngine.playClick();
                 
+                // Base categories stats
                 const stats = [
                     { label: "Category", value: item.category.toUpperCase() }
                 ];
                 if (item.subCategory) {
                     stats.push({ label: "Sub-Type", value: item.subCategory.toUpperCase() });
+                }
+                
+                // NEW: Dynamic check. If the data object has a multiplier, show it!
+                if (item.multiplier) {
+                    stats.push({ label: "Final Multiplier", value: item.multiplier });
+                }
+                
+                // NEW: Dynamic check. If the data object has a speed bonus, show it!
+                if (item.speedBonus) {
+                    stats.push({ label: "Mining Efficiency", value: item.speedBonus });
                 }
                 
                 openDetailModal(
@@ -1142,15 +1171,67 @@ document.addEventListener('DOMContentLoaded', () => {
             section.setAttribute('data-category', catKey);
             section.innerHTML = `<h3 class="col-section-header">${categories[catKey]}</h3>`;
 
-            const grid = document.createElement('div');
-            grid.className = 'col-grid';
-
-            if (catKey !== "awards") {
-                const items = collectionsData.filter(c => c.category === catKey);
-                items.forEach(item => {
+            if (catKey !== "awards" && catKey !== "ores") {
+                const grid = document.createElement('div');
+                grid.className = 'col-grid';
+                collectionsData.filter(c => c.category === catKey).forEach(item => {
                     grid.appendChild(createColCard(item));
                 });
                 section.appendChild(grid);
+            } else if (catKey === "ores") {
+                // Programmatically generate 320 cards based on our cave loot pools!
+                cavesData.forEach(cave => {
+                    const subHeader = document.createElement('h4');
+                    subHeader.className = 'col-sub-header';
+                    subHeader.textContent = `🪨 ${cave.name} Ores`;
+                    section.appendChild(subHeader);
+
+                    const grid = document.createElement('div');
+                    grid.className = 'col-grid';
+
+                    // Safety Guard: Verify cave lootPool exists to prevent rendering crashes
+                    if (cave.lootPool) {
+                        cave.lootPool.forEach(ore => {
+                            const oreBaseId = ore.name.toLowerCase().replace(/\s+/g, '-');
+                            const tiers = [
+                                { id: `${oreBaseId}-normal`, suffix: "Normal", tierLabel: "Common", desc: `Standard unrefined ${ore.name} sample.` },
+                                { id: `${oreBaseId}-variant`, suffix: "Variant (Rare)", tierLabel: "Rare", desc: `High density polished ${ore.name} variant.` },
+                                { id: `${oreBaseId}-mutation`, suffix: "Mutated (Epic)", tierLabel: "Epic", desc: `${ore.name} sample displaying high energetic spore/toxic mutations.` },
+                                { id: `${oreBaseId}-hybrid`, suffix: "Hybrid (Legendary)", tierLabel: "Legendary", desc: `Legendary combination drop: variant mutated ${ore.name}!` }
+                            ];
+
+                            tiers.forEach(tier => {
+                                const isObtained = playerState.unlockedOres[tier.id] === true;
+                                const card = document.createElement('div');
+                                card.className = 'col-card';
+                                card.innerHTML = `
+                                    <div class="col-icon-circle">${isObtained ? ore.icon : '❓'}</div>
+                                    <h4 class="col-card-title">${isObtained ? ore.name + ' - ' + tier.suffix : 'Unknown'}</h4>
+                                    <p class="col-card-desc">${isObtained ? tier.desc : 'Mine in ' + cave.name + ' to unlock details.'}</p>
+                                    <button class="col-read-more" ${isObtained ? '' : 'disabled'}>Read more</button>
+                                `;
+
+                                // Pop up details modal when read more is clicked on unlocked items
+                                if (isObtained) {
+                                    card.querySelector('.col-read-more').addEventListener('click', (e) => {
+                                        e.stopPropagation();
+                                        SoundEngine.playClick();
+                                        const stats = [
+                                            { label: "Cavern", value: cave.name },
+                                            { label: "Rarity Tier", value: ore.rarity.toUpperCase() },
+                                            { label: "Card Grade", value: tier.tierLabel.toUpperCase() },
+                                            { label: "Base Weight", value: `${ore.baseWeight} kg` },
+                                            { label: "Base Value", value: `🪙 ${ore.baseValue}` }
+                                        ];
+                                        openDetailModal(`${ore.name} (${tier.suffix})`, ore.icon, tier.desc, stats);
+                                    });
+                                }
+                                grid.appendChild(card);
+                            });
+                        });
+                    }
+                    section.appendChild(grid);
+                });
             } else {
                 renderColSubSection(section, '🏆 Trophies (Quest Chests)', 'trophies');
                 renderColSubSection(section, '🏷️ Badges (Quest Tasks)', 'badges');
@@ -1187,40 +1268,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 6000);
         }
     }
-    
-    // ==================== DYNAMIC CAVERN UNLOCK ENGINE ====================
-    
-    // Automatically checks and unlocks cavern discovery collection cards based on player level
-    function checkCaveUnlocks() {
-        cavesData.forEach(cave => {
-            if (playerState.level >= cave.requiredLevel && cave.caveCollectionId) {
-                const item = collectionsData.find(c => c.id === cave.caveCollectionId);
-                
-                // If the collection card is not unlocked yet, trigger the discovery
-                if (item && !item.obtained) {
-                    // Special Welcome Notification for first-time players discovering Cave 1
-                    if (cave.id === 1) {
-                        showNotification(
-                            "🧗 Cavern Discovered!", 
-                            `You have discovered the <strong>${cave.name}</strong>! Step inside and begin your journey.`, 
-                            "level-up", 
-                            6000
-                        );
-                    } else {
-                        // Standard notification for deeper cave layers
-                        showNotification(
-                            "🧗 Cavern Discovered!", 
-                            `You have unlocked and mapped the <strong>${cave.name}</strong> layer!`, 
-                            "level-up", 
-                            4000
-                        );
-                    }
-                    unlockCollectionItem(cave.caveCollectionId);
-                }
-            }
-        });
-    }
-    
+
     // ==================== UNIFIED DATA-DRIVEN ACHIEVEMENT ENGINE ====================
     function checkAchievements() {
         collectionsData.forEach(item => {
@@ -1293,7 +1341,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Tab switcher with absolute inline-style display overrides
+    // Tab switcher with absolute inline-style display overrides & dynamic re-rendering
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
@@ -1317,10 +1365,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 targetView.classList.add('active');
                 targetView.style.display = 'flex'; // Overrides CSS caching bugs
                 
-                // Fetch and render local README.md dynamically if navigating to manual
-                if (targetId === "view-readme") {
-                    loadReadmeFile();
-                }
+                // Re-render target views dynamically on click so stats are always up to date
+                if (targetId === "view-readme") loadReadmeFile();
+                if (targetId === "view-shop") renderShop();
+                if (targetId === "view-collections") renderCollections();
             }
 
             // Auto-close sidebar on mobile viewports
@@ -1330,7 +1378,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // ==================== DROPDOWN CLICK CONTROLLERS ====================
     if (userProfile) {
         userProfile.addEventListener('click', (e) => {
             e.stopPropagation();
