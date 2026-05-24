@@ -152,38 +152,53 @@ const mutationsData = [
 
 // ==================== SHOP ITEMS DATABASE ====================
 const shopData = [
-    // Mining Speed
+    // Mining Speed (3 original + 5 new)
     { id: "wooden-pick", category: "mining-speed", name: "Wooden Pick", desc: "+5% mining efficiency.", cost: 50, icon: "🪵", multiplier: 1.05, collectionId: "starter-tool" },
     { id: "iron-pick", category: "mining-speed", name: "Iron Pick", desc: "+20% mining efficiency.", cost: 150, icon: "⛏️", multiplier: 1.20, collectionId: "iron-digger" },
     { id: "drill-arm", category: "mining-speed", name: "Drill Arm", desc: "+50% mining efficiency.", cost: 500, icon: "🔋", multiplier: 1.50, collectionId: "drill-arm-col", versionAdded: "1.5.0" },
+    { id: "steam-digger", category: "mining-speed", name: "Steam Digger", desc: "+80% mining efficiency.", cost: 1200, icon: "⚙️", multiplier: 1.80, collectionId: null, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
+    { id: "sonic-pulser", category: "mining-speed", name: "Sonic Pulser", desc: "+120% mining efficiency.", cost: 2800, icon: "🔊", multiplier: 2.20, collectionId: null, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
+    { id: "plasma-cutter", category: "mining-speed", name: "Plasma Cutter", desc: "+200% mining efficiency.", cost: 6500, icon: "🔥", multiplier: 3.00, collectionId: null, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
+    { id: "quantum-disintegrator", category: "mining-speed", name: "Quantum Disintegrator", desc: "+350% mining efficiency.", cost: 15000, icon: "🌀", multiplier: 4.50, collectionId: null, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
+    { id: "void-breaker", category: "mining-speed", name: "Void Breaker", desc: "+500% mining efficiency.", cost: 35000, icon: "🧿", multiplier: 6.00, collectionId: null, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
     
-    // Bag Capacity
+    // Bag Capacity (3 original + 3 new)
     { id: "pouch-bag", category: "bag-capacity", name: "Pouch Bag", desc: "Increases bag limit to 30.", cost: 80, icon: "🎒", capacity: 30, collectionId: null },
     { id: "cargo-bag", category: "bag-capacity", name: "Cargo Bag", desc: "Increases bag limit to 60.", cost: 300, icon: "💼", capacity: 60, collectionId: null },
     { id: "steel-trunk", category: "bag-capacity", name: "Steel Trunk", desc: "Increases bag limit to 120.", cost: 800, icon: "📦", capacity: 120, collectionId: null },
+    { id: "titanium-crate", category: "bag-capacity", name: "Titanium Crate", desc: "Increases bag limit to 250.", cost: 2000, icon: "🧳", capacity: 250, collectionId: null, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
+    { id: "quantum-satchel", category: "bag-capacity", name: "Quantum Satchel", desc: "Increases bag limit to 600.", cost: 6000, icon: "🎒", capacity: 600, collectionId: null, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
+    { id: "singularity-vault", category: "bag-capacity", name: "Singularity Vault", desc: "Increases bag limit to 1500.", cost: 15000, icon: "🧿", capacity: 1500, collectionId: null, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
     
-    // Energy Upgrades
-    { id: "raw-apple", category: "energy", name: "Raw Apple", desc: "Restores 15 Energy.", cost: 10, icon: "🍏", energy: 15, collectionId: null, releaseDate: "2026-05-23" },
+    // Energy Upgrades (3 original + 3 new)
+    { id: "raw-apple", category: "energy", name: "Raw Apple", desc: "Restores 15 Energy.", cost: 10, icon: "🍏", energy: 15, collectionId: null },
     { id: "stamina-brew", category: "energy", name: "Stamina Brew", desc: "Restores 50 Energy.", cost: 75, icon: "🧪", energy: 50, collectionId: null },
     { id: "cooked-meat", category: "energy", name: "Cooked Meat", desc: "Restores 100 Energy.", cost: 180, icon: "🥩", energy: 100, collectionId: null },
+    { id: "golden-pie", category: "energy", name: "Golden Pie", desc: "Restores 150 Energy.", cost: 300, icon: "🥧", energy: 150, collectionId: null, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
+    { id: "plasma-elixir", category: "energy", name: "Plasma Elixir", desc: "Restores 300 Energy.", cost: 550, icon: "🔋", energy: 300, collectionId: null, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
+    { id: "aether-ambrosia", category: "energy", name: "Aether Ambrosia", desc: "Restores 500 Energy.", cost: 900, icon: "🍶", energy: 500, collectionId: null, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
   
-    // Boosts / Potions
+    // Boosts / Potions (3 original + 4 new)
     { id: "luck-brew", category: "boosts", name: "Luck Brew", desc: "Double gem roll chance.", cost: 120, icon: "⭐", collectionId: null, buffType: "luck", buffDuration: 60 },
     { id: "rage-elixir", category: "boosts", name: "Rage Elixir", desc: "Cuts mining costs by 50%.", cost: 200, icon: "🔥", collectionId: null, buffType: "rage", buffDuration: 60 },
     { id: "xp-elixir", category: "boosts", name: "XP Elixir", desc: "Double XP gained for 45s.", cost: 150, icon: "🧪", collectionId: null, buffType: "xpBoost", buffDuration: 45 },
-   
-    // Upgrades & Badges (Category: money-perks) - Costs are now in Tokens
+    { id: "hyper-luck-potion", category: "boosts", name: "Hyper Luck Potion", desc: "Double gem roll chance for 150s.", cost: 250, icon: "🧪", collectionId: null, buffType: "luck", buffDuration: 150, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
+    { id: "berserker-potion", category: "boosts", name: "Berserker Potion", desc: "Cuts mining costs by 50% for 150s.", cost: 450, icon: "🩸", collectionId: null, buffType: "rage", buffDuration: 150, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
+    { id: "master-xp-potion", category: "boosts", name: "Master XP Potion", desc: "Double XP gained for 120s.", cost: 380, icon: "⚗️", collectionId: null, buffType: "xpBoost", buffDuration: 120, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
+    { id: "infinity-potion", category: "boosts", name: "Infinity Potion", desc: "Double gem roll chance for 300s.", cost: 600, icon: "🌌", collectionId: null, buffType: "luck", buffDuration: 300, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
+  
+    // Upgrades & Badges (Category: money-perks) - Costs are in Tokens
     { id: "merchant-badge", category: "money-perks", name: "Merchant Badge", desc: "+10% gold from selling ores.", cost: 3, icon: "📛", multiplier: 1.10, collectionId: null },
     { id: "golden-ring", category: "money-perks", name: "Golden Ring", desc: "+25% gold from selling ores.", cost: 10, icon: "💍", multiplier: 1.25, collectionId: null },
   
-    // Bundles & Packs (Category: packs) - Costs are now in Tokens
+    // Bundles & Packs (Category: packs) - Costs are in Tokens
     { id: "starter-bundle", category: "packs", name: "Starter Bundle", desc: "Instantly grants 500 Coins & 50 Energy.", cost: 5, icon: "🎁" },
     { id: "miner-pack", category: "packs", name: "Miner Pack", desc: "Instantly grants 2,000 Coins & 100 Energy.", cost: 12, icon: "📦" },
   
-    // Subscriptions (Category: subscriptions) - Costs are now in Tokens
+    // Subscriptions (Category: subscriptions) - Costs are in Tokens
     { id: "coin-subscription", category: "subscriptions", name: "Miner's Pension", desc: "Generates +5 Coins every second passively.", cost: 15, icon: "📅" },
   
-    // Season Passes (Category: passes) - Costs are now in Tokens
+    // Season Passes (Category: passes) - Costs are in Tokens
     { id: "double-xp-pass", category: "passes", name: "Double XP Pass", desc: "Permanently doubles all earned XP.", cost: 20, icon: "🎫" }
 ];
 

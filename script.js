@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ==================== SESSION STATE ====================
-    const GAME_VERSION = "1.8.0"; // Active version used to check shop updates
+    const GAME_VERSION = "1.8.5"; // Active version used to check shop updates
     
     const playerState = {
         username: "", // Custom player display name
@@ -665,8 +665,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="loot-meta">🪙 ${formatMoney(itemPrice)} | ⚖️ ${displayWeight} kg</span>
                 </div>
             `;
-    
-            // Click to view modal details
+
+            // Click to view modal details (now displaying comprehensive RPG stats safely)
             card.addEventListener('click', () => {
                 SoundEngine.playClick();
                 
@@ -677,8 +677,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderInventoryTray();
                 }
     
-                // Safe lookup for description from global database if a mutation is present
-                let description = `A standard mined specimen of ${item.name}.`;
+                // Dynamic lookup: Find which cave this ore originates from
+                let sourceCave = "Unknown Caverns";
+                const foundCave = cavesData.find(c => c.lootPool && c.lootPool.some(o => o.name === item.name));
+                if (foundCave) {
+                    sourceCave = foundCave.name;
+                }
+    
+                // Styled rarity tags
+                const rarityLabels = {
+                    common: "⚪ Common",
+                    uncommon: "🟢 Uncommon",
+                    rare: "🔵 Rare",
+                    epic: "🟣 Epic",
+                    legendary: "🟡 Legendary",
+                    mythic: "🔴 Mythic",
+                    divine: "✨ Divine",
+                    cosmic: "🌌 Cosmic"
+                };
+    
+                // SAFE LOOKUP: Read the description directly from the global mutationsData array
+                let description = `A pristine raw specimen of ${item.name} mined deep from the core walls.`;
                 if (item.mutation && item.mutation !== 'Normal') {
                     const foundMutation = mutationsData.find(m => m.name === item.mutation);
                     if (foundMutation) {
@@ -687,18 +706,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
     
                 const stats = [
+                    { label: "Rarity Class", value: rarityLabels[item.rarity] || item.rarity.toUpperCase() },
+                    { label: "Cavern Origin", value: `🧗 ${sourceCave}` },
+                    { label: "Specimen Weight", value: `⚖️ ${displayWeight} kg` },
                     { label: "Base Value", value: `🪙 ${formatMoney(item.baseValue)}` },
-                    { label: "Weight", value: `⚖️ ${displayWeight} kg` },
-                    { label: "Variant", value: `${item.variant || 'Normal'} (x${item.variantMultiplier || 1})` },
-                    { label: "Mutation", value: `${item.mutation || 'Normal'} (x${item.mutationMultiplier || 1})` },
+                    { label: "Variant Modifier", value: `${item.variant || 'Normal'} (x${item.variantMultiplier || 1})` },
+                    { label: "Mutational State", value: `${item.mutation || 'Normal'} (x${item.mutationMultiplier || 1})` },
                     { label: "Sell Multiplier", value: `x${playerState.sellMultiplier.toFixed(2)}` },
                     { label: "Total Value", value: `🪙 ${formatMoney(itemPrice)}` }
                 ];
     
-                // This now uses the prefix with the cleaned mutation name
                 openDetailModal(`${prefix}${item.name}`, item.icon || '🪨', description, stats);
             });
-    
+
             inventoryScroll.appendChild(card);
         });
     }
@@ -1028,6 +1048,70 @@ document.addEventListener('DOMContentLoaded', () => {
         scroll.appendChild(grid);
         parent.appendChild(scroll);
     }
+    
+    // ==================== SHOP PREVIEW MODAL SYSTEM ====================
+    function openShopItemDetailModal(itemId) {
+        const item = shopData.find(i => i.id === itemId);
+        if (!item) return;
+
+        SoundEngine.playClick();
+
+        const premiumCategories = ["money-perks", "packs", "subscriptions", "passes"];
+        const isPremium = premiumCategories.includes(item.category);
+        const currencyIcon = isPremium ? "🎟️" : "🪙";
+
+        // Human-readable subtitles for upgrade items
+        const categoryLabels = {
+            "mining-speed": "⚙️ Mining Speed Upgrade",
+            "bag-capacity": "🎒 Bag Capacity Expansion",
+            "energy": "🍏 Energy Food & Potions",
+            "boosts": "🧪 Temporary Buff Potion",
+            "money-perks": "📛 Passive Sell Badge",
+            "packs": "🎁 Premium Bundle Pack",
+            "subscriptions": "📅 Passive Income Subscription",
+            "passes": "🎫 Seasonal Passive Multiplier"
+        };
+
+        const stats = [
+            { label: "Item Category", value: categoryLabels[item.category] || item.category.toUpperCase() },
+            { label: "Upgrade Cost", value: `${currencyIcon} ${formatMoney(item.cost)}` }
+        ];
+
+        // Safely extract relevant stats based on item properties
+        if (item.category === "mining-speed" && item.multiplier) {
+            stats.push({ label: "Mining Multiplier", value: `x${item.multiplier.toFixed(2)}` });
+        } else if (item.category === "bag-capacity" && item.capacity) {
+            stats.push({ label: "Bag Capacity", value: `${item.capacity} slots` });
+        } else if (item.category === "energy" && item.energy) {
+            stats.push({ label: "Energy Restored", value: `+${item.energy}⚡` });
+        } else if (item.category === "money-perks" && item.multiplier) {
+            stats.push({ label: "Gold Earnings Bonus", value: `+${Math.round((item.multiplier - 1) * 100)}% extra gold` });
+        } else if (item.category === "boosts" && item.buffType) {
+            const buffNames = { luck: "Double Gem Roll Rate", rage: "50% Less Mining Energy Cost", xpBoost: "Double XP Multiplier" };
+            stats.push({ label: "Active Effect", value: buffNames[item.buffType] || item.buffType });
+            stats.push({ label: "Effect Duration", value: `${item.buffDuration} seconds` });
+        }
+
+        if (item.versionAdded) {
+            stats.push({ label: "Release Version", value: `v${item.versionAdded}` });
+        }
+
+        // Build purchase trigger within the modal action button
+        const purchaseAction = {
+            label: `CONFIRM PURCHASE (${currencyIcon} ${formatMoney(item.cost)})`,
+            callback: () => {
+                buyShopItem(itemId);
+            }
+        };
+
+        openDetailModal(
+            item.name, 
+            item.icon || "🛒", 
+            item.desc || "An essential tool/upgrade for cavern deep explorers.", 
+            stats, 
+            purchaseAction
+        );
+    }
 
     function renderShop() {
         if (!shopSectionsList) return;
@@ -1112,10 +1196,12 @@ document.addEventListener('DOMContentLoaded', () => {
             shopSectionsList.appendChild(section);
         });
 
+        // Locate at the end of renderShop() and replace the button listeners with this:
         shopSectionsList.querySelectorAll('.card-buy-btn, .wider-card-btn, .pass-header-buy-btn, .pass-content-buy-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                buyShopItem(btn.getAttribute('data-id'));
+                // Opens the preview details modal first
+                openShopItemDetailModal(btn.getAttribute('data-id')); 
             });
         });
     }

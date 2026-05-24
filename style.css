@@ -731,8 +731,8 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
     justify-content: center;
     gap: 4px;
     flex: 1;
-    max-width: 180px; /* Keeps the container nicely compact */
-    margin: 0 auto;   /* Automatically centers the container in space */
+    max-width: 180px;
+    margin: 0 auto;
 }
 
 .nav-xp-bar-wrapper {
@@ -758,29 +758,68 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
     white-space: nowrap;
 }
 
-/* ==================== RESPONSIVE ADAPTATIONS ==================== */
-@media (max-width: 1024px) {
-    /* Hide the navbar XP container on tablet viewports to prevent layout overlap */
+/* ==================== POLISHED USER PROFILE BUTTON ==================== */
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 4px 12px;
+    transition: all 0.2s ease;
+    position: relative;
+    z-index: 120;
+    cursor: pointer;
+}
+
+.user-profile:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: var(--gold-accent);
+}
+
+/* ==================== RESPONSIVE LAYOUT MANAGER ==================== */
+
+/* 1. Global Reset (Hides the mobile floating stats bar on desktop viewports) */
+.floating-stats-bar {
+    display: none !important;
+}
+
+/* 2. Desktop & Tablet Viewports (768px and wider) */
+@media (min-width: 768px) {
+    /* Centers the desktop stats container perfectly in the middle of the navbar */
+    .navbar .stats-container {
+        display: flex !important;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+        margin: 0 auto;
+        max-width: max-content;
+    }
+
+    /* Hides the Nav XP container (the sidebar XP bar handles this view) */
     .nav-xp-container {
-        display: none;
+        display: none !important;
     }
 }
 
-@media (max-width: 768px) {
-    /* Hide desktop-clustered header badges on mobile */
+/* 3. Mobile Viewports Only (Hides duplicate stats and displays mobile UI) */
+@media (max-width: 767px) {
+    /* Hide the cluttered desktop stats */
     .navbar .stats-container {
         display: none !important;
     }
 
-    /* Bring the navbar XP container back on mobile since the desktop stats are hidden */
+    /* Show and center the Navbar XP progress container */
     .nav-xp-container {
-        display: flex;
+        display: flex !important;
         margin: 0 10px;
     }
 
-    /* Style for the modern floating mobile stats bar */
+    /* Display and style the floating mobile stats bar capsule */
     .floating-stats-bar {
-        display: flex;
+        display: flex !important;
         justify-content: space-around;
         align-items: center;
         background: rgba(18, 16, 15, 0.85);
@@ -810,8 +849,13 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
         font-size: 0.9rem;
     }
 
-    /* Padding offset to prevent floating stats from covering the top of your maps */
+    /* Padding offset to prevent floating stats from covering maps */
     .game-area {
         margin-top: 48px;
+    }
+
+    /* Hide text username on mobile to preserve navbar spacing */
+    .user-profile .username {
+        display: none !important;
     }
 }
