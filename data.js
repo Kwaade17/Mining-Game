@@ -186,8 +186,6 @@ const shopData = [
     { id: "berserker-potion", category: "boosts", name: "Berserker Potion", desc: "Cuts mining costs by 50% for 150s.", cost: 450, icon: "🩸", collectionId: null, buffType: "rage", buffDuration: 150, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
     { id: "master-xp-potion", category: "boosts", name: "Master XP Potion", desc: "Double XP gained for 120s.", cost: 380, icon: "⚗️", collectionId: null, buffType: "xpBoost", buffDuration: 120, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
     { id: "infinity-potion", category: "boosts", name: "Infinity Potion", desc: "Double gem roll chance for 300s.", cost: 600, icon: "🌌", collectionId: null, buffType: "luck", buffDuration: 300, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
-    // Boosts / Potions (Data updated to version 1.8.6)
-    // ... your other boosts ...
     { id: "vigor-elixir", category: "boosts", name: "Vigor Elixir", desc: "Endless mining energy (0 cost) for 30s.", cost: 350, icon: "⚡", collectionId: null, buffType: "vigor", buffDuration: 30, versionAdded: "1.8.6", releaseDate: "2026-05-24" },
     { id: "jackpot-potion", category: "boosts", name: "Jackpot Potion", desc: "Triples Gold gained from chests for 60s.", cost: 500, icon: "🎰", collectionId: null, buffType: "jackpot", buffDuration: 60, versionAdded: "1.8.6", releaseDate: "2026-05-24" },
   

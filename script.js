@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ==================== SESSION STATE ====================
-    const GAME_VERSION = "1.8.5"; // Active version used to check shop updates
+    const GAME_VERSION = "1.8.6"; // Active version used to check shop updates
     
     const playerState = {
         username: "", // Custom player display name
@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
         hasCoinSub: false,  // <-- ADD THIS (Pension Subscription check)
         hasTokenSub: false, // <-- ADD THIS
         hasMagnet: false,   // <-- ADD THIS
+        hasStarterBundle: false, // <-- ADD THIS
+        hasMinerPack: false,     // <-- ADD THIS
         tokenSubTimer: 0,   // <-- ADD THIS
         currentEnergy: 100, maxEnergy: 100, activePickaxeMultiplier: 1.0,
         xpMultiplier: 1.0, 
@@ -165,24 +167,57 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // ==================== SHOP ITEM OWNSHIP CHECKER ====================
     function isShopItemOwned(item) {
-        if (item.category === "mining-speed") {
-            return playerState.activePickaxeMultiplier >= item.multiplier;
-        }
-        if (item.category === "bag-capacity") {
-            return playerState.maxBagCapacity >= item.capacity;
-        }
-        if (item.category === "money-perks") {
-            if (item.id === "magnet-badge") return playerState.hasMagnet;
-            return playerState.sellMultiplier >= item.multiplier;
-        }
-        if (item.category === "subscriptions") {
-            if (item.id === "coin-subscription") return playerState.hasCoinSub;
-            if (item.id === "token-subscription") return playerState.hasTokenSub;
-        }
-        if (item.category === "passes") {
-            if (item.id === "double-xp-pass") return playerState.xpMultiplier >= 2.0;
+        try {
+            if (!item || !item.category) return false;
+            
+            if (item.category === "mining-speed") {
+                return (playerState.activePickaxeMultiplier || 1.0) >= (item.multiplier || 1.0);
+            }
+            if (item.category === "bag-capacity") {
+                return (playerState.maxBagCapacity || 20) >= (item.capacity || 20);
+            }
+            if (item.category === "money-perks") {
+                if (item.id === "magnet-badge") return !!playerState.hasMagnet;
+                return (playerState.sellMultiplier || 1.0) >= (item.multiplier || 1.0);
+            }
+            if (item.category === "subscriptions") {
+                if (item.id === "coin-subscription") return !!playerState.hasCoinSub;
+                if (item.id === "token-subscription") return !!playerState.hasTokenSub;
+            }
+            if (item.category === "passes") {
+                if (item.id === "double-xp-pass") return (playerState.xpMultiplier || 1.0) >= 2.0;
+            }
+            if (item.category === "packs") {
+                if (item.id === "starter-bundle") return !!playerState.hasStarterBundle;
+                if (item.id === "miner-pack") return !!playerState.hasMinerPack;
+            }
+        } catch (error) {
+            console.error("Error inside isShopItemOwned checker:", error, item);
         }
         return false;
+    }
+
+    // ==================== SEQUENTIAL SHOP ITEM UNLOCK CHECKER ====================
+    function canBuyShopItem(item) {
+        try {
+            if (!item || !item.category) return true;
+
+            // Apply sequence locks to progressive categories
+            const sequentialCategories = ["mining-speed", "bag-capacity", "money-perks"];
+            if (sequentialCategories.includes(item.category)) {
+                const categoryItems = shopData.filter(i => i.category === item.category);
+                const itemIndex = categoryItems.findIndex(i => i.id === item.id);
+                
+                // If this is not the first item in the category, player must own the previous one
+                if (itemIndex > 0) {
+                    const prevItem = categoryItems[itemIndex - 1];
+                    return isShopItemOwned(prevItem);
+                }
+            }
+        } catch (error) {
+            console.error("Error inside canBuyShopItem checker:", error, item);
+        }
+        return true;
     }
 
     // ==================== PERSISTENT LOCAL STORAGE ENGINE ====================
@@ -239,6 +274,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (!playerState.buffs.jackpot) {
                    playerState.buffs.jackpot = 0;
+                }
+                if (playerState.hasStarterBundle === undefined) {
+                   playerState.hasStarterBundle = false;
+                }
+                if (playerState.hasMinerPack === undefined) {
+                   playerState.hasMinerPack = false;
                 }
             } catch (err) {
                 console.error("Save load failed: ", err);
@@ -1087,43 +1128,64 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ==================== SHOP DYNAMIC RENDERER ====================
     function renderShopSubSection(parent, title, subCat, gridClass, cardClass) {
-        const header = document.createElement('h4');
-        header.className = 'sub-section-header';
-        header.textContent = title;
-        parent.appendChild(header);
+        try {
+            const header = document.createElement('h4');
+            header.className = 'sub-section-header';
+            header.textContent = title;
+            parent.appendChild(header);
 
-        const scroll = document.createElement('div');
-        scroll.className = 'scroll-container';
-        const grid = document.createElement('div');
-        grid.className = gridClass;
+            const scroll = document.createElement('div');
+            scroll.className = 'scroll-container';
+            const grid = document.createElement('div');
+            grid.className = gridClass;
 
-        shopData.filter(i => i.category === subCat).forEach(item => {
-            const card = document.createElement('div');
-            card.className = cardClass;
-            const isNewItem = item.releaseDate && ((Date.now() - Date.parse(item.releaseDate)) < 3 * 24 * 60 * 60 * 1000);
-            const isNewVersion = item.versionAdded === GAME_VERSION;
-            const showNew = isNewItem || isNewVersion;
+            const filteredItems = shopData.filter(i => i.category === subCat);
+            if (filteredItems.length === 0) {
+                console.warn(`No shop items found matching category: ${subCat}`);
+            }
 
-            // Determine if this is a Premium Token purchase or Coin purchase
-            const premiumCategories = ["money-perks", "packs", "subscriptions", "passes"];
-            const isPremium = premiumCategories.includes(item.category);
-            const currencyIcon = isPremium ? "🎟️" : "🪙";
-            const isOwned = isShopItemOwned(item);
-            const buttonHtml = isOwned 
-                ? `<button class="wider-card-btn" style="background-color: #1f2937; color: #4b5563; border-color: #374151; pointer-events: none; cursor: default;">✓ OWNED</button>`
-                : `<button class="wider-card-btn" data-id="${item.id}">${currencyIcon} ${formatMoney(item.cost)}</button>`;
+            filteredItems.forEach(item => {
+                try {
+                    const card = document.createElement('div');
+                    card.className = cardClass;
+                    const isNewItem = item.releaseDate && ((Date.now() - Date.parse(item.releaseDate)) < 3 * 24 * 60 * 60 * 1000);
+                    const isNewVersion = item.versionAdded === GAME_VERSION;
+                    const showNew = isNewItem || isNewVersion;
 
-            card.innerHTML = `
-                ${showNew ? '<span class="new-badge">New</span>' : ''}
-                <div class="rounded-image-icon">${item.icon}</div>
-                <span class="wider-card-name">${item.name}</span>
-                <p class="wider-card-desc">${item.desc}</p>
-                ${buttonHtml}`;
-            
-            grid.appendChild(card);
-        });
-        scroll.appendChild(grid);
-        parent.appendChild(scroll);
+                    const premiumCategories = ["money-perks", "packs", "subscriptions", "passes"];
+                    const isPremium = premiumCategories.includes(item.category);
+                    const currencyIcon = isPremium ? "🎟️" : "🪙";
+
+                    // Check ownership and sequence constraints
+                    const isOwned = isShopItemOwned(item);
+                    const canBuy = canBuyShopItem(item);
+                    
+                    let buttonHtml = '';
+                    if (isOwned) {
+                        buttonHtml = `<button class="wider-card-btn" style="background-color: #1f2937; color: #4b5563; border-color: #374151; pointer-events: none; cursor: default;">✓ OWNED</button>`;
+                    } else if (!canBuy) {
+                        buttonHtml = `<button class="wider-card-btn" style="background-color: #111827; color: #4b5563; border-color: #1f2937; pointer-events: none; cursor: default;">🔒 LOCKED</button>`;
+                    } else {
+                        buttonHtml = `<button class="wider-card-btn" data-id="${item.id}">${currencyIcon} ${formatMoney(item.cost)}</button>`;
+                    }
+
+                    // FIXED: Ensuring innerHTML is written with capital HTML to render properly
+                    card.innerHTML = `
+                        ${showNew ? '<span class="new-badge">New</span>' : ''}
+                        <div class="rounded-image-icon">${item.icon || '📦'}</div>
+                        <span class="wider-card-name">${item.name || 'Unknown Upgrade'}</span>
+                        <p class="wider-card-desc">${item.desc || 'No description available.'}</p>
+                        ${buttonHtml}`;
+                    grid.appendChild(card);
+                } catch (itemError) {
+                    console.error("Error rendering individual shop item card:", itemError, item);
+                }
+            });
+            scroll.appendChild(grid);
+            parent.appendChild(scroll);
+        } catch (sectionError) {
+            console.error("Error rendering shop sub-section grid:", sectionError, subCat);
+        }
     }
     
     // ==================== SHOP PREVIEW MODAL SYSTEM ====================
@@ -1208,80 +1270,103 @@ document.addEventListener('DOMContentLoaded', () => {
                 grid.className = 'portrait-grid';
 
                 shopData.filter(i => i.category === catKey).forEach(item => {
-                    const card = document.createElement('div');
-                    card.className = 'portrait-card';
+                    try {
+                        const card = document.createElement('div');
+                        card.className = 'portrait-card';
 
-                    const isNewItem = item.releaseDate && ((Date.now() - Date.parse(item.releaseDate)) < 3 * 24 * 60 * 60 * 1000);
-                    const isNewVersion = item.versionAdded === GAME_VERSION;
-                    const showNew = isNewItem || isNewVersion;
+                        const isNewItem = item.releaseDate && ((Date.now() - Date.parse(item.releaseDate)) < 3 * 24 * 60 * 60 * 1000);
+                        const isNewVersion = item.versionAdded === GAME_VERSION;
+                        const showNew = isNewItem || isNewVersion;
 
-                    // Inside standard item portrait-card loop:
-                    const isOwned = isShopItemOwned(item);
-                    const buttonHtml = isOwned
-                        ? `<button class="card-buy-btn" style="background-color: #1f2937; color: #4b5563; border-color: #374151; pointer-events: none; cursor: default;">✓ OWNED</button>`
-                        : `<button class="card-buy-btn" data-id="${item.id}">🪙 ${formatMoney(item.cost)}</button>`;
-    
-                    card.innerHTML = `
-                        ${showNew ? '<span class="new-badge">New</span>' : ''}
-                        <div class="circle-icon">${item.icon}</div>
-                        <span class="card-name">${item.name}</span>
-                        <p class="card-desc">${item.desc}</p>
-                        ${buttonHtml}
-                    `;
-                    grid.appendChild(card);
+                        const isOwned = isShopItemOwned(item);
+                        const canBuy = canBuyShopItem(item);
+
+                        let buttonHtml = '';
+                        if (isOwned) {
+                            buttonHtml = `<button class="card-buy-btn" style="background-color: #1f2937; color: #4b5563; border-color: #374151; pointer-events: none; cursor: default;">✓ OWNED</button>`;
+                        } else if (!canBuy) {
+                            buttonHtml = `<button class="card-buy-btn" style="background-color: #111827; color: #4b5563; border-color: #1f2937; pointer-events: none; cursor: default;">🔒 LOCKED</button>`;
+                        } else {
+                            buttonHtml = `<button class="card-buy-btn" data-id="${item.id}">🪙 ${formatMoney(item.cost)}</button>`;
+                        }
+
+                        // FIXED: Ensuring innerHTML is written with capital HTML to render properly
+                        card.innerHTML = `
+                            ${showNew ? '<span class="new-badge">New</span>' : ''}
+                            <div class="circle-icon">${item.icon || '🛠️'}</div>
+                            <span class="card-name">${item.name || 'Upgrade'}</span>
+                            <p class="card-desc">${item.desc || 'No description available.'}</p>
+                            ${buttonHtml}
+                        `;
+                        grid.appendChild(card);
+                    } catch (itemError) {
+                        console.error("Error rendering standard shop card:", itemError, item);
+                    }
                 });
                 scroll.appendChild(grid);
                 section.appendChild(scroll);
             } else {
-                // FIXED: Money Perks upgrades now render correctly!
+                // Upgrades, Bundles, and Subscriptions rendering
                 renderShopSubSection(section, '📛 Upgrades & Badges', 'money-perks', 'wider-grid', 'wider-card');
                 renderShopSubSection(section, '🎁 Bundles & Packs', 'packs', 'wider-grid', 'wider-card');
                 renderShopSubSection(section, '📅 Subscriptions', 'subscriptions', 'wider-grid', 'wider-card');
 
-                const passHeader = document.createElement('h4');
-                passHeader.className = 'sub-section-header';
-                passHeader.textContent = '🎫 Season Passes';
-                section.appendChild(passHeader);
+                // Safe passes rendering block
+                try {
+                    const passHeader = document.createElement('h4');
+                    passHeader.className = 'sub-section-header';
+                    passHeader.textContent = '🎫 Season Passes';
+                    section.appendChild(passHeader);
 
-                const passesList = document.createElement('div');
-                passesList.className = 'passes-list';
+                    const passesList = document.createElement('div');
+                    passesList.className = 'passes-list';
 
-                shopData.filter(i => i.category === 'passes').forEach(pass => {
-                    const card = document.createElement('div');
-                    card.className = 'pass-card';
-                    const isBought = pass.id === 'double-xp-pass' && playerState.xpMultiplier === 2.0;
-                    card.setAttribute('data-bought', isBought ? 'true' : 'false');
+                    shopData.filter(i => i.category === 'passes').forEach(pass => {
+                        try {
+                            const card = document.createElement('div');
+                            card.className = 'pass-card';
+                            const isBought = pass.id === 'double-xp-pass' && playerState.xpMultiplier === 2.0;
+                            card.setAttribute('data-bought', isBought ? 'true' : 'false');
 
-                    // Inside standard item portrait-card loop:
-                    const isOwned = isShopItemOwned(item);
-                    const buttonHtml = isOwned
-                        ? `<button class="card-buy-btn" style="background-color: #1f2937; color: #4b5563; border-color: #374151; pointer-events: none; cursor: default;">✓ OWNED</button>`
-                        : `<button class="card-buy-btn" data-id="${item.id}">🪙 ${formatMoney(item.cost)}</button>`;
-    
-                    card.innerHTML = `
-                        ${showNew ? '<span class="new-badge">New</span>' : ''}
-                        <div class="circle-icon">${item.icon}</div>
-                        <span class="card-name">${item.name}</span>
-                        <p class="card-desc">${item.desc}</p>
-                        ${buttonHtml}
-                    `;
+                            card.innerHTML = `
+                                <div class="pass-header">
+                                    <span class="pass-card-title">${pass.icon} ${pass.name}</span>
+                                    <div class="pass-controls">
+                                        ${isBought ? '<span class="owned-badge">Owned</span>' : '<button class="pass-header-buy-btn" data-id="' + pass.id + '">🎟️ ' + pass.cost + '</button>'}
+                                        <button class="pass-toggle-btn">▼</button>
+                                    </div>
+                                </div>
+                                <div class="pass-content">
+                                    <div class="pass-rewards-placeholder">
+                                        <h5>🌟 Benefit Details</h5>
+                                        <p>${pass.desc}</p>
+                                    </div>
+                                    ${isBought ? '<div class="pass-owned-placeholder">✓ Already Owned & Active</div>' : '<button class="pass-content-buy-btn" data-id="' + pass.id + '">🎟️ Buy Pass (' + pass.cost + ')</button>'}
+                                </div>`;
 
-                    card.querySelector('.pass-toggle-btn').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        card.classList.toggle('expanded');
+                            const toggleBtn = card.querySelector('.pass-toggle-btn');
+                            if (toggleBtn) {
+                                toggleBtn.addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    card.classList.toggle('expanded');
+                                });
+                            }
+                            passesList.appendChild(card);
+                        } catch (passError) {
+                            console.error("Error rendering pass card:", passError, pass);
+                        }
                     });
-                    passesList.appendChild(card);
-                });
-                section.appendChild(passesList);
+                    section.appendChild(passesList);
+                } catch (passesSectionError) {
+                    console.error("Error rendering passes sub-section:", passesSectionError);
+                }
             }
             shopSectionsList.appendChild(section);
         });
 
-        // Locate at the end of renderShop() and replace the button listeners with this:
         shopSectionsList.querySelectorAll('.card-buy-btn, .wider-card-btn, .pass-header-buy-btn, .pass-content-buy-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                // Opens the preview details modal first
                 openShopItemDetailModal(btn.getAttribute('data-id')); 
             });
         });
@@ -1291,17 +1376,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const item = shopData.find(i => i.id === itemId);
         if (!item) return;
 
-        // Prevent exploit purchasing of already owned items
+        // 1. Ownership and Sequence Safety Guards
         if (isShopItemOwned(item)) {
             SoundEngine.playError();
             showNotification("Upgrade Active", "You already own this upgrade!", "error");
             return;
         }
 
+        if (!canBuyShopItem(item)) {
+            SoundEngine.playError();
+            showNotification("Locked Upgrade", `You must purchase the previous upgrades in this category first!`, "error", 4000);
+            return;
+        }
+
         const premiumCategories = ["money-perks", "packs", "subscriptions", "passes"];
         const isPremium = premiumCategories.includes(item.category);
-        
-        // 1. Currency Check & Deduction
+
+        // 2. Currency Validation
         if (isPremium) {
             if (playerState.tokens < item.cost) {
                 SoundEngine.playError();
@@ -1337,7 +1428,7 @@ document.addEventListener('DOMContentLoaded', () => {
             playerState.buffs[item.buffType] = item.buffDuration;
         }
 
-        // 2. Apply Upgrades & Premium Rewards
+        // 3. Apply Upgrades & Premium Statuses
         if (item.category === "mining-speed") {
             playerState.activePickaxeMultiplier = item.multiplier;
         } else if (item.category === "bag-capacity") {
@@ -1345,37 +1436,30 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (item.category === "energy") {
             playerState.currentEnergy = Math.min(playerState.maxEnergy, playerState.currentEnergy + item.energy);
         } else if (item.category === "money-perks") {
-            playerState.sellMultiplier = Math.max(playerState.sellMultiplier, item.multiplier);
-        } else if (item.category === "packs") {
-            // Apply bundle rewards
-            if (item.id === "starter-bundle") {
-                playerState.money += 500;
-                playerState.currentEnergy = Math.min(playerState.maxEnergy, playerState.currentEnergy + 50);
-            } else if (item.id === "miner-pack") {
-                playerState.money += 2000;
-                playerState.currentEnergy = Math.min(playerState.maxEnergy, playerState.currentEnergy + 100);
-            }
-        } else if (item.category === "subscriptions") {
-            // Activate passive subscription checks
-            if (item.id === "coin-subscription") {
-                playerState.hasCoinSub = true;
-            }
-        } else if (item.category === "passes") {
-            // Activate permanent season passes
-            if (item.id === "double-xp-pass") {
-                playerState.xpMultiplier = 2.0;
-            }
-        } else if (item.category === "money-perks") {
             if (item.id === "magnet-badge") {
                 playerState.hasMagnet = true;
             } else {
                 playerState.sellMultiplier = Math.max(playerState.sellMultiplier, item.multiplier);
+            }
+        } else if (item.category === "packs") {
+            if (item.id === "starter-bundle") {
+                playerState.hasStarterBundle = true;
+                playerState.money += 500;
+                playerState.currentEnergy = Math.min(playerState.maxEnergy, playerState.currentEnergy + 50);
+            } else if (item.id === "miner-pack") {
+                playerState.hasMinerPack = true;
+                playerState.money += 2000;
+                playerState.currentEnergy = Math.min(playerState.maxEnergy, playerState.currentEnergy + 100);
             }
         } else if (item.category === "subscriptions") {
             if (item.id === "coin-subscription") {
                 playerState.hasCoinSub = true;
             } else if (item.id === "token-subscription") {
                 playerState.hasTokenSub = true;
+            }
+        } else if (item.category === "passes") {
+            if (item.id === "double-xp-pass") {
+                playerState.xpMultiplier = 2.0;
             }
         }
 
