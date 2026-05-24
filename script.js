@@ -1,10 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ==================== SESSION STATE ====================
-    const GAME_VERSION = "1.7.0"; // Active version used to check shop updates
+    const GAME_VERSION = "1.8.0"; // Active version used to check shop updates
     
     const playerState = {
         username: "", // Custom player display name
         level: 1, xp: 0, xpNeeded: 100, money: 200, maxBagCapacity: 20,
+        tokens: 0,          // <-- ADD THIS (Premium Currency)
+        hasCoinSub: false,  // <-- ADD THIS (Pension Subscription check)
         currentEnergy: 100, maxEnergy: 100, activePickaxeMultiplier: 1.0,
         xpMultiplier: 1.0, 
         sellMultiplier: 1.0, // <-- ADD THIS LINE
@@ -47,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const labelLevel = document.getElementById('player-level');
     const labelXp = document.getElementById('player-xp');
     const labelMoney = document.getElementById('player-money');
+    const labelTokens = document.getElementById('player-tokens'); // <-- ADD THIS Selector
     const labelOres = document.getElementById('ores-mined');
     const labelCapacity = document.getElementById('bag-capacity');
     const labelEnergy = document.getElementById('player-energy');
@@ -190,6 +193,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (playerState.sellMultiplier === undefined) {
                    playerState.sellMultiplier = 1.0; // <-- ADD THIS LINE
+                }
+                if (playerState.tokens === undefined) {
+                   playerState.tokens = 0; // <-- ADD THIS
+                }
+                if (playerState.hasCoinSub === undefined) {
+                   playerState.hasCoinSub = false; // <-- ADD THIS
                 }
             } catch (err) {
                 console.error("Save load failed: ", err);
@@ -507,8 +516,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
+
+        // Passively generate 5 coins every second if Coin Subscription is active
+        if (playerState.hasCoinSub) {
+            playerState.money += 5;
+            changed = true;
+        }
+
         if (changed) {
             renderBuffsUI();
+            updateStatsUI(); // Keeps the numbers in sync
             saveGame();
         }
     }, 1000);
@@ -529,6 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (labelXp) labelXp.textContent = playerState.xp;
         
         if (labelMoney) labelMoney.textContent = formatMoney(playerState.money, true);
+        if (labelTokens) labelTokens.textContent = formatMoney(playerState.tokens);
         
         if (labelOres) labelOres.textContent = playerState.inventory.length;
         if (labelCapacity) labelCapacity.textContent = playerState.maxBagCapacity;
@@ -536,11 +554,35 @@ document.addEventListener('DOMContentLoaded', () => {
         if (labelInvCount) labelInvCount.textContent = playerState.inventory.length;
         if (labelInvMax) labelInvMax.textContent = playerState.maxBagCapacity;
 
+        // 1. Update full XP fills and Sidebar stats
         if (sidebarXpFill && sidebarXpText) {
             const xpPercent = Math.min(100, (playerState.xp / playerState.xpNeeded) * 100);
             sidebarXpFill.style.width = `${xpPercent}%`;
             sidebarXpText.textContent = `XP: ${playerState.xp} / ${playerState.xpNeeded}`;
         }
+
+        // 2. Update the new contained navbar XP bar and remaining text limit
+        const navXpFill = document.getElementById('navXpFill');
+        const navXpText = document.getElementById('navXpText');
+        if (navXpFill && navXpText) {
+            const xpPercent = Math.min(100, (playerState.xp / playerState.xpNeeded) * 100);
+            navXpFill.style.width = `${xpPercent}%`;
+            
+            // Calculate how much XP is remaining to level up
+            const xpLeft = playerState.xpNeeded - playerState.xp;
+            navXpText.textContent = `${xpLeft} XP to Level Up`;
+        }
+
+        // 3. Update the new Floating Mobile Stats Bar labels
+        const floatMoney = document.getElementById('float-money');
+        const floatTokens = document.getElementById('float-tokens');
+        const floatBag = document.getElementById('float-bag');
+        const floatEnergy = document.getElementById('float-energy');
+
+        if (floatMoney) floatMoney.textContent = formatMoney(playerState.money, true);
+        if (floatTokens) floatTokens.textContent = formatMoney(playerState.tokens);
+        if (floatBag) floatBag.textContent = `${playerState.inventory.length} / ${playerState.maxBagCapacity}`;
+        if (floatEnergy) floatEnergy.textContent = `${Math.floor(playerState.currentEnergy)}%`;
 
         const displayName = playerState.username ? playerState.username : "Miner Joe";
         if (navUsername) navUsername.textContent = displayName;
@@ -970,12 +1012,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const isNewVersion = item.versionAdded === GAME_VERSION;
             const showNew = isNewItem || isNewVersion;
 
+            // Determine if this is a Premium Token purchase or Coin purchase
+            const premiumCategories = ["money-perks", "packs", "subscriptions", "passes"];
+            const isPremium = premiumCategories.includes(item.category);
+            const currencyIcon = isPremium ? "🎟️" : "🪙";
+
             card.innerHTML = `
                 ${showNew ? '<span class="new-badge">New</span>' : ''}
                 <div class="rounded-image-icon">${item.icon}</div>
                 <span class="wider-card-name">${item.name}</span>
                 <p class="wider-card-desc">${item.desc}</p>
-                <button class="wider-card-btn" data-id="${item.id}">Buy ${item.cost}</button>`;
+                <button class="wider-card-btn" data-id="${item.id}">${currencyIcon} ${formatMoney(item.cost)}</button>`;
             grid.appendChild(card);
         });
         scroll.appendChild(grid);
@@ -1019,6 +1066,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 scroll.appendChild(grid);
                 section.appendChild(scroll);
             } else {
+                // FIXED: Money Perks upgrades now render correctly!
+                renderShopSubSection(section, '📛 Upgrades & Badges', 'money-perks', 'wider-grid', 'wider-card');
                 renderShopSubSection(section, '🎁 Bundles & Packs', 'packs', 'wider-grid', 'wider-card');
                 renderShopSubSection(section, '📅 Subscriptions', 'subscriptions', 'wider-grid', 'wider-card');
 
@@ -1033,14 +1082,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 shopData.filter(i => i.category === 'passes').forEach(pass => {
                     const card = document.createElement('div');
                     card.className = 'pass-card';
-                    const isBought = pass.id === 'double-xp-pass';
+                    const isBought = pass.id === 'double-xp-pass' && playerState.xpMultiplier === 2.0;
                     card.setAttribute('data-bought', isBought ? 'true' : 'false');
 
                     card.innerHTML = `
                         <div class="pass-header">
                             <span class="pass-card-title">${pass.icon} ${pass.name}</span>
                             <div class="pass-controls">
-                                ${isBought ? '<span class="owned-badge">Owned</span>' : '<button class="pass-header-buy-btn" data-id="' + pass.id + '">Buy ' + pass.cost + '</button>'}
+                                ${isBought ? '<span class="owned-badge">Owned</span>' : '<button class="pass-header-buy-btn" data-id="' + pass.id + '">🎟️ ' + pass.cost + '</button>'}
                                 <button class="pass-toggle-btn">▼</button>
                             </div>
                         </div>
@@ -1049,7 +1098,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <h5>🌟 Benefit Details</h5>
                                 <p>${pass.desc}</p>
                             </div>
-                            ${isBought ? '<div class="pass-owned-placeholder">✓ Already Owned & Active</div>' : '<button class="pass-content-buy-btn" data-id="' + pass.id + '">Buy Pass (' + pass.cost + ')</button>'}
+                            ${isBought ? '<div class="pass-owned-placeholder">✓ Already Owned & Active</div>' : '<button class="pass-content-buy-btn" data-id="' + pass.id + '">🎟️ Buy Pass (' + pass.cost + ')</button>'}
                         </div>`;
 
                     card.querySelector('.pass-toggle-btn').addEventListener('click', (e) => {
@@ -1070,36 +1119,41 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
-
+    
     function buyShopItem(itemId) {
         const item = shopData.find(i => i.id === itemId);
         if (!item) return;
 
-        if (item.isIAP) {
-            showNotification(
-                "🎁 Purchase Successful!", 
-                `Unlocked ${item.name}! (Simulated IAP)`, 
-                "level-up", 
-                4000
-            );
-            if (item.id === "double-xp-pass") playerState.xpMultiplier = 2.0;
-            saveGame();
-            renderShop();
-            return;
+        const premiumCategories = ["money-perks", "packs", "subscriptions", "passes"];
+        const isPremium = premiumCategories.includes(item.category);
+
+        // 1. Currency Check & Deduction
+        if (isPremium) {
+            if (playerState.tokens < item.cost) {
+                SoundEngine.playError();
+                showNotification(
+                    "🎟️ Insufficient Tokens!", 
+                    `You need 🎟️ ${item.cost} Tokens to purchase ${item.name}. Convert some Coins first!`, 
+                    "sell", 
+                    4000
+                );
+                return;
+            }
+            playerState.tokens -= item.cost;
+        } else {
+            if (playerState.money < item.cost) {
+                SoundEngine.playError();
+                showNotification(
+                    "🪙 Insufficient Coins!", 
+                    `You need 🪙 ${formatMoney(item.cost)} to purchase ${item.name}.`, 
+                    "sell", 
+                    4000
+                );
+                return;
+            }
+            playerState.money -= item.cost;
         }
 
-        if (playerState.money < item.cost) {
-            SoundEngine.playError();
-            showNotification(
-                "🪙 Insufficient Coins!", 
-                `You need 🪙 ${formatMoney(item.cost)} to purchase ${item.name}.`, 
-                "sell", 
-                4000
-            );
-            return;
-        }
-
-        playerState.money -= item.cost;
         if (item.collectionId) {
             unlockCollectionItem(item.collectionId);
         }
@@ -1109,15 +1163,34 @@ document.addEventListener('DOMContentLoaded', () => {
             playerState.buffs[item.buffType] = item.buffDuration;
         }
 
+        // 2. Apply Upgrades & Premium Rewards
         if (item.category === "mining-speed") {
             playerState.activePickaxeMultiplier = item.multiplier;
         } else if (item.category === "bag-capacity") {
             playerState.maxBagCapacity = item.capacity;
-        } else if (item.category === "money-perks") {
-            // Keeps the highest multiplier owned
-            playerState.sellMultiplier = Math.max(playerState.sellMultiplier, item.multiplier);
         } else if (item.category === "energy") {
             playerState.currentEnergy = Math.min(playerState.maxEnergy, playerState.currentEnergy + item.energy);
+        } else if (item.category === "money-perks") {
+            playerState.sellMultiplier = Math.max(playerState.sellMultiplier, item.multiplier);
+        } else if (item.category === "packs") {
+            // Apply bundle rewards
+            if (item.id === "starter-bundle") {
+                playerState.money += 500;
+                playerState.currentEnergy = Math.min(playerState.maxEnergy, playerState.currentEnergy + 50);
+            } else if (item.id === "miner-pack") {
+                playerState.money += 2000;
+                playerState.currentEnergy = Math.min(playerState.maxEnergy, playerState.currentEnergy + 100);
+            }
+        } else if (item.category === "subscriptions") {
+            // Activate passive subscription checks
+            if (item.id === "coin-subscription") {
+                playerState.hasCoinSub = true;
+            }
+        } else if (item.category === "passes") {
+            // Activate permanent season passes
+            if (item.id === "double-xp-pass") {
+                playerState.xpMultiplier = 2.0;
+            }
         }
 
         SoundEngine.playCoin();
@@ -1499,7 +1572,47 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         });
     }
+    
+    // ==================== COIN TO TOKEN CONVERSION CONTROLLER ====================
+    const convertOneBtn = document.getElementById('convertOneBtn');
+    const convertTenBtn = document.getElementById('convertTenBtn');
 
+    if (convertOneBtn) {
+        convertOneBtn.addEventListener('click', () => {
+            const cost = 500;
+            if (playerState.money >= cost) {
+                playerState.money -= cost;
+                playerState.tokens += 1;
+                SoundEngine.playCoin();
+                showNotification("Exchange Successful!", "Converted 🪙 500 Coins into 🎟️ 1 Premium Token!", "shop", 3000);
+                saveGame();
+                updateStatsUI();
+                renderShop();
+            } else {
+                SoundEngine.playError();
+                showNotification("Insufficient Coins!", "You need 🪙 500 Coins to convert 1 Token.", "sell", 3000);
+            }
+        });
+    }
+
+    if (convertTenBtn) {
+        convertTenBtn.addEventListener('click', () => {
+            const cost = 5000;
+            if (playerState.money >= cost) {
+                playerState.money -= cost;
+                playerState.tokens += 10;
+                SoundEngine.playCoin();
+                showNotification("Exchange Successful!", "Converted 🪙 5,000 Coins into 🎟️ 10 Premium Tokens!", "shop", 3000);
+                saveGame();
+                updateStatsUI();
+                renderShop();
+            } else {
+                SoundEngine.playError();
+                showNotification("Insufficient Coins!", "You need 🪙 5,000 Coins to convert 10 Tokens.", "sell", 3000);
+            }
+        });
+    }
+    
     // ==================== STARTING USERNAME INPUT MODAL CONTROLLER ====================
     if (saveNameBtn && usernameInput && nameModal) {
         saveNameBtn.addEventListener('click', () => {

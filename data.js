@@ -166,15 +166,25 @@ const shopData = [
     { id: "raw-apple", category: "energy", name: "Raw Apple", desc: "Restores 15 Energy.", cost: 10, icon: "🍏", energy: 15, collectionId: null, releaseDate: "2026-05-23" },
     { id: "stamina-brew", category: "energy", name: "Stamina Brew", desc: "Restores 50 Energy.", cost: 75, icon: "🧪", energy: 50, collectionId: null },
     { id: "cooked-meat", category: "energy", name: "Cooked Meat", desc: "Restores 100 Energy.", cost: 180, icon: "🥩", energy: 100, collectionId: null },
-
+  
     // Boosts / Potions
     { id: "luck-brew", category: "boosts", name: "Luck Brew", desc: "Double gem roll chance.", cost: 120, icon: "⭐", collectionId: null, buffType: "luck", buffDuration: 60 },
     { id: "rage-elixir", category: "boosts", name: "Rage Elixir", desc: "Cuts mining costs by 50%.", cost: 200, icon: "🔥", collectionId: null, buffType: "rage", buffDuration: 60 },
     { id: "xp-elixir", category: "boosts", name: "XP Elixir", desc: "Double XP gained for 45s.", cost: 150, icon: "🧪", collectionId: null, buffType: "xpBoost", buffDuration: 45 },
-    
-    // Money Perks
-    { id: "merchant-badge", category: "money-perks", name: "Merchant Badge", desc: "+10% gold from selling ores.", cost: 350, icon: "📛", multiplier: 1.10, collectionId: null },
-    { id: "golden-ring", category: "money-perks", name: "Golden Ring", desc: "+25% gold from selling ores.", cost: 1200, icon: "💍", multiplier: 1.25, collectionId: null }
+   
+    // Upgrades & Badges (Category: money-perks) - Costs are now in Tokens
+    { id: "merchant-badge", category: "money-perks", name: "Merchant Badge", desc: "+10% gold from selling ores.", cost: 3, icon: "📛", multiplier: 1.10, collectionId: null },
+    { id: "golden-ring", category: "money-perks", name: "Golden Ring", desc: "+25% gold from selling ores.", cost: 10, icon: "💍", multiplier: 1.25, collectionId: null },
+  
+    // Bundles & Packs (Category: packs) - Costs are now in Tokens
+    { id: "starter-bundle", category: "packs", name: "Starter Bundle", desc: "Instantly grants 500 Coins & 50 Energy.", cost: 5, icon: "🎁" },
+    { id: "miner-pack", category: "packs", name: "Miner Pack", desc: "Instantly grants 2,000 Coins & 100 Energy.", cost: 12, icon: "📦" },
+  
+    // Subscriptions (Category: subscriptions) - Costs are now in Tokens
+    { id: "coin-subscription", category: "subscriptions", name: "Miner's Pension", desc: "Generates +5 Coins every second passively.", cost: 15, icon: "📅" },
+  
+    // Season Passes (Category: passes) - Costs are now in Tokens
+    { id: "double-xp-pass", category: "passes", name: "Double XP Pass", desc: "Permanently doubles all earned XP.", cost: 20, icon: "🎫" }
 ];
 
 // ==================== COLLECTIONS GALLERY DATABASE ====================

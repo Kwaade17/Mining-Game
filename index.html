@@ -12,56 +12,75 @@
 </head>
 <body>
     <!-- Top Navigation Bar -->
-    <nav class="navbar">
+    <header class="navbar">
         <button class="menu-toggle" id="menuToggle" aria-label="Toggle Menu">☰</button>
-        <div class="logo">⛏| Mine</div>
+        <div class="logo">⛏️ Mining Game</div>
 
-        <!-- Real-time Stats -->
+        <!-- Centered XP Progress Bar Container inside Nav -->
+        <div class="nav-xp-container" id="navXpContainer">
+            <div class="nav-xp-bar-wrapper">
+                <div class="nav-xp-bar-fill" id="navXpFill"></div>
+            </div>
+            <span class="nav-xp-text" id="navXpText">100 XP to Level Up</span>
+        </div>
+
+        <!-- Stats Container (Hides on Mobile Viewports) -->
         <div class="stats-container">
             <!-- Level -->
-            <div class="stat-item" title="Level (Experience)">
-                <span class="stat-label">Lvl</span> <span id="player-level">1</span> 
-                <span class="xp-text"> (<span id="player-xp">0</span> XP)</span>
+            <div class="stat-item" id="nav-level-badge" title="Player Level">
+                <span class="stat-icon font-semibold text-amber-400">Lvl</span> <span id="player-level">1</span>
             </div>
-            
             <!-- Money -->
             <div class="stat-item" title="Gold Coins">
                 <span class="stat-icon">🪙</span> <span id="player-money">120</span>
             </div>
-
-            <!-- Ores Mined -->
-            <div class="stat-item" title="Ores Mined">
+            <!-- Tokens -->
+            <div class="stat-item" title="Premium Tokens">
+                <span class="stat-icon">🎟️</span> <span id="player-tokens">0</span>
+            </div>
+            <!-- Mined Ores -->
+            <div class="stat-item" title="Total Mined Ores">
                 <span class="stat-icon">🪨</span> <span id="ores-mined">0</span>
             </div>
-
-            <!-- Bag Capacity -->
-            <div class="stat-item" title="Bag Capacity Limit">
+            <!-- Bag -->
+            <div class="stat-item" title="Bag Limit">
                 <span class="stat-icon">🎒</span> <span id="bag-capacity">20</span>
             </div>
-
-            <!-- Energy Status -->
-            <div class="stat-item" title="Energy Status">
+            <!-- Energy -->
+            <div class="stat-item" title="Current Energy">
                 <span class="stat-icon">⚡</span> <span id="player-energy">100%</span>
             </div>
         </div>
 
-        <!-- User Profile Widget with Dropdown -->
+        <!-- User Profile -->
         <div class="user-profile" id="userProfile">
             <span class="username" id="navUsername">Miner Joe</span>
-            <div class="profile-avatar">👤</div>
-            
-            <!-- Expandable Dropdown Panel -->
-            <div class="profile-dropdown" id="profileDropdown">
+            <div class="avatar-circle">👤</div>
+            <div class="profile-dropdown">
                 <a href="#" class="dropdown-item" id="dropdownAccount">👤 Account</a>
                 <a href="#" class="dropdown-item" id="dropdownSettings">🔊 Mute Sounds</a>
-                <hr class="dropdown-divider">
                 <a href="#" class="dropdown-item logout-item" id="dropdownSignOut">🚪 Sign Out</a>
             </div>
         </div>
-    </nav>
+    </header>
 
     <!-- Main Game Wrapper -->
     <div class="game-wrapper">
+        <!-- New Floating Stats Bar for Mobile Viewports (Displays below nav) -->
+        <div class="floating-stats-bar" id="floatingStatsBar">
+            <div class="float-stat" title="Gold Coins">
+                <span>🪙</span> <span id="float-money">0</span>
+            </div>
+            <div class="float-stat" title="Premium Tokens">
+                <span>🎟️</span> <span id="float-tokens">0</span>
+            </div>
+            <div class="float-stat" title="Bag Space">
+                <span>🎒</span> <span id="float-bag">0 / 20</span>
+            </div>
+            <div class="float-stat" title="Current Energy">
+                <span>⚡</span> <span id="float-energy">100%</span>
+            </div>
+        </div>
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-profile">
@@ -128,6 +147,16 @@
             <!-- 2. SHOP VIEW -->
             <div id="view-shop" class="game-view">
                 <div class="shop-wrapper">
+                  <!-- Token Exchange Widget -->
+                  <div class="exchange-widget" style="background-color: var(--stone-dark); border: 2px solid var(--gold-accent); border-radius: 8px; padding: 15px; text-align: center; margin: 0 15px 15px 15px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+                    <h4 style="margin: 0; color: var(--gold-accent); font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;">🎟️ Token Exchange</h4>
+                    <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">Convert earned Gold Coins (🪙) to Premium Tokens (🎟️).</p>
+                    <div style="font-size: 0.85rem; font-weight: bold; color: var(--text-light); margin: 5px 0;">Rate: 🪙 500 Coins = 🎟️ 1 Token</div>
+                    <div style="display: flex; gap: 8px; justify-content: center; align-items: center;">
+                      <button id="convertOneBtn" class="card-buy-btn" style="width: auto; font-size: 0.75rem; padding: 6px 12px; text-transform: uppercase;">Convert 1 Token</button>
+                      <button id="convertTenBtn" class="card-buy-btn" style="width: auto; font-size: 0.75rem; padding: 6px 12px; background-color: #2e7d32; color: white; text-transform: uppercase;">Convert 10 Tokens</button>
+                    </div>
+                  </div>
                     <div class="shop-controls">
                         <input type="text" id="shopSearchInput" class="shop-search" placeholder="Search shop items...">
                         <select id="shopSectionFilter" class="shop-filter">
