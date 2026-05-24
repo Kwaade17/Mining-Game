@@ -186,10 +186,15 @@ const shopData = [
     { id: "berserker-potion", category: "boosts", name: "Berserker Potion", desc: "Cuts mining costs by 50% for 150s.", cost: 450, icon: "🩸", collectionId: null, buffType: "rage", buffDuration: 150, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
     { id: "master-xp-potion", category: "boosts", name: "Master XP Potion", desc: "Double XP gained for 120s.", cost: 380, icon: "⚗️", collectionId: null, buffType: "xpBoost", buffDuration: 120, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
     { id: "infinity-potion", category: "boosts", name: "Infinity Potion", desc: "Double gem roll chance for 300s.", cost: 600, icon: "🌌", collectionId: null, buffType: "luck", buffDuration: 300, versionAdded: "1.8.5", releaseDate: "2026-05-24" },
+    // Boosts / Potions (Data updated to version 1.8.6)
+    // ... your other boosts ...
+    { id: "vigor-elixir", category: "boosts", name: "Vigor Elixir", desc: "Endless mining energy (0 cost) for 30s.", cost: 350, icon: "⚡", collectionId: null, buffType: "vigor", buffDuration: 30, versionAdded: "1.8.6", releaseDate: "2026-05-24" },
+    { id: "jackpot-potion", category: "boosts", name: "Jackpot Potion", desc: "Triples Gold gained from chests for 60s.", cost: 500, icon: "🎰", collectionId: null, buffType: "jackpot", buffDuration: 60, versionAdded: "1.8.6", releaseDate: "2026-05-24" },
   
     // Upgrades & Badges (Category: money-perks) - Costs are in Tokens
     { id: "merchant-badge", category: "money-perks", name: "Merchant Badge", desc: "+10% gold from selling ores.", cost: 3, icon: "📛", multiplier: 1.10, collectionId: null },
     { id: "golden-ring", category: "money-perks", name: "Golden Ring", desc: "+25% gold from selling ores.", cost: 10, icon: "💍", multiplier: 1.25, collectionId: null },
+    { id: "magnet-badge", category: "money-perks", name: "Magnet Badge", desc: "Attracts chests! Doubles spawn rates.", cost: 8, icon: "🧲", multiplier: 1.0, collectionId: null, versionAdded: "1.8.6", releaseDate: "2026-05-24" },
   
     // Bundles & Packs (Category: packs) - Costs are in Tokens
     { id: "starter-bundle", category: "packs", name: "Starter Bundle", desc: "Instantly grants 500 Coins & 50 Energy.", cost: 5, icon: "🎁" },
@@ -197,6 +202,7 @@ const shopData = [
   
     // Subscriptions (Category: subscriptions) - Costs are in Tokens
     { id: "coin-subscription", category: "subscriptions", name: "Miner's Pension", desc: "Generates +5 Coins every second passively.", cost: 15, icon: "📅" },
+    { id: "token-subscription", category: "subscriptions", name: "VIP Token Membership", desc: "Generates +1 Premium Token every 60s.", cost: 25, icon: "🎖️", versionAdded: "1.8.6", releaseDate: "2026-05-24" },
   
     // Season Passes (Category: passes) - Costs are in Tokens
     { id: "double-xp-pass", category: "passes", name: "Double XP Pass", desc: "Permanently doubles all earned XP.", cost: 20, icon: "🎫" }

@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
         level: 1, xp: 0, xpNeeded: 100, money: 200, maxBagCapacity: 20,
         tokens: 0,          // <-- ADD THIS (Premium Currency)
         hasCoinSub: false,  // <-- ADD THIS (Pension Subscription check)
+        hasTokenSub: false, // <-- ADD THIS
+        hasMagnet: false,   // <-- ADD THIS
+        tokenSubTimer: 0,   // <-- ADD THIS
         currentEnergy: 100, maxEnergy: 100, activePickaxeMultiplier: 1.0,
         xpMultiplier: 1.0, 
         sellMultiplier: 1.0, // <-- ADD THIS LINE
@@ -159,6 +162,28 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => this.playTone(1320, 'sine', 0.15, 0.08), 120);
         }
     };
+    
+    // ==================== SHOP ITEM OWNSHIP CHECKER ====================
+    function isShopItemOwned(item) {
+        if (item.category === "mining-speed") {
+            return playerState.activePickaxeMultiplier >= item.multiplier;
+        }
+        if (item.category === "bag-capacity") {
+            return playerState.maxBagCapacity >= item.capacity;
+        }
+        if (item.category === "money-perks") {
+            if (item.id === "magnet-badge") return playerState.hasMagnet;
+            return playerState.sellMultiplier >= item.multiplier;
+        }
+        if (item.category === "subscriptions") {
+            if (item.id === "coin-subscription") return playerState.hasCoinSub;
+            if (item.id === "token-subscription") return playerState.hasTokenSub;
+        }
+        if (item.category === "passes") {
+            if (item.id === "double-xp-pass") return playerState.xpMultiplier >= 2.0;
+        }
+        return false;
+    }
 
     // ==================== PERSISTENT LOCAL STORAGE ENGINE ====================
     function saveGame() {
@@ -199,6 +224,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (playerState.hasCoinSub === undefined) {
                    playerState.hasCoinSub = false; // <-- ADD THIS
+                }
+                if (playerState.hasTokenSub === undefined) {
+                   playerState.hasTokenSub = false;
+                }
+                if (playerState.hasMagnet === undefined) {
+                   playerState.hasMagnet = false;
+                }
+                if (playerState.tokenSubTimer === undefined) {
+                   playerState.tokenSubTimer = 0;
+                }
+                if (!playerState.buffs.vigor) {
+                   playerState.buffs.vigor = 0;
+                }
+                if (!playerState.buffs.jackpot) {
+                   playerState.buffs.jackpot = 0;
                 }
             } catch (err) {
                 console.error("Save load failed: ", err);
@@ -440,7 +480,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function rollChestSpawn() {
-        if (Math.random() <= 0.08) {
+        // Magnet Badge doubles base spawn rate (from 8% to 16%)
+        const spawnChance = playerState.hasMagnet ? 0.16 : 0.08;
+        if (Math.random() <= spawnChance) {
             const activeView = document.querySelector('.game-view.active');
             if (!activeView) return;
 
@@ -457,10 +499,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             chest.addEventListener('click', (e) => {
                 e.stopPropagation();
-                
                 chest.style.pointerEvents = 'none';
 
-                const rewardGold = 40 + Math.floor(Math.random() * 61); 
+                let rewardGold = 40 + Math.floor(Math.random() * 61); 
+                
+                // Triple chest gold if Jackpot buff is active
+                if (playerState.buffs && playerState.buffs.jackpot > 0) {
+                    rewardGold *= 3;
+                }
+
                 playerState.money += rewardGold;
 
                 // Fix: Corrected parenthesis syntax inside formatMoney call
@@ -490,7 +537,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const buffLabels = {
             luck: "🍀 Luck",
             rage: "🔥 Rage",
-            xpBoost: "✨ Double XP"
+            xpBoost: "✨ Double XP",
+            vigor: "⚡ Infinite Energy", // <-- ADD THIS
+            jackpot: "🎰 Jackpot"        // <-- ADD THIS
         };
 
         if (!playerState.buffs) return;
@@ -521,6 +570,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (playerState.hasCoinSub) {
             playerState.money += 5;
             changed = true;
+        }
+
+        // Passive Coin Subscription Pension Tick
+        if (playerState.hasCoinSub) {
+            playerState.money += 5;
+            changed = true;
+        }
+
+        // Passive Token Subscription Pension Tick (1 Premium Token every 60s)
+        if (playerState.hasTokenSub) {
+            playerState.tokenSubTimer++;
+            if (playerState.tokenSubTimer >= 60) {
+                playerState.tokens += 1;
+                playerState.tokenSubTimer = 0;
+                showNotification("🎟️ Token Pension!", "Received +1 Premium Token from your VIP Subscription!", "shop", 3500);
+                changed = true;
+            }
         }
 
         if (changed) {
@@ -761,7 +827,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        const activeCost = (playerState.buffs && playerState.buffs.rage > 0) ? Math.ceil(cave.energyCost / 2) : cave.energyCost;
+        // Locate inside mineCave:
+        let activeCost = cave.energyCost;
+        if (playerState.buffs && playerState.buffs.vigor > 0) {
+            activeCost = 0; // Infinite Energy Buff Active!
+        } else if (playerState.buffs && playerState.buffs.rage > 0) {
+            activeCost = Math.ceil(cave.energyCost / 2);
+        }
 
         if (playerState.currentEnergy < activeCost) {
             SoundEngine.playError();
@@ -1036,13 +1108,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const premiumCategories = ["money-perks", "packs", "subscriptions", "passes"];
             const isPremium = premiumCategories.includes(item.category);
             const currencyIcon = isPremium ? "🎟️" : "🪙";
+            const isOwned = isShopItemOwned(item);
+            const buttonHtml = isOwned 
+                ? `<button class="wider-card-btn" style="background-color: #1f2937; color: #4b5563; border-color: #374151; pointer-events: none; cursor: default;">✓ OWNED</button>`
+                : `<button class="wider-card-btn" data-id="${item.id}">${currencyIcon} ${formatMoney(item.cost)}</button>`;
 
             card.innerHTML = `
                 ${showNew ? '<span class="new-badge">New</span>' : ''}
                 <div class="rounded-image-icon">${item.icon}</div>
                 <span class="wider-card-name">${item.name}</span>
                 <p class="wider-card-desc">${item.desc}</p>
-                <button class="wider-card-btn" data-id="${item.id}">${currencyIcon} ${formatMoney(item.cost)}</button>`;
+                ${buttonHtml}`;
+            
             grid.appendChild(card);
         });
         scroll.appendChild(grid);
@@ -1138,12 +1215,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     const isNewVersion = item.versionAdded === GAME_VERSION;
                     const showNew = isNewItem || isNewVersion;
 
+                    // Inside standard item portrait-card loop:
+                    const isOwned = isShopItemOwned(item);
+                    const buttonHtml = isOwned
+                        ? `<button class="card-buy-btn" style="background-color: #1f2937; color: #4b5563; border-color: #374151; pointer-events: none; cursor: default;">✓ OWNED</button>`
+                        : `<button class="card-buy-btn" data-id="${item.id}">🪙 ${formatMoney(item.cost)}</button>`;
+    
                     card.innerHTML = `
                         ${showNew ? '<span class="new-badge">New</span>' : ''}
                         <div class="circle-icon">${item.icon}</div>
                         <span class="card-name">${item.name}</span>
                         <p class="card-desc">${item.desc}</p>
-                        <button class="card-buy-btn" data-id="${item.id}">🪙 ${formatMoney(item.cost)}</button>
+                        ${buttonHtml}
                     `;
                     grid.appendChild(card);
                 });
@@ -1169,21 +1252,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     const isBought = pass.id === 'double-xp-pass' && playerState.xpMultiplier === 2.0;
                     card.setAttribute('data-bought', isBought ? 'true' : 'false');
 
+                    // Inside standard item portrait-card loop:
+                    const isOwned = isShopItemOwned(item);
+                    const buttonHtml = isOwned
+                        ? `<button class="card-buy-btn" style="background-color: #1f2937; color: #4b5563; border-color: #374151; pointer-events: none; cursor: default;">✓ OWNED</button>`
+                        : `<button class="card-buy-btn" data-id="${item.id}">🪙 ${formatMoney(item.cost)}</button>`;
+    
                     card.innerHTML = `
-                        <div class="pass-header">
-                            <span class="pass-card-title">${pass.icon} ${pass.name}</span>
-                            <div class="pass-controls">
-                                ${isBought ? '<span class="owned-badge">Owned</span>' : '<button class="pass-header-buy-btn" data-id="' + pass.id + '">🎟️ ' + pass.cost + '</button>'}
-                                <button class="pass-toggle-btn">▼</button>
-                            </div>
-                        </div>
-                        <div class="pass-content">
-                            <div class="pass-rewards-placeholder">
-                                <h5>🌟 Benefit Details</h5>
-                                <p>${pass.desc}</p>
-                            </div>
-                            ${isBought ? '<div class="pass-owned-placeholder">✓ Already Owned & Active</div>' : '<button class="pass-content-buy-btn" data-id="' + pass.id + '">🎟️ Buy Pass (' + pass.cost + ')</button>'}
-                        </div>`;
+                        ${showNew ? '<span class="new-badge">New</span>' : ''}
+                        <div class="circle-icon">${item.icon}</div>
+                        <span class="card-name">${item.name}</span>
+                        <p class="card-desc">${item.desc}</p>
+                        ${buttonHtml}
+                    `;
 
                     card.querySelector('.pass-toggle-btn').addEventListener('click', (e) => {
                         e.stopPropagation();
@@ -1210,9 +1291,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const item = shopData.find(i => i.id === itemId);
         if (!item) return;
 
+        // Prevent exploit purchasing of already owned items
+        if (isShopItemOwned(item)) {
+            SoundEngine.playError();
+            showNotification("Upgrade Active", "You already own this upgrade!", "error");
+            return;
+        }
+
         const premiumCategories = ["money-perks", "packs", "subscriptions", "passes"];
         const isPremium = premiumCategories.includes(item.category);
-
+        
         // 1. Currency Check & Deduction
         if (isPremium) {
             if (playerState.tokens < item.cost) {
@@ -1276,6 +1364,18 @@ document.addEventListener('DOMContentLoaded', () => {
             // Activate permanent season passes
             if (item.id === "double-xp-pass") {
                 playerState.xpMultiplier = 2.0;
+            }
+        } else if (item.category === "money-perks") {
+            if (item.id === "magnet-badge") {
+                playerState.hasMagnet = true;
+            } else {
+                playerState.sellMultiplier = Math.max(playerState.sellMultiplier, item.multiplier);
+            }
+        } else if (item.category === "subscriptions") {
+            if (item.id === "coin-subscription") {
+                playerState.hasCoinSub = true;
+            } else if (item.id === "token-subscription") {
+                playerState.hasTokenSub = true;
             }
         }
 
