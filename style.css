@@ -884,3 +884,8 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
     margin: 10px 0 12px 0; /* Comfortable 10px space below the rank, and 12px space above the progress bar */
     text-align: center;
 }
+
+/* ==================== AUTHENTICATION MODAL TRANSITIONS ==================== */
+#authUsername {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}

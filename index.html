@@ -5,12 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Mining Game</title>
     <link rel="stylesheet" href="style.css">
-    <script src="data.js" defer></script>
-    <script src="script.js" defer></script>
     <!-- Marked.js Markdown Parser CDN -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <!-- Font Awesome Vector Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDK Compat (v10) - LOAD THESE BEFORE script.js -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script src="data.js" defer></script>
+    <script src="script.js" defer></script>
 </head>
 <body>
     <!-- Top Navigation Bar -->
@@ -227,16 +231,32 @@
         </div>
     </div>
 
-    <!-- Starting Username Modal -->
-    <div id="nameModal" class="modal-overlay">
-        <div class="modal-card" style="max-width: 280px; gap: 10px;">
+    <!-- Unified Authentication & Guest Access Modal -->
+    <div id="authModal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 320px; gap: 12px; padding: 25px;">
             <div class="modal-icon-container">
-                <div class="modal-icon">👤</div>
+                <div class="modal-icon" id="authIcon"><i class="fa-solid fa-user-lock"></i></div>
             </div>
-            <h3 class="modal-title">Welcome Miner</h3>
-            <p class="modal-description" style="margin-bottom: 5px;">Please enter your name to start your cavern journey:</p>
-            <input type="text" id="usernameInput" class="shop-search" placeholder="Miner Name..." style="text-align: center; max-width: 100%;">
-            <button class="card-buy-btn" id="saveNameBtn" style="width: auto; padding: 10px 20px; text-transform: uppercase;">Start Game</button>
+            <h3 class="modal-title" id="authTitle">Sign In</h3>
+            <p class="modal-description" id="authDesc">Sync your character data, unlock leaderboards, and trade online!</p>
+            
+            <!-- Auth Form Fields -->
+            <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                <input type="text" id="authUsername" class="shop-search" placeholder="Username (Sign Up Only)" style="text-align: center; max-width: 100%; display: none;">
+                <input type="email" id="authEmail" class="shop-search" placeholder="Email Address" style="text-align: center; max-width: 100%;">
+                <input type="password" id="authPassword" class="shop-search" placeholder="Password" style="text-align: center; max-width: 100%;">
+            </div>
+            
+            <!-- Action Buttons -->
+            <div style="display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 5px;">
+                <button class="card-buy-btn" id="authSubmitBtn" style="width: 100%; padding: 10px; text-transform: uppercase;">Sign In</button>
+                <button class="card-buy-btn" id="authGuestBtn" style="width: 100%; padding: 10px; background-color: #374151; color: white; text-transform: uppercase; border-color: #4b5563;">Play as Guest (Offline)</button>
+            </div>
+            
+            <!-- Switch link -->
+            <p style="font-size: 0.72rem; color: var(--text-muted); cursor: pointer; margin-top: 5px;" id="authToggleText">
+                Don't have an account? <strong style="color: var(--gold-accent);">Sign Up</strong>
+            </p>
         </div>
     </div>
 </body>

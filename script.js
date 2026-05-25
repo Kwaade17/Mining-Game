@@ -1,6 +1,36 @@
+// ==================== FIREBASE BACKEND CONFIGURATION (DEFENSIVE) ====================
+let auth = null;
+let db = null;
+let firebaseActive = false;
+
+if (typeof firebase !== 'undefined') {
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    const firebaseConfig = {
+      apiKey: "AIzaSyBeCPvV6ho9J9wBLH7wHe8j0Usg0pO2ESA",
+      authDomain: "gian-app-development.firebaseapp.com",
+      databaseURL: "https://gian-app-development-default-rtdb.firebaseio.com",
+      projectId: "gian-app-development",
+      storageBucket: "gian-app-development.firebasestorage.app",
+      messagingSenderId: "750987942732",
+      appId: "1:750987942732:web:373b98e40721447b3c4de9",
+      measurementId: "G-5QLKWRQ4HT"
+    };
+
+    try {
+        firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        db = firebase.database();
+        firebaseActive = true;
+    } catch (err) {
+        console.error("Firebase initialization failed:", err);
+    }
+} else {
+    console.warn("Firebase SDK not loaded. Running in local Offline-Only mode.");
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // ==================== SESSION STATE ====================
-    const GAME_VERSION = "1.9.0"; // Active version used to check shop updates
+    const GAME_VERSION = "2.0.0"; // Active version used to check shop updates
     
     const playerState = {
         username: "", // Custom player display name
@@ -13,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
         hasMinerPack: false,     // <-- ADD THIS
         tokenSubTimer: 0,   // <-- ADD THIS
         lastClaimTime: 0,    // <-- ADD THIS (Daily Claim timestamp)
+        saveMode: "local",  // <-- ADD THIS (local or cloud)
         currentEnergy: 100, maxEnergy: 100, activePickaxeMultiplier: 1.0,
         xpMultiplier: 1.0, 
         sellMultiplier: 1.0, // <-- ADD THIS LINE
@@ -224,12 +255,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ==================== PERSISTENT LOCAL STORAGE ENGINE ====================
     function saveGame() {
-        localStorage.setItem('miner_save', JSON.stringify(playerState));
-        const colMap = {};
-        collectionsData.forEach(item => {
-            colMap[item.id] = item.obtained;
-        });
-        localStorage.setItem('miner_col_save', JSON.stringify(colMap));
+       localStorage.setItem('miner_save', JSON.stringify(playerState));
+       const colMap = {};
+       collectionsData.forEach(item => {
+           colMap[item.id] = item.obtained;
+       });
+       localStorage.setItem('miner_col_save', JSON.stringify(colMap));
+    
+       // Locate inside saveGame() and update:
+        // Background Cloud Sync Integration (Offline-First Sync)
+        if (playerState.saveMode === "cloud" && navigator.onLine && firebaseActive) {
+           const user = auth.currentUser;
+           if (user) {
+               db.ref('users/' + user.uid + '/saveState').set(playerState)
+                   .catch(err => console.error("Cloud progress sync failed:", err));
+               db.ref('users/' + user.uid + '/collections').set(colMap)
+                   .catch(err => console.error("Cloud collections sync failed:", err));
+           }
+        }
     }
 
     function loadGame() {
@@ -285,6 +328,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (playerState.lastClaimTime === undefined) {
                    playerState.lastClaimTime = 0; // <-- ADD THIS
+                }
+                if (playerState.saveMode === undefined) {
+                   playerState.saveMode = "local"; // <-- ADD THIS
                 }
             } catch (err) {
                 console.error("Save load failed: ", err);
@@ -1894,7 +1940,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 1. Account Dropdown Option (Displays real-time stats inside unified modal)
+    // 1. Account Dropdown Option (Displays real-time stats & Cloud linkages)
     if (dropdownAccount) {
         dropdownAccount.addEventListener('click', (e) => {
             e.preventDefault();
@@ -1903,17 +1949,28 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const stats = [
                 { label: "Level Progress", value: `Lvl ${playerState.level}` },
-                { label: "XP", value: `${playerState.xp} / ${playerState.xpNeeded}` },
-                { label: "Total Coins", value: `🪙 ${formatMoney(playerState.money)}` },
-                { label: "Bag Space", value: `${playerState.inventory.length} / ${playerState.maxBagCapacity}` },
-                { label: "Active Pick speed multiplier", value: `${playerState.activePickaxeMultiplier}x` }
+                { label: "Gold Coins", value: `🪙 ${formatMoney(playerState.money)}` },
+                { label: "Active Save Mode", value: playerState.saveMode === "cloud" ? "☁️ Cloud Synced" : "🔌 Offline Guest" },
+                { label: "Mining Efficiency", value: `${playerState.activePickaxeMultiplier}x` }
             ];
+
+            // If player is a Guest, provide an action button to open the Auth Modal and Link Account
+            let customAction = null;
+            if (playerState.saveMode !== "cloud") {
+                customAction = {
+                    label: "🚀 SYNC PROGRESS ONLINE",
+                    callback: () => {
+                        authModal.classList.add('active');
+                    }
+                };
+            }
 
             openDetailModal(
                 "Miner Profile", 
                 "👤", 
                 `Cavern records and operational statistics for ${playerState.username ? playerState.username : "Miner Joe"}.`, 
-                stats
+                stats,
+                customAction
             );
         });
     }
@@ -1948,17 +2005,28 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             SoundEngine.playError();
             
-            // Custom confirmation modal popup
+            const descText = playerState.saveMode === "cloud"
+                ? "Are you sure you want to sign out? Your progress is securely backed up in the cloud, and you can access it again anytime."
+                : "WARNING: You are playing as a Guest. Signing out will permanently delete your offline Coins, levels, and inventory!";
+
             openDetailModal(
-                "Reset Cavern Progress?",
+                "Sign Out / Reset?",
                 "🚪",
-                "Are you sure you want to sign out and clear your session? This will permanently delete your coin balance, levels, inventory, and unlocked collections!",
+                descText,
                 [],
                 {
-                    label: "RESET EVERYTHING",
+                    label: "SIGN OUT",
                     callback: () => {
-                        localStorage.clear();
-                        window.location.reload();
+                        if (playerState.saveMode === "cloud") {
+                            auth.signOut().then(() => {
+                                localStorage.removeItem('miner_save');
+                                localStorage.removeItem('miner_col_save');
+                                window.location.reload();
+                            });
+                        } else {
+                            localStorage.clear();
+                            window.location.reload();
+                        }
                     }
                 }
             );
@@ -2088,9 +2156,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function checkUserRegistration() {
+        // Trigger Auth modal only if player has no username registered yet
         if (!playerState.username) {
-            if (nameModal) {
-                nameModal.classList.add('active');
+            if (authModal) {
+                authModal.classList.add('active');
             }
         }
     }
@@ -2178,6 +2247,178 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.addEventListener('click', () => {
         SoundEngine.init();
     }, { once: true });
+    
+    // ==================== AUTHENTICATION & DATA MIGRATION ENGINE ====================
+    const authModal = document.getElementById('authModal');
+    const authTitle = document.getElementById('authTitle');
+    const authDesc = document.getElementById('authDesc');
+    const authIcon = document.getElementById('authIcon');
+    const authUsername = document.getElementById('authUsername');
+    const authEmail = document.getElementById('authEmail');
+    const authPassword = document.getElementById('authPassword');
+    const authSubmitBtn = document.getElementById('authSubmitBtn');
+    const authGuestBtn = document.getElementById('authGuestBtn');
+    const authToggleText = document.getElementById('authToggleText');
+
+    let isSignUpMode = false; // Toggle tracker
+
+    // Switch between Sign In and Sign Up modes inside modal
+    if (authToggleText) {
+        authToggleText.addEventListener('click', () => {
+            SoundEngine.playClick();
+            isSignUpMode = !isSignUpMode;
+            
+            if (isSignUpMode) {
+                authTitle.textContent = "Sign Up";
+                authDesc.textContent = "Create an account to backup your character progress!";
+                authIcon.innerHTML = `<i class="fa-solid fa-user-plus"></i>`;
+                authUsername.style.display = "block";
+                authSubmitBtn.textContent = "Sign Up";
+                authToggleText.innerHTML = `Already have an account? <strong style="color: var(--gold-accent);">Sign In</strong>`;
+            } else {
+                authTitle.textContent = "Sign In";
+                authDesc.textContent = "Sync your character data, unlock leaderboards, and trade online!";
+                authIcon.innerHTML = `<i class="fa-solid fa-user-lock"></i>`;
+                authUsername.style.display = "none";
+                authSubmitBtn.textContent = "Sign In";
+                authToggleText.innerHTML = `Don't have an account? <strong style="color: var(--gold-accent);">Sign Up</strong>`;
+            }
+        });
+    }
+
+    // Process Form Submission (Sign In or Sign Up)
+    if (authSubmitBtn && authEmail && authPassword) {
+        authSubmitBtn.addEventListener('click', () => {
+            const email = authEmail.value.trim();
+            const password = authPassword.value.trim();
+            const username = authUsername.value.trim();
+
+            if (!email || !password) {
+                SoundEngine.playError();
+                showNotification("Missing Fields", "Please enter your email and password.", "error");
+                return;
+            }
+
+            authSubmitBtn.disabled = true;
+            authSubmitBtn.textContent = isSignUpMode ? "Registering..." : "Signing In...";
+
+            if (isSignUpMode) {
+                // SIGN UP FLOW
+                const finalUsername = username ? username : "Miner Joe";
+                
+                auth.createUserWithEmailAndPassword(email, password)
+                    .then((userCredential) => {
+                        const user = userCredential.user;
+                        
+                        // Update Display name on Firebase Profile
+                        return user.updateProfile({ displayName: finalUsername }).then(() => {
+                            playerState.username = finalUsername;
+                            playerState.saveMode = "cloud";
+                            
+                            // AUTO-MIGRATION: Upload existing local progress to their cloud database!
+                            saveGame(); 
+                            
+                            authModal.classList.remove('active');
+                            authSubmitBtn.disabled = false;
+                            
+                            SoundEngine.playLevelUp();
+                            showNotification("Account Registered!", `Welcome ${playerState.username}! Progress synced to cloud.`, "level-up", 4500);
+                            
+                            // Trigger onboarding tutorial
+                            setTimeout(startTutorial, 500);
+                        });
+                    })
+                    .catch((error) => {
+                        authSubmitBtn.disabled = false;
+                        authSubmitBtn.textContent = "Sign Up";
+                        SoundEngine.playError();
+                        showNotification("Registration Failed", error.message, "error", 5000);
+                    });
+            } else {
+                // SIGN IN FLOW
+                auth.signInWithEmailAndPassword(email, password)
+                    .then((userCredential) => {
+                        const user = userCredential.user;
+                        
+                        // Fetch saved data from Cloud database
+                        db.ref('users/' + user.uid).once('value').then((snapshot) => {
+                            const cloudData = snapshot.val();
+                            
+                            if (cloudData && cloudData.saveState) {
+                                // Overwrite local state with cloud progress
+                                Object.assign(playerState, cloudData.saveState);
+                                playerState.saveMode = "cloud";
+                                
+                                // Overwrite local collections map
+                                if (cloudData.collections) {
+                                    collectionsData.forEach(item => {
+                                        if (cloudData.collections[item.id] !== undefined) {
+                                            item.obtained = cloudData.collections[item.id];
+                                        }
+                                    });
+                                }
+                            } else {
+                                // If account is completely new, migrate current offline stats
+                                playerState.saveMode = "cloud";
+                                if (user.displayName) playerState.username = user.displayName;
+                            }
+
+                            saveGame(); // Writes to localStorage
+                            updateStatsUI();
+                            renderShop();
+                            renderInventoryTray();
+                            renderCollections();
+
+                            authModal.classList.remove('active');
+                            authSubmitBtn.disabled = false;
+
+                            SoundEngine.playLevelUp();
+                            showNotification("Sign In Successful!", `Progress synced. Welcome back, ${playerState.username}!`, "level-up", 4500);
+                        });
+                    })
+                    .catch((error) => {
+                        authSubmitBtn.disabled = false;
+                        authSubmitBtn.textContent = "Sign In";
+                        SoundEngine.playError();
+                        showNotification("Sign In Failed", error.message, "error", 5000);
+                    });
+            }
+        });
+    }
+
+    // Offline Guest Bypass Handler
+    if (authGuestBtn && authModal) {
+        authGuestBtn.addEventListener('click', () => {
+            SoundEngine.playClick();
+            playerState.saveMode = "local"; // Stays local/offline
+
+            // Prompt guest user for their display name if they don't have one
+            if (!playerState.username) {
+                const guestName = prompt("Enter your Guest display name:") || "Guest Miner";
+                playerState.username = guestName.trim().substring(0, 14);
+                
+                setTimeout(startTutorial, 500);
+            }
+
+            saveGame();
+            updateStatsUI();
+            authModal.classList.remove('active');
+            showNotification("Guest Mode Active", "Playing offline. Progress saved to local storage.", "shop", 4000);
+        });
+    }
+
+    // Monitor Firebase Auth state dynamically (Automatic background session mapping)
+    if (firebaseActive) {
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                playerState.saveMode = "cloud";
+                if (user.displayName) {
+                    playerState.username = user.displayName;
+                }
+                updateStatsUI();
+            }
+        });
+    }
 
     // ==================== INITIALIZATION ====================
     loadGame(); // Restore progress from local storage on reload
