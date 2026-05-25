@@ -112,11 +112,12 @@
             </div>
             <nav class="sidebar-nav">
                 <!-- Core Gameplay Links -->
-                <ul>
-                    <li><a href="#" class="nav-link active" data-view="view-game"><i class="fa-solid fa-gamepad fa-fw"></i> Main Game</a></li>
-                    <li><a href="#" class="nav-link" data-view="view-shop"><i class="fa-solid fa-cart-shopping fa-fw"></i> Shop</a></li>
-                    <li><a href="#" class="nav-link" data-view="view-collections"><i class="fa-solid fa-trophy fa-fw"></i> Collections</a></li>
-                </ul>
+                   <ul>
+                       <li><a href="#" class="nav-link active" data-view="view-game"><i class="fa-solid fa-gamepad fa-fw"></i> Main Game</a></li>
+                       <li><a href="#" class="nav-link" data-view="view-shop"><i class="fa-solid fa-cart-shopping fa-fw"></i> Shop</a></li>
+                       <li><a href="#" class="nav-link" data-view="view-collections"><i class="fa-solid fa-trophy fa-fw"></i> Collections</a></li>
+                       <li><a href="#" class="nav-link" data-view="view-marketplace" id="navLinkMarket"><i class="fa-solid fa-shop fa-fw"></i> Marketplace</a></li> <!-- <-- INSERT THIS -->
+                   </ul>
                 
                 <!-- Sidebar Divider for separated button -->
                 <hr class="sidebar-divider">
@@ -213,6 +214,19 @@
                 </div>
             </div>
 
+            <!-- 5. MARKETPLACE VIEW (NEW FEATURE) -->
+            <div id="view-marketplace" class="game-view">
+                <div class="market-wrapper" style="width: 100%; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px;">
+                    <div class="market-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 15px;">
+                        <h3 class="section-header" style="margin: 0; border: none; padding: 0;"><i class="fa-solid fa-shop"></i> Cavern Marketplace</h3>
+                        <button id="addListingBtn" class="nav-btn" style="padding: 5px 12px; font-size: 0.75rem; border-radius: 6px;"><i class="fa-solid fa-cart-plus"></i> Sell Ore</button>
+                    </div>
+                    <div class="market-list" id="marketList" style="display: flex; flex-direction: column; gap: 12px; padding: 0 15px;">
+                        <!-- Server-wide listings will render here dynamically -->
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -257,6 +271,51 @@
             <p style="font-size: 0.72rem; color: var(--text-muted); cursor: pointer; margin-top: 5px;" id="authToggleText">
                 Don't have an account? <strong style="color: var(--gold-accent);">Sign Up</strong>
             </p>
+        </div>
+    </div>
+    
+    <!-- Market Add Listing Modal -->
+    <div id="marketModal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 320px; gap: 12px; padding: 20px;">
+            <button class="modal-close-btn" id="marketModalCloseBtn">×</button>
+            <h3 class="modal-title" style="font-size: 1.05rem;"><i class="fa-solid fa-cart-plus"></i> Sell specimen</h3>
+            <p class="modal-description" style="font-size: 0.72rem;">Select an ore from your active bag, input your price, and choose your preferred currency.</p>
+            
+            <!-- Selector for owned inventory ores -->
+            <select id="marketOreSelect" class="shop-filter" style="width: 100%; max-width: 100%;">
+                <option value="" disabled selected>Select an Ore...</option>
+            </select>
+            
+            <!-- Price Input -->
+            <input type="number" id="marketPriceInput" class="shop-search" placeholder="Enter Price..." min="1" style="text-align: center; max-width: 100%;">
+            
+            <!-- Currency Selector -->
+            <select id="marketCurrencySelect" class="shop-filter" style="width: 100%; max-width: 100%;">
+                <option value="gold" selected>Gold Coins (🪙)</option>
+                <option value="tokens">Premium Tokens (🎟️)</option>
+            </select>
+            
+            <button class="card-buy-btn" id="marketSubmitBtn" style="width: 100%;">List Product</button>
+        </div>
+    </div>
+    
+    <!-- Developer Tools (Only visible to the developer) -->
+    <div id="devFab" style="display: none;">
+        <i class="fa-solid fa-screwdriver-wrench"></i>
+    </div>
+
+    <div id="devPanel" class="modal-overlay" style="display: none; z-index: 10000;">
+        <div class="modal-card" style="max-width: 300px; padding: 20px; border: 2px solid #ef4444;">
+            <h3 style="color: #ef4444; margin-bottom: 10px;"><i class="fa-solid fa-code"></i> Dev Console</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <button class="card-buy-btn" onclick="devAddGold()">+100K Gold</button>
+                <button class="card-buy-btn" onclick="devAddTokens()">+100 Tokens</button>
+                <button class="card-buy-btn" onclick="devLevelUp()">Level Up</button>
+                <button class="card-buy-btn" onclick="devFillEnergy()">Full Energy</button>
+                <button class="card-buy-btn" onclick="devUnlockAll()">Unlock All</button>
+                <button class="card-buy-btn" style="background: #7f1d1d;" onclick="devReset()">Hard Reset</button>
+            </div>
+            <button class="nav-btn" style="margin-top: 15px; width: 100%;" id="closeDev">Close</button>
         </div>
     </div>
 </body>
