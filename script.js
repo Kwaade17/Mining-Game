@@ -355,19 +355,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ==================== CURRENCY FORMATTER ENGINE ====================
     function formatMoney(value, compact = false) {
         const num = Number(value);
         if (isNaN(num)) return "0";
 
-        if (compact && num >= 100000) {
+        if (compact && num >= 1000) {
             return new Intl.NumberFormat('en-US', {
                 notation: 'compact',
-                maximumFractionDigits: 1
+                compactDisplay: 'short',
+                maximumFractionDigits: 2 // Limits to 2 decimals (e.g., 147.72T)
             }).format(num);
         }
 
-        return num.toLocaleString();
+        return Math.floor(num).toLocaleString();
     }
 
     // ==================== INTERACTIVE NOTIFICATION SYSTEM ====================
@@ -726,8 +726,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sidebarXpFill && sidebarXpText) {
             const xpPercent = Math.min(100, (playerState.xp / playerState.xpNeeded) * 100);
             sidebarXpFill.style.width = `${xpPercent}%`;
-            // FIX: Use compact formatting for sidebar XP (e.g., 1.5e+22 -> 150Sx)
-            sidebarXpText.textContent = `XP: ${formatMoney(playerState.xp, true)} / ${formatMoney(playerState.xpNeeded, true)}`;
+            
+            // FIX: Use compact formatting for sidebar XP (e.g., 147.7T / 431.7T)
+            const currentXP = formatMoney(playerState.xp, true);
+            const neededXP = formatMoney(playerState.xpNeeded, true);
+            
+            sidebarXpText.textContent = `XP: ${currentXP} / ${neededXP}`;
         }
 
         // 2. Navbar XP Progress
