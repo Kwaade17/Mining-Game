@@ -1060,7 +1060,17 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
 
 /* Ensure XP text is always compact and centered */
 .sidebar-xp-text {
-    font-size: 0.65rem !important; /* Slightly smaller to fit big numbers */
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: var(--text-muted);
+    text-align: center;
+    width: 100%;
+    display: block;
+    margin-top: 4px;
+    
+    /* This prevents the text from ever being too long for the sidebar */
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
