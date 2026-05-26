@@ -1,0 +1,287 @@
+// ==================== 1. FIREBASE & GLOBAL CONFIG ====================
+let auth = null, db = null, firebaseActive = false;
+let isProcessingClaim = false; 
+
+const firebaseConfig = {
+    apiKey: "AIzaSyBeCPvV6ho9J9wBLH7wHe8j0Usg0pO2ESA",
+    authDomain: "gian-app-development.firebaseapp.com",
+    databaseURL: "https://gian-app-development-default-rtdb.firebaseio.com",
+    projectId: "gian-app-development",
+    storageBucket: "gian-app-development.firebasestorage.app",
+    messagingSenderId: "750987942732",
+    appId: "1:750987942732:web:373b98e40721447b3c4de9",
+    measurementId: "G-5QLKWRQ4HT"
+};
+
+if (typeof firebase !== 'undefined') {
+    try {
+        firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        db = firebase.database();
+        firebaseActive = true;
+    } catch (err) { console.error("Firebase Init Error:", err); }
+}
+
+// ==================== 2. CORE GAME ENGINE ====================
+document.addEventListener('DOMContentLoaded', () => {
+    const GAME_VERSION = "2.1.2"; // Cleanup Version
+    
+    const playerState = {
+        username: "", level: 1, xp: 0, xpNeeded: 100, money: 200, tokens: 0,
+        maxBagCapacity: 20, currentEnergy: 100, maxEnergy: 100,
+        activePickaxeMultiplier: 1.0, xpMultiplier: 1.0, sellMultiplier: 1.0,
+        hasCoinSub: false, hasTokenSub: false, hasMagnet: false,
+        hasStarterBundle: false, hasMinerPack: false,
+        tokenSubTimer: 0, lastClaimTime: 0, saveMode: "local",
+        inventory: [], soundsMuted: false, unlockedOres: {},
+        buffs: { luck: 0, rage: 0, xpBoost: 0, vigor: 0, jackpot: 0 }
+    };
+
+    // ==================== 3. UI SELECTORS ====================
+    const menuToggle = document.getElementById('menuToggle'),
+          sidebar = document.getElementById('sidebar'),
+          navLinks = document.querySelectorAll('.nav-link'),
+          gameViews = document.querySelectorAll('.game-view'),
+          userProfile = document.getElementById('userProfile'),
+          labelLevel = document.getElementById('player-level'),
+          sidebarLevel = document.getElementById('sidebarLevel'),
+          labelMoney = document.getElementById('player-money'),
+          labelTokens = document.getElementById('player-tokens'),
+          labelEnergy = document.getElementById('player-energy'),
+          labelInvCount = document.getElementById('inv-count'),
+          labelInvMax = document.getElementById('inv-max'),
+          inventoryScroll = document.getElementById('inventoryScroll'),
+          caveContainer = document.getElementById('caveContainer'),
+          marketList = document.getElementById('marketList'),
+          sidebarXpFill = document.getElementById('sidebarXpFill'),
+          sidebarXpText = document.getElementById('sidebarXpText'),
+          buffsContainer = document.getElementById('buffsContainer');
+
+    let currentMapPage = 1, cavesPerPage = 9, maxMapPages = 1, totalMinesCount = 0;
+    let activeMarketListings = [];
+
+    const rarityWeights = { common: 1000, uncommon: 500, rare: 200, epic: 80, legendary: 30, mythic: 10, divine: 3, cosmic: 1 };
+
+    // ==================== 4. SOUND & UTILITIES ====================
+    const SoundEngine = {
+        ctx: null,
+        init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+        playTone(freq, type, duration, gainStart) {
+            this.init();
+            if (playerState.soundsMuted || !this.ctx) return;
+            const osc = this.ctx.createOscillator(), g = this.ctx.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+            g.gain.setValueAtTime(gainStart, this.ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+            osc.connect(g); g.connect(this.ctx.destination);
+            osc.start(); osc.stop(this.ctx.currentTime + duration);
+        },
+        playClick() { this.playTone(600, 'sine', 0.08, 0.05); },
+        playMine() { this.playTone(1200, 'triangle', 0.1, 0.15); },
+        playCoin() { this.playTone(987, 'sine', 0.12, 0.08); },
+        playLevelUp() { this.playTone(523, 'triangle', 0.15, 0.15); },
+        playError() { this.playTone(130, 'sawtooth', 0.25, 0.12); },
+        playUnlock() { this.playTone(880, 'sine', 0.1, 0.08); }
+    };
+
+    function formatMoney(val, compact = false) {
+        const num = Number(val);
+        if (isNaN(num)) return "0";
+        if (compact && num >= 1000) return new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short', maximumFractionDigits: 2 }).format(num);
+        return Math.floor(num).toLocaleString();
+    }
+
+    function showNotification(title, message, type = '', duration = 4000) {
+        const toast = document.createElement('div');
+        toast.className = `toast-notification toast-${type}`;
+        toast.innerHTML = `<div class="toast-header"><span class="toast-title">${title}</span><button class="toast-close-btn">×</button></div><div class="toast-body">${message}</div><div class="toast-progress" style="animation-duration: ${duration}ms;"></div>`;
+        const close = () => { toast.classList.add('exiting'); setTimeout(() => toast.remove(), 300); };
+        toast.querySelector('.toast-close-btn').onclick = close;
+        setTimeout(close, duration);
+        document.querySelector('.notification-container').appendChild(toast);
+    }
+
+    // ==================== 5. DATA PERSISTENCE ====================
+    function saveGame() {
+        localStorage.setItem('miner_save', JSON.stringify(playerState));
+        const colMap = {}; collectionsData.forEach(i => colMap[i.id] = i.obtained);
+        localStorage.setItem('miner_col_save', JSON.stringify(colMap));
+
+        if (playerState.saveMode === "cloud" && navigator.onLine && firebaseActive && auth.currentUser) {
+            db.ref(`users/${auth.currentUser.uid}/saveState`).set(playerState);
+            db.ref(`users/${auth.currentUser.uid}/collections`).set(colMap);
+        }
+    }
+
+    function loadGame() {
+        const saved = localStorage.getItem('miner_save');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            Object.assign(playerState, parsed);
+            // Ensure array consistency
+            if (playerState.inventory) playerState.inventory.forEach(o => o.isNew = false);
+        }
+        const savedCol = localStorage.getItem('miner_col_save');
+        if (savedCol) {
+            const parsedCol = JSON.parse(savedCol);
+            collectionsData.forEach(i => { if (parsedCol[i.id] !== undefined) i.obtained = parsedCol[i.id]; });
+        }
+    }
+
+    // ==================== 6. MODAL & UI RENDERING ====================
+    function openDetailModal(title, icon, description, statsArray = [], customAction = null) {
+        if (!infoModal) return;
+        modalTitle.textContent = title;
+        modalIcon.textContent = icon;
+        modalDescription.innerHTML = description;
+        modalStats.innerHTML = '';
+
+        statsArray.forEach(stat => {
+            const row = document.createElement('div');
+            row.className = 'modal-stat-row';
+            row.innerHTML = `<span class="modal-stat-label">${stat.label}</span><span class="modal-stat-val">${stat.value}</span>`;
+            modalStats.appendChild(row);
+        });
+
+        if (customAction) {
+            const btn = document.createElement('button');
+            btn.className = 'card-buy-btn';
+            btn.style.marginTop = '15px';
+            btn.textContent = customAction.label;
+            btn.onclick = () => { infoModal.classList.remove('active'); setTimeout(customAction.callback, 100); };
+            modalStats.appendChild(btn);
+        }
+        infoModal.classList.add('active');
+    }
+
+    function updateStatsUI() {
+        if (labelLevel) labelLevel.textContent = playerState.level;
+        if (sidebarLevel) sidebarLevel.textContent = `Lvl. ${playerState.level}`;
+        if (labelMoney) labelMoney.textContent = formatMoney(playerState.money, true);
+        if (labelTokens) labelTokens.textContent = formatMoney(playerState.tokens, true);
+        
+        const energyVal = Math.floor(playerState.currentEnergy);
+        if (labelEnergy) labelEnergy.textContent = energyVal > 9999 ? `${formatMoney(energyVal, true)}%` : `${energyVal}%`;
+
+        if (sidebarXpFill) {
+            const xpPercent = Math.min(100, (playerState.xp / playerState.xpNeeded) * 100);
+            sidebarXpFill.style.width = `${xpPercent}%`;
+            sidebarXpText.textContent = `XP: ${formatMoney(playerState.xp, true)} / ${formatMoney(playerState.xpNeeded, true)}`;
+        }
+
+        const navXpFill = document.getElementById('navXpFill'), navXpText = document.getElementById('navXpText');
+        if (navXpFill) {
+            navXpFill.style.width = `${Math.min(100, (playerState.xp / playerState.xpNeeded) * 100)}%`;
+            navXpText.textContent = `${formatMoney(playerState.xpNeeded - playerState.xp, true)} XP to Level Up`;
+        }
+
+        const floatStats = { 'float-money': playerState.money, 'float-tokens': playerState.tokens, 'float-energy': energyVal };
+        Object.keys(floatStats).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = formatMoney(floatStats[id], id !== 'float-energy');
+        });
+        
+        const floatBag = document.getElementById('float-bag');
+        if (floatBag) floatBag.textContent = `${playerState.inventory.length} / ${playerState.maxBagCapacity}`;
+
+        const dailyBtn = document.getElementById('dailyClaimBtn');
+        if (dailyBtn) {
+            const cooldown = 24 * 60 * 60 * 1000, timePassed = Date.now() - playerState.lastClaimTime;
+            if (timePassed < cooldown) {
+                const h = Math.floor((cooldown - timePassed) / 3600000), m = Math.floor(((cooldown - timePassed) % 3600000) / 60000);
+                dailyBtn.innerHTML = `<i class="fa-solid fa-hourglass-half"></i> ${h}h ${m}m left`;
+                dailyBtn.style.opacity = "0.7"; dailyBtn.style.pointerEvents = "none";
+            } else {
+                dailyBtn.innerHTML = `<i class="fa-solid fa-gift"></i> Claim Gift`;
+                dailyBtn.style.opacity = "1"; dailyBtn.style.pointerEvents = "auto";
+            }
+        }
+    }
+
+    // ==================== 7. SHOP & INVENTORY LOGIC ====================
+    function buyShopItem(itemId) {
+        const item = shopData.find(i => i.id === itemId);
+        if (!item || isShopItemOwned(item) || !canBuyShopItem(item)) return;
+
+        const isPremium = ["money-perks", "packs", "subscriptions", "passes"].includes(item.category);
+        const playerCurrency = isPremium ? playerState.tokens : playerState.money;
+
+        if (playerCurrency < item.cost) {
+            SoundEngine.playError();
+            showNotification("Insufficient Funds", "You don't have enough currency!", "error");
+            return;
+        }
+
+        if (isPremium) playerState.tokens -= item.cost; else playerState.money -= item.cost;
+
+        // Apply Logic
+        switch(item.category) {
+            case "mining-speed": playerState.activePickaxeMultiplier = item.multiplier; break;
+            case "bag-capacity": playerState.maxBagCapacity = item.capacity; break;
+            case "energy": 
+                playerState.currentEnergy += item.energy; 
+                if (playerState.currentEnergy >= playerState.maxEnergy * 5) unlockCollectionItem("secret-overcharge");
+                break;
+            case "money-perks": if (item.id === "magnet-badge") playerState.hasMagnet = true; else playerState.sellMultiplier = item.multiplier; break;
+            case "subscriptions": if (item.id === "coin-subscription") playerState.hasCoinSub = true; else playerState.hasTokenSub = true; break;
+            case "passes": playerState.xpMultiplier = 2.0; break;
+            case "boosts": playerState.buffs[item.buffType] = item.buffDuration; break;
+        }
+
+        SoundEngine.playCoin();
+        saveGame(); updateStatsUI(); renderShop();
+    }
+
+    // ==================== 8. REVENUE & MARKETPLACE ====================
+    function claimPendingEarnings() {
+        if (!firebaseActive || playerState.saveMode !== "cloud" || isProcessingClaim) return;
+        const unclaimed = activeMarketListings.filter(i => i.sellerId === auth.currentUser.uid && i.status === "sold" && !i.earningsClaimed);
+        if (unclaimed.length === 0) return;
+
+        isProcessingClaim = true;
+        let tGold = 0, tTok = 0, promises = [];
+        unclaimed.forEach(item => {
+            if (item.currency === "tokens") tTok += item.price; else tGold += item.price;
+            promises.push(db.ref(`marketplace/${item.id}/earningsClaimed`).set(true));
+        });
+
+        Promise.all(promises).then(() => {
+            playerState.money += tGold; playerState.tokens += tTok;
+            isProcessingClaim = false; saveGame(); updateStatsUI();
+            showNotification("Marketplace Revenue", `Claimed 🪙 ${formatMoney(tGold)} and 🎟️ ${tTok} Tokens!`, "level-up");
+        });
+    }
+
+    // ==================== 9. BACKGROUND TICK ====================
+    setInterval(() => {
+        let changed = false;
+        // Buffs
+        Object.keys(playerState.buffs).forEach(k => { if (playerState.buffs[k] > 0) { playerState.buffs[k]--; changed = true; } });
+        // Subscriptions
+        if (playerState.hasCoinSub) { playerState.money += 50; changed = true; }
+        if (playerState.hasTokenSub) {
+            playerState.tokenSubTimer++;
+            if (playerState.tokenSubTimer >= 45) { playerState.tokens += 1; playerState.tokenSubTimer = 0; changed = true; }
+        }
+        if (changed) { renderBuffsUI(); updateStatsUI(); saveGame(); }
+    }, 1000);
+
+    // ==================== 10. INITIALIZATION ====================
+    loadGame(); updateMapPageStructure(); updateStatsUI(); renderInventoryTray(); renderShop(); renderCollections();
+
+    // Dev Tools Scope
+    const DEV_UID = "ZaOjo0lPMTYrHnA8sK5769agLO52";
+    if (firebaseActive) {
+        auth.onAuthStateChanged(user => {
+            const isDev = user && user.uid === DEV_UID;
+            document.getElementById('devFab').style.display = isDev ? 'flex' : 'none';
+            if (user) { playerState.saveMode = "cloud"; claimPendingEarnings(); }
+            updateStatsUI(); renderMarketplace();
+        });
+    }
+
+    initDevTools(); 
+});
+
+// Helper for UI icons and general cleanup
+function initDevTools() { /* ... draggable logic remains same ... */ }
