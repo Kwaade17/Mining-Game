@@ -2926,8 +2926,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   
   // Dev Cheat Functions (Global so HTML can see them)
-  window.devAddGold = () => { playerState.money += 100000000; updateStatsUI(); saveGame(); showNotification("DEV", "+100K Gold Added", "level-up"); };
-  window.devAddTokens = () => { playerState.tokens += 100000000; updateStatsUI(); saveGame(); showNotification("DEV", "+100 Tokens Added", "level-up"); };
+  window.devAddGold = () => { playerState.money += 100000000; updateStatsUI(); saveGame(); showNotification("DEV", "+100M Gold Added", "level-up"); };
+  window.devAddTokens = () => { playerState.tokens += 100000000; updateStatsUI(); saveGame(); showNotification("DEV", "+100M Tokens Added", "level-up"); };
   window.devFillEnergy = () => { playerState.currentEnergy = playerState.maxEnergy; updateStatsUI(); saveGame(); showNotification("DEV", "Energy Filled", "shop"); };
   window.devLevelUp = () => { awardXp(playerState.xpNeeded); showNotification("DEV", "Level Bypassed", "level-up"); };
   window.devUnlockAll = () => { 
