@@ -1,6 +1,38 @@
+// ==================== FIREBASE BACKEND CONFIGURATION (DEFENSIVE) ====================
+let auth = null;
+let db = null;
+let firebaseActive = false;
+
+if (typeof firebase !== 'undefined') {
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    const firebaseConfig = {
+      apiKey: "AIzaSyBeCPvV6ho9J9wBLH7wHe8j0Usg0pO2ESA",
+      authDomain: "gian-app-development.firebaseapp.com",
+      databaseURL: "https://gian-app-development-default-rtdb.firebaseio.com",
+      projectId: "gian-app-development",
+      storageBucket: "gian-app-development.firebasestorage.app",
+      messagingSenderId: "750987942732",
+      appId: "1:750987942732:web:373b98e40721447b3c4de9",
+      measurementId: "G-5QLKWRQ4HT"
+    };
+
+    try {
+        firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        db = firebase.database();
+        firebaseActive = true;
+    } catch (err) {
+        console.error("Firebase initialization failed:", err);
+    }
+} else {
+    console.warn("Firebase SDK not loaded. Running in local Offline-Only mode.");
+}
+
+let isProcessingClaim = false; // Prevents multiple revenue modals from stacking
+
 document.addEventListener('DOMContentLoaded', () => {
     // ==================== SESSION STATE ====================
-    const GAME_VERSION = "1.9.0"; // Active version used to check shop updates
+    const GAME_VERSION = "2.1.0"; // Active version used to check shop updates
     
     const playerState = {
         username: "", // Custom player display name
@@ -13,6 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
         hasMinerPack: false,     // <-- ADD THIS
         tokenSubTimer: 0,   // <-- ADD THIS
         lastClaimTime: 0,    // <-- ADD THIS (Daily Claim timestamp)
+        saveMode: "local",  // <-- ADD THIS (local or cloud)
         currentEnergy: 100, maxEnergy: 100, activePickaxeMultiplier: 1.0,
         xpMultiplier: 1.0, 
         sellMultiplier: 1.0, // <-- ADD THIS LINE
@@ -224,12 +257,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ==================== PERSISTENT LOCAL STORAGE ENGINE ====================
     function saveGame() {
-        localStorage.setItem('miner_save', JSON.stringify(playerState));
-        const colMap = {};
-        collectionsData.forEach(item => {
-            colMap[item.id] = item.obtained;
-        });
-        localStorage.setItem('miner_col_save', JSON.stringify(colMap));
+       localStorage.setItem('miner_save', JSON.stringify(playerState));
+       const colMap = {};
+       collectionsData.forEach(item => {
+           colMap[item.id] = item.obtained;
+       });
+       localStorage.setItem('miner_col_save', JSON.stringify(colMap));
+    
+       // Locate inside saveGame() and update:
+        // Background Cloud Sync Integration (Offline-First Sync)
+        if (playerState.saveMode === "cloud" && navigator.onLine && firebaseActive) {
+           const user = auth.currentUser;
+           if (user) {
+               db.ref('users/' + user.uid + '/saveState').set(playerState)
+                   .catch(err => console.error("Cloud progress sync failed:", err));
+               db.ref('users/' + user.uid + '/collections').set(colMap)
+                   .catch(err => console.error("Cloud collections sync failed:", err));
+           }
+        }
     }
 
     function loadGame() {
@@ -285,6 +330,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (playerState.lastClaimTime === undefined) {
                    playerState.lastClaimTime = 0; // <-- ADD THIS
+                }
+                if (playerState.saveMode === undefined) {
+                   playerState.saveMode = "local"; // <-- ADD THIS
                 }
             } catch (err) {
                 console.error("Save load failed: ", err);
@@ -381,15 +429,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ==================== DYNAMIC POPUP MODAL ENGINE ====================
+    // ==================== DYNAMIC POPUP MODAL ENGINE (FIXED) ====================
     function openDetailModal(title, icon, description, statsArray = [], customAction = null) {
         if (!infoModal || !modalTitle || !modalIcon || !modalDescription || !modalStats) return;
 
+        // Reset content
         modalTitle.textContent = title;
         modalIcon.textContent = icon;
-        modalDescription.textContent = description;
-
-        modalStats.innerHTML = '';
+        modalDescription.innerHTML = description; 
+        modalStats.innerHTML = ''; // Clear stats and buttons
 
         if (statsArray.length > 0) {
             modalStats.style.display = 'flex';
@@ -406,12 +454,15 @@ document.addEventListener('DOMContentLoaded', () => {
             modalStats.style.display = 'none';
         }
 
+        // Handle Custom Action (Confirm Purchase / Collect Revenue)
         if (customAction) {
+            modalStats.style.display = 'flex'; // Ensure container is visible for the button
             const btn = document.createElement('button');
             btn.className = 'card-buy-btn';
             btn.style.marginTop = '15px';
             btn.style.width = '100%';
             btn.textContent = customAction.label;
+            
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 infoModal.classList.remove('active');
@@ -419,7 +470,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     customAction.callback();
                 }, 100); 
             });
-            modalStats.style.display = 'flex';
             modalStats.appendChild(btn);
         }
 
@@ -735,15 +785,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (playerState.xp >= playerState.xpNeeded) {
             playerState.xp -= playerState.xpNeeded;
             playerState.level += 1;
-            playerState.xpNeeded = Math.floor(playerState.xpNeeded * 1.5);
-            playerState.maxEnergy = Math.floor(playerState.maxEnergy * 1.1);
+            
+            // NERF: Increased progression difficulty from 1.5x to 1.6x curve
+            playerState.xpNeeded = Math.floor(playerState.xpNeeded * 1.6);
+            
+            // BUFF: Increased energy growth from 1.1x to 1.15x per level
+            playerState.maxEnergy = Math.floor(playerState.maxEnergy * 1.15);
             playerState.currentEnergy = playerState.maxEnergy;
+
+            // BUFF: Award +1 Premium Token on every level up!
+            playerState.tokens += 1;
 
             SoundEngine.playLevelUp();
 
             showNotification(
                 "🎉 Level Up!", 
-                `Awesome! You reached Level ${playerState.level}! Max Energy increased to ${playerState.maxEnergy}%!`, 
+                `Awesome! You reached Level ${playerState.level}! Gained +1 Premium Token and Max Energy increased to ${playerState.maxEnergy}%!`, 
                 "level-up", 
                 5000
             );
@@ -754,6 +811,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         updateStatsUI();
         saveGame();
+        if (firebaseActive && playerState.saveMode === "cloud") {
+          claimPendingEarnings(); // <-- ADD THIS
+        }
     }
 
     // ==================== INVENTORY & SELLING ====================
@@ -978,6 +1038,17 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         playerState.inventory.push(newOre);
+
+        // ==================== SECRET ACHIEVEMENTS TRIGGERS ====================
+        // 1. Ethereal Gaze Secret Unlock (Mine an Ethereal mutation)
+        if (rolledMut.id === "ethereal") {
+            unlockCollectionItem("secret-ethereal");
+        }
+
+        // 2. Void Emperor Secret Unlock (Mine 'The Void Heart' from the Void Rift)
+        if (selectedOre.name === "The Void Heart") {
+            unlockCollectionItem("secret-void-emperor");
+        }
 
         // ==================== NEW DYNAMIC MULTI-TIERED UNLOCKS ====================
         const isNormal = (rolledVar.id === "normal") && (rolledMut.id === "none");
@@ -1470,6 +1541,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (item.category === "energy") {
             // OPTION 1: Direct accumulation allows energy to overflow beyond maxEnergy (no limits, no waste!)
             playerState.currentEnergy += item.energy;
+            
+            // 3. Infinite Overcharge Secret Unlock (Current energy exceeds 500% max energy)
+            if (playerState.currentEnergy >= playerState.maxEnergy * 5) {
+               unlockCollectionItem("secret-overcharge");
+            }
         } else if (item.category === "money-perks") {
             if (item.id === "magnet-badge") {
                 playerState.hasMagnet = true;
@@ -1500,10 +1576,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         SoundEngine.playCoin();
 
-        // Updated Notification to reflect the full energy restored
+        // Dynamically tailor the notification text based on the purchased item's category
+        let notificationText = `Successfully obtained ${item.name}! Applied active stat adjustments.`;
+        const currencyIcon = isPremium ? "🎟️" : "🪙";
+        
+        if (item.category === "energy") {
+            notificationText = `Successfully obtained ${item.name}! Paid 🪙 ${formatMoney(item.cost)} Coins to restore +${item.energy}⚡ energy.`;
+        } else if (item.category === "packs") {
+            notificationText = `Successfully opened ${item.name}! Resource bundles have been successfully claimed.`;
+        } else if (item.category === "subscriptions" || item.category === "passes") {
+            notificationText = `Successfully activated ${item.name}! Passive accounts adjustments are now active.`;
+        } else {
+            notificationText = `Successfully obtained ${item.name}! Paid ${currencyIcon} ${formatMoney(item.cost)} for the upgrade.`;
+        }
+
         showNotification(
             "🛒 Item Purchased!", 
-            `Successfully obtained ${item.name}! Paid 🪙 ${formatMoney(item.cost)} Coins to restore +${item.energy}⚡ energy.`, 
+            notificationText, 
             "shop", 
             4000
         );
@@ -1556,12 +1645,44 @@ document.addEventListener('DOMContentLoaded', () => {
                     stats.push({ label: "Sub-Type", value: item.subCategory.toUpperCase() });
                 }
                 
-                // NEW: Dynamic check. If the data object has a multiplier, show it!
-                if (item.multiplier) {
+                // Achievement tier
+                if (item.tier) {
+                    stats.push({ label: "Achievement Tier", value: item.tier });
+                }
+
+                // DYNAMIC LOOKUP (FIXED): Map card index to matching cavesData index
+                if (item.category === "caves") {
+                    const caveCards = collectionsData.filter(c => c.category === "caves");
+                    const cardIndex = caveCards.findIndex(c => c.id === item.id);
+                    if (cardIndex !== -1) {
+                        const foundCave = cavesData[cardIndex];
+                        if (foundCave) {
+                            stats.push({ label: "Required Level", value: `Lvl ${foundCave.requiredLevel}` });
+                            stats.push({ label: "Mining Energy Cost", value: `${foundCave.energyCost}⚡` });
+                            stats.push({ label: "XP Awarded", value: `+${foundCave.xpReward} XP` });
+                            if (foundCave.lootPool) {
+                                stats.push({ label: "Discoverable Ores", value: `${foundCave.lootPool.length} Species` });
+                            }
+                        }
+                    }
+                }
+
+                // DYNAMIC LOOKUP (FIXED): Strip the "-col" suffix to match mutationsData ID
+                if (item.category === "mutations") {
+                    const cleanMutationId = item.id.replace("-col", "");
+                    const foundMutation = mutationsData.find(m => m.id === cleanMutationId);
+                    if (foundMutation) {
+                        stats.push({ label: "Rarity Multiplier", value: `x${foundMutation.multiplier.toFixed(1)}` });
+                        stats.push({ label: "Roll Spawn Rate", value: `${(foundMutation.pr * 100).toFixed(3)}%` });
+                    }
+                }
+                
+                // If the data object has a multiplier (for Badges), show it!
+                if (item.multiplier && item.category !== "mutations" && item.category !== "caves") {
                     stats.push({ label: "Final Multiplier", value: item.multiplier });
                 }
                 
-                // NEW: Dynamic check. If the data object has a speed bonus, show it!
+                // If the data object has a speed bonus, show it!
                 if (item.speedBonus) {
                     stats.push({ label: "Mining Efficiency", value: item.speedBonus });
                 }
@@ -1577,7 +1698,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return card;
     }
-
+    
     function renderCollections() {
         if (!colSectionsList) return;
         colSectionsList.innerHTML = '';
@@ -1801,6 +1922,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (targetId === "view-readme") loadReadmeFile();
                 if (targetId === "view-shop") renderShop();
                 if (targetId === "view-collections") renderCollections();
+                if (targetId === "view-marketplace") renderMarketplace(); // <-- INSERT THIS
             }
 
             // Auto-close sidebar on mobile viewports
@@ -1823,7 +1945,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 1. Account Dropdown Option (Displays real-time stats inside unified modal)
+    // 1. Account Dropdown Option (Displays real-time stats & Cloud linkages)
     if (dropdownAccount) {
         dropdownAccount.addEventListener('click', (e) => {
             e.preventDefault();
@@ -1832,17 +1954,28 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const stats = [
                 { label: "Level Progress", value: `Lvl ${playerState.level}` },
-                { label: "XP", value: `${playerState.xp} / ${playerState.xpNeeded}` },
-                { label: "Total Coins", value: `🪙 ${formatMoney(playerState.money)}` },
-                { label: "Bag Space", value: `${playerState.inventory.length} / ${playerState.maxBagCapacity}` },
-                { label: "Active Pick speed multiplier", value: `${playerState.activePickaxeMultiplier}x` }
+                { label: "Gold Coins", value: `🪙 ${formatMoney(playerState.money)}` },
+                { label: "Active Save Mode", value: playerState.saveMode === "cloud" ? "☁️ Cloud Synced" : "🔌 Offline Guest" },
+                { label: "Mining Efficiency", value: `${playerState.activePickaxeMultiplier}x` }
             ];
+
+            // If player is a Guest, provide an action button to open the Auth Modal and Link Account
+            let customAction = null;
+            if (playerState.saveMode !== "cloud") {
+                customAction = {
+                    label: "🚀 SYNC PROGRESS ONLINE",
+                    callback: () => {
+                        authModal.classList.add('active');
+                    }
+                };
+            }
 
             openDetailModal(
                 "Miner Profile", 
                 "👤", 
                 `Cavern records and operational statistics for ${playerState.username ? playerState.username : "Miner Joe"}.`, 
-                stats
+                stats,
+                customAction
             );
         });
     }
@@ -1877,17 +2010,28 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             SoundEngine.playError();
             
-            // Custom confirmation modal popup
+            const descText = playerState.saveMode === "cloud"
+                ? "Are you sure you want to sign out? Your progress is securely backed up in the cloud, and you can access it again anytime."
+                : "WARNING: You are playing as a Guest. Signing out will permanently delete your offline Coins, levels, and inventory!";
+
             openDetailModal(
-                "Reset Cavern Progress?",
+                "Sign Out / Reset?",
                 "🚪",
-                "Are you sure you want to sign out and clear your session? This will permanently delete your coin balance, levels, inventory, and unlocked collections!",
+                descText,
                 [],
                 {
-                    label: "RESET EVERYTHING",
+                    label: "SIGN OUT",
                     callback: () => {
-                        localStorage.clear();
-                        window.location.reload();
+                        if (playerState.saveMode === "cloud") {
+                            auth.signOut().then(() => {
+                                localStorage.removeItem('miner_save');
+                                localStorage.removeItem('miner_col_save');
+                                window.location.reload();
+                            });
+                        } else {
+                            localStorage.clear();
+                            window.location.reload();
+                        }
                     }
                 }
             );
@@ -2017,9 +2161,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function checkUserRegistration() {
+        // Trigger Auth modal only if player has no username registered yet
         if (!playerState.username) {
-            if (nameModal) {
-                nameModal.classList.add('active');
+            if (authModal) {
+                authModal.classList.add('active');
             }
         }
     }
@@ -2108,6 +2253,603 @@ document.addEventListener('DOMContentLoaded', () => {
         SoundEngine.init();
     }, { once: true });
 
+    // ==================== REAL-TIME MULTIPLAYER MARKETPLACE ENGINE ====================
+    const marketList = document.getElementById('marketList');
+    const addListingBtn = document.getElementById('addListingBtn');
+    const marketModal = document.getElementById('marketModal');
+    const marketModalCloseBtn = document.getElementById('marketModalCloseBtn');
+    const marketOreSelect = document.getElementById('marketOreSelect');
+    const marketPriceInput = document.getElementById('marketPriceInput');
+    const marketCurrencySelect = document.getElementById('marketCurrencySelect');
+    const marketSubmitBtn = document.getElementById('marketSubmitBtn');
+
+    let activeMarketListings = [];
+
+    // Helper: Build display name with variant & mutation prefixes
+    function getItemDisplayName(item) {
+        let prefix = '';
+        if (item.variant && item.variant !== 'Normal') {
+            prefix += `${item.variant} `;
+        }
+        if (item.mutation && item.mutation !== 'Normal') {
+            const cleanMutation = item.mutation.replace(' Mutation', '');
+            prefix += `${cleanMutation} `;
+        }
+        return `${prefix}${item.name}`;
+    }
+
+    // Populate the dropdown inside the modal with current inventory items
+    function populateMarketOreSelect() {
+        if (!marketOreSelect) return;
+        marketOreSelect.innerHTML = '<option value="" disabled selected>Select an Ore...</option>';
+
+        playerState.inventory.forEach((item, index) => {
+            const displayName = getItemDisplayName(item);
+            // Calculate the actual final value of the item in your bag
+            const finalValue = Math.floor((item.finalValue || item.baseValue) * playerState.sellMultiplier);
+            const opt = document.createElement('option');
+            opt.value = index;
+            opt.textContent = `${item.icon || '🪨'} ${displayName} (Final Value: 🪙 ${formatMoney(finalValue)})`;
+            marketOreSelect.appendChild(opt);
+        });
+    }
+
+    // Open/Close Modal Listeners
+    if (addListingBtn) {
+        addListingBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            SoundEngine.playClick();
+
+            if (!firebaseActive || !navigator.onLine) {
+                SoundEngine.playError();
+                showNotification("Network Offline", "You must be connected to the internet to trade.", "error");
+                return;
+            }
+
+            if (playerState.saveMode !== "cloud") {
+                SoundEngine.playError();
+                showNotification("Guest Restriction", "Guest accounts cannot list items. Register to unlock trade!", "error");
+                return;
+            }
+
+            populateMarketOreSelect();
+            marketModal.classList.add('active');
+        });
+    }
+
+    if (marketModalCloseBtn) {
+        marketModalCloseBtn.addEventListener('click', () => {
+            SoundEngine.playClick();
+            marketModal.classList.remove('active');
+        });
+    }
+
+    // Submit and Upload Listing to Firebase
+    if (marketSubmitBtn) {
+        marketSubmitBtn.addEventListener('click', () => {
+            const selectedIndex = parseInt(marketOreSelect.value);
+            const price = parseInt(marketPriceInput.value);
+            const currency = marketCurrencySelect.value;
+            const user = auth.currentUser;
+
+            if (isNaN(selectedIndex) || isNaN(price) || price <= 0 || !user) {
+                SoundEngine.playError();
+                showNotification("Invalid Parameters", "Please choose a valid ore and enter a price greater than 0.", "error");
+                return;
+            }
+
+            const itemToSell = playerState.inventory[selectedIndex];
+            if (!itemToSell) return;
+
+            marketSubmitBtn.disabled = true;
+            marketSubmitBtn.textContent = "Uploading...";
+
+            const listingId = db.ref('marketplace').push().key;
+            const expiryTime = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+
+            const listingData = {
+                id: listingId,
+                sellerId: user.uid,
+                sellerName: playerState.username,
+                oreName: getItemDisplayName(itemToSell),
+                oreIcon: itemToSell.icon || "🪨",
+                itemDetails: itemToSell, // Store complete item properties
+                price: price,
+                currency: currency,
+                status: "active",
+                createdTime: Date.now(),
+                expiryTime: expiryTime,
+                soldTime: null
+            };
+
+            // Write listing to database
+            db.ref('marketplace/' + listingId).set(listingData)
+                .then(() => {
+                    // Remove item from local inventory array immediately
+                    playerState.inventory.splice(selectedIndex, 1);
+                    
+                    saveGame();
+                    updateStatsUI();
+                    renderInventoryTray();
+
+                    marketModal.classList.remove('active');
+                    marketSubmitBtn.disabled = false;
+                    marketSubmitBtn.textContent = "List Product";
+                    marketPriceInput.value = '';
+
+                    SoundEngine.playCoin();
+                    showNotification("Item Listed!", `Successfully uploaded your ${listingData.oreName} to the live server.`, "shop", 4000);
+                })
+                .catch(err => {
+                    console.error("Listing failed to upload:", err);
+                    marketSubmitBtn.disabled = false;
+                    marketSubmitBtn.textContent = "List Product";
+                    SoundEngine.playError();
+                });
+        });
+    }
+
+    // Render Live Marketplace Listings
+    function renderMarketplace() {
+        if (!marketList) return;
+        marketList.innerHTML = '';
+
+        if (activeMarketListings.length === 0) {
+            marketList.innerHTML = `<div class="empty-inv" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 25px;">No items currently listed on the server.</div>`;
+            return;
+        }
+
+        const now = Date.now();
+        const currentUserId = auth.currentUser ? auth.currentUser.uid : null;
+
+        activeMarketListings.forEach(item => {
+            // Self-cleaning: If an item was sold more than 24 hours ago, remove it from the database silently
+            if (item.status === "sold" && item.soldTime && (now - item.soldTime > 24 * 60 * 60 * 1000)) {
+                if (firebaseActive) db.ref('marketplace/' + item.id).remove();
+                return;
+            }
+
+            // Self-cleaning: If an active item has been listed for more than 7 days, return it to the owner
+            if (item.status === "active" && now > item.expiryTime) {
+                if (currentUserId === item.sellerId && firebaseActive) {
+                    // Return the ore to the seller's inventory
+                    playerState.inventory.push(item.itemDetails);
+                    db.ref('marketplace/' + item.id).remove().then(() => {
+                        saveGame();
+                        renderInventoryTray();
+                        updateStatsUI();
+                        showNotification("Listing Expired", `Your listing for ${item.oreName} has expired (7 days) and returned to your inventory.`, "shop", 5000);
+                    });
+                } else if (firebaseActive) {
+                    // Clear the expired listing for other players
+                    db.ref('marketplace/' + item.id).remove();
+                }
+                return;
+            }
+
+            const card = document.createElement('div');
+            card.className = 'market-card';
+
+            const currencySymbol = item.currency === "tokens" ? "🎟️" : "🪙";
+            const priceText = `${currencySymbol} ${formatMoney(item.price, true)}`;
+
+            // Build dynamic controls based on player states and relations
+            let controlHtml = '';
+            if (item.status === "sold") {
+                controlHtml = `<span class="market-badge-sold">Sold</span>`;
+            } else if (currentUserId === item.sellerId) {
+                // If it is their own item, display an edit/cancel button to reclaim it
+                controlHtml = `
+                    <div style="display: flex; gap: 6px;">
+                        <button class="nav-btn cancel-listing-btn" data-id="${item.id}" style="background-color: #3b0707; border-color: #7f1d1d; color: #fca5a5; padding: 4px 8px; font-size: 0.7rem;"><i class="fa-solid fa-trash-can"></i> Reclaim</button>
+                    </div>`;
+            } else {
+                // If it is another player's item, display the buy trigger
+                controlHtml = `<button class="card-buy-btn buy-listing-btn" data-id="${item.id}" style="width: auto; padding: 4px 12px; font-size: 0.72rem;">Buy</button>`;
+            }
+
+            card.innerHTML = `
+                <div class="market-info-block">
+                    <div class="circle-icon" style="width: 36px; height: 36px; font-size: 1.15rem;">${item.oreIcon}</div>
+                    <div class="market-details">
+                        <span class="market-ore-name">${item.oreName}</span>
+                        <span class="market-seller-label">Seller: ${item.sellerName || "Anonymous Miner"}</span>
+                    </div>
+                </div>
+                <div class="market-meta-block">
+                    <span class="market-price-tag">${priceText}</span>
+                    ${controlHtml}
+                </div>`;
+
+            marketList.appendChild(card);
+        });
+
+        // Bind Action Listeners
+        marketList.querySelectorAll('.buy-listing-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                buyMarketplaceItem(btn.getAttribute('data-id'));
+            });
+        });
+
+        marketList.querySelectorAll('.cancel-listing-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                cancelMarketplaceListing(btn.getAttribute('data-id'));
+            });
+        });
+    }
+
+    // Cancel / Reclaim Listing Logic
+    function cancelMarketplaceListing(listingId) {
+        if (!firebaseActive) return;
+        SoundEngine.playClick();
+
+        const listing = activeMarketListings.find(i => i.id === listingId);
+        if (!listing) return;
+
+        // Verify if inventory is full before returning
+        if (playerState.inventory.length >= playerState.maxBagCapacity) {
+            SoundEngine.playError();
+            showNotification("🎒 Bag Full!", "Clear some space in your inventory before reclaiming this ore.", "sell", 3500);
+            return;
+        }
+
+        // Atomically remove the listing from database and return the item
+        db.ref('marketplace/' + listingId).remove().then(() => {
+            playerState.inventory.push(listing.itemDetails);
+            saveGame();
+            updateStatsUI();
+            renderInventoryTray();
+            showNotification("Reclaimed specimen", `Successfully returned your ${listing.oreName} to your inventory.`, "shop", 3500);
+        }).catch(err => console.error("Cancel failed:", err));
+    }
+
+    // Purchase Live Listing (With atomic transaction and double-spending protection)
+    function buyMarketplaceItem(listingId) {
+        if (!firebaseActive) return;
+        SoundEngine.playClick();
+
+        // Guest check
+        if (playerState.saveMode !== "cloud") {
+            SoundEngine.playError();
+            showNotification("Trade Restriction", "Guest accounts cannot purchase server trades. Register to trade!", "error");
+            return;
+        }
+
+        // Bag full check
+        if (playerState.inventory.length >= playerState.maxBagCapacity) {
+            SoundEngine.playError();
+            showNotification("🎒 Bag Full!", "Your bag is full! Sell some items before buying.", "sell", 3500);
+            return;
+        }
+
+        const listing = activeMarketListings.find(i => i.id === listingId);
+        if (!listing || listing.status !== "active") return;
+
+        // Currency checks
+        if (listing.currency === "tokens") {
+            if (playerState.tokens < listing.price) {
+                SoundEngine.playError();
+                showNotification("🎟️ Insufficient Tokens!", "You cannot afford this listing.", "error");
+                return;
+            }
+        } else {
+            if (playerState.money < listing.price) {
+                SoundEngine.playError();
+                showNotification("🪙 Insufficient Coins!", "You cannot afford this listing.", "error");
+                return;
+            }
+        }
+
+        // Atomic Transaction: Check status and mark as sold on Firebase safely
+        const listingRef = db.ref('marketplace/' + listingId);
+        listingRef.transaction((currentData) => {
+            if (currentData && currentData.status === "active") {
+                currentData.status = "sold";
+                currentData.soldTime = firebase.database.ServerValue.TIMESTAMP;
+                currentData.buyerId = auth.currentUser.uid;
+                currentData.buyerName = playerState.username;
+                currentData.earningsClaimed = false; // <-- ADDED: Setup the claiming state
+                return currentData;
+            }
+            return; // Abort if already purchased
+        }, (error, committed, snapshot) => {
+            if (error) {
+                console.error("Purchase transaction failed:", error);
+            } else if (!committed) {
+                SoundEngine.playError();
+                showNotification("❌ Item Already Sold", "This listing was just purchased by another player!", "error", 4000);
+            } else {
+                // Succeeded! Deduct buyer currency locally and append ore
+                if (listing.currency === "tokens") {
+                    playerState.tokens -= listing.price;
+                } else {
+                    playerState.money -= listing.price;
+                }
+
+                playerState.inventory.push(listing.itemDetails);
+
+                SoundEngine.playLevelUp();
+                showNotification("🛍️ Purchase Successful!", `Obtained ${listing.oreName} for ${listing.currency === "tokens" ? "🎟️" : "🪙"} ${formatMoney(listing.price)}!`, "level-up", 4000);
+
+                saveGame();
+                updateStatsUI();
+                renderInventoryTray();
+            }
+        });
+    }
+
+    // Periodically Check and Claim Pending Earnings from Successful Sales (Grouped Version)
+    function claimPendingEarnings() {
+        if (!firebaseActive || playerState.saveMode !== "cloud" || isProcessingClaim) return;
+        const user = auth.currentUser;
+        if (!user) return;
+
+        // 1. Find all sold items belonging to the player that aren't claimed yet
+        const unclaimed = activeMarketListings.filter(item => 
+            item.sellerId === user.uid && 
+            item.status === "sold" && 
+            item.earningsClaimed === false
+        );
+
+        if (unclaimed.length === 0) return;
+
+        // Lock to prevent multiple modals from stacking
+        isProcessingClaim = true;
+
+        let totalGold = 0;
+        let totalTokens = 0;
+        let updatePromises = [];
+
+        // 2. Build the scrollable list UI
+        let listHtml = `<p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px;">The following items were purchased by other players:</p>`;
+        
+        // Apply scroll if more than 5 items
+        const scrollBoxStyle = unclaimed.length > 5 ? "max-height: 180px; overflow-y: auto;" : "";
+        listHtml += `<div style="${scrollBoxStyle} display: flex; flex-direction: column; gap: 8px; padding-right: 5px;">`;
+
+        unclaimed.forEach(item => {
+            const sym = item.currency === "tokens" ? "🎟️" : "🪙";
+            if (item.currency === "tokens") totalTokens += item.price;
+            else totalGold += item.price;
+
+            listHtml += `
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+                    <span style="font-size: 0.8rem; font-weight: bold;">${item.oreIcon} ${item.oreName}</span>
+                    <span style="font-size: 0.8rem; color: var(--gold-accent); font-weight: bold;">${sym} ${formatMoney(item.price)}</span>
+                </div>`;
+
+            // Prepare database update
+            updatePromises.push(db.ref('marketplace/' + item.id + '/earningsClaimed').set(true));
+        });
+        listHtml += `</div>`;
+
+        // 3. Final stats to show in the modal
+        const finalStats = [
+            { label: "Items Sold", value: `${unclaimed.length} Ores` },
+            { label: "Total Coins", value: `🪙 +${formatMoney(totalGold)}` },
+            { label: "Total Tokens", value: `🎟️ +${totalTokens}` }
+        ];
+
+        // 4. Update Database first, then show Modal
+        Promise.all(updatePromises).then(() => {
+            playerState.money += totalGold;
+            playerState.tokens += totalTokens;
+
+            SoundEngine.playLevelUp();
+
+            openDetailModal("Marketplace Revenue", "💰", listHtml, finalStats, {
+                label: "COLLECT EARNINGS",
+                callback: () => {
+                    isProcessingClaim = false; // Unlock for future sales
+                    saveGame();
+                    updateStatsUI();
+                }
+            });
+        }).catch(err => {
+            isProcessingClaim = false;
+            console.error("Revenue claim failed:", err);
+        });
+    }
+
+    // Monitor live marketplace database node in real-time
+    if (firebaseActive) {
+        db.ref('marketplace').on('value', (snapshot) => {
+            activeMarketListings = [];
+            snapshot.forEach((child) => {
+                activeMarketListings.push(child.val());
+            });
+
+            // SORTING ALGORITHM: Place Active items on top, Sold items on bottom, and sort by newest first
+            activeMarketListings.sort((a, b) => {
+                if (a.status === "active" && b.status === "sold") return -1;
+                if (a.status === "sold" && b.status === "active") return 1;
+                
+                // If they are in the same status group, sort by newest listed timestamp first
+                return b.createdTime - a.createdTime;
+            });
+
+            renderMarketplace();
+            claimPendingEarnings(); // <-- Instantly triggers claims upon real-time server changes!
+        });
+    }
+
+    // ==================== AUTHENTICATION & DATA MIGRATION ENGINE ====================
+    const authModal = document.getElementById('authModal');
+    const authTitle = document.getElementById('authTitle');
+    const authDesc = document.getElementById('authDesc');
+    const authIcon = document.getElementById('authIcon');
+    const authUsername = document.getElementById('authUsername');
+    const authEmail = document.getElementById('authEmail');
+    const authPassword = document.getElementById('authPassword');
+    const authSubmitBtn = document.getElementById('authSubmitBtn');
+    const authGuestBtn = document.getElementById('authGuestBtn');
+    const authToggleText = document.getElementById('authToggleText');
+
+    let isSignUpMode = false; // Toggle tracker
+
+    // Switch between Sign In and Sign Up modes inside modal
+    if (authToggleText) {
+        authToggleText.addEventListener('click', () => {
+            SoundEngine.playClick();
+            isSignUpMode = !isSignUpMode;
+            
+            if (isSignUpMode) {
+                authTitle.textContent = "Sign Up";
+                authDesc.textContent = "Create an account to backup your character progress!";
+                authIcon.innerHTML = `<i class="fa-solid fa-user-plus"></i>`;
+                authUsername.style.display = "block";
+                authSubmitBtn.textContent = "Sign Up";
+                authToggleText.innerHTML = `Already have an account? <strong style="color: var(--gold-accent);">Sign In</strong>`;
+            } else {
+                authTitle.textContent = "Sign In";
+                authDesc.textContent = "Sync your character data, unlock leaderboards, and trade online!";
+                authIcon.innerHTML = `<i class="fa-solid fa-user-lock"></i>`;
+                authUsername.style.display = "none";
+                authSubmitBtn.textContent = "Sign In";
+                authToggleText.innerHTML = `Don't have an account? <strong style="color: var(--gold-accent);">Sign Up</strong>`;
+            }
+        });
+    }
+
+    // Process Form Submission (Sign In or Sign Up)
+    if (authSubmitBtn && authEmail && authPassword) {
+        authSubmitBtn.addEventListener('click', () => {
+            const email = authEmail.value.trim();
+            const password = authPassword.value.trim();
+            const username = authUsername.value.trim();
+
+            if (!email || !password) {
+                SoundEngine.playError();
+                showNotification("Missing Fields", "Please enter your email and password.", "error");
+                return;
+            }
+
+            authSubmitBtn.disabled = true;
+            authSubmitBtn.textContent = isSignUpMode ? "Registering..." : "Signing In...";
+
+            if (isSignUpMode) {
+                // SIGN UP FLOW
+                const finalUsername = username ? username : "Miner Joe";
+                
+                auth.createUserWithEmailAndPassword(email, password)
+                    .then((userCredential) => {
+                        const user = userCredential.user;
+                        
+                        // Update Display name on Firebase Profile
+                        return user.updateProfile({ displayName: finalUsername }).then(() => {
+                            playerState.username = finalUsername;
+                            playerState.saveMode = "cloud";
+                            
+                            // AUTO-MIGRATION: Upload existing local progress to their cloud database!
+                            saveGame(); 
+                            
+                            authModal.classList.remove('active');
+                            authSubmitBtn.disabled = false;
+                            
+                            SoundEngine.playLevelUp();
+                            showNotification("Account Registered!", `Welcome ${playerState.username}! Progress synced to cloud.`, "level-up", 4500);
+                            
+                            // Trigger onboarding tutorial
+                            setTimeout(startTutorial, 500);
+                        });
+                    })
+                    .catch((error) => {
+                        authSubmitBtn.disabled = false;
+                        authSubmitBtn.textContent = "Sign Up";
+                        SoundEngine.playError();
+                        showNotification("Registration Failed", error.message, "error", 5000);
+                    });
+            } else {
+                // SIGN IN FLOW
+                auth.signInWithEmailAndPassword(email, password)
+                    .then((userCredential) => {
+                        const user = userCredential.user;
+                        
+                        // Fetch saved data from Cloud database
+                        db.ref('users/' + user.uid).once('value').then((snapshot) => {
+                            const cloudData = snapshot.val();
+                            
+                            if (cloudData && cloudData.saveState) {
+                                // Overwrite local state with cloud progress
+                                Object.assign(playerState, cloudData.saveState);
+                                playerState.saveMode = "cloud";
+                                
+                                // Overwrite local collections map
+                                if (cloudData.collections) {
+                                    collectionsData.forEach(item => {
+                                        if (cloudData.collections[item.id] !== undefined) {
+                                            item.obtained = cloudData.collections[item.id];
+                                        }
+                                    });
+                                }
+                            } else {
+                                // If account is completely new, migrate current offline stats
+                                playerState.saveMode = "cloud";
+                                if (user.displayName) playerState.username = user.displayName;
+                            }
+
+                            saveGame(); // Writes to localStorage
+                            updateStatsUI();
+                            renderShop();
+                            renderInventoryTray();
+                            renderCollections();
+
+                            authModal.classList.remove('active');
+                            authSubmitBtn.disabled = false;
+
+                            SoundEngine.playLevelUp();
+                            showNotification("Sign In Successful!", `Progress synced. Welcome back, ${playerState.username}!`, "level-up", 4500);
+                        });
+                    })
+                    .catch((error) => {
+                        authSubmitBtn.disabled = false;
+                        authSubmitBtn.textContent = "Sign In";
+                        SoundEngine.playError();
+                        showNotification("Sign In Failed", error.message, "error", 5000);
+                    });
+            }
+        });
+    }
+
+    // Offline Guest Bypass Handler
+    if (authGuestBtn && authModal) {
+        authGuestBtn.addEventListener('click', () => {
+            SoundEngine.playClick();
+            playerState.saveMode = "local"; // Stays local/offline
+
+            // Prompt guest user for their display name if they don't have one
+            if (!playerState.username) {
+                const guestName = prompt("Enter your Guest display name:") || "Guest Miner";
+                playerState.username = guestName.trim().substring(0, 14);
+                
+                setTimeout(startTutorial, 500);
+            }
+
+            saveGame();
+            updateStatsUI();
+            authModal.classList.remove('active');
+            showNotification("Guest Mode Active", "Playing offline. Progress saved to local storage.", "shop", 4000);
+        });
+    }
+
+    // Monitor Firebase Auth state dynamically (Automatic background session mapping)
+    if (firebaseActive) {
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                playerState.saveMode = "cloud";
+                if (user.displayName) {
+                    playerState.username = user.displayName;
+                }
+                updateStatsUI();
+                claimPendingEarnings(); // <-- ADD THIS (Claims sold ore values)
+            }
+        });
+    }
+    
+    
+
     // ==================== INITIALIZATION ====================
     loadGame(); // Restore progress from local storage on reload
     checkUserRegistration(); // Call registration check on load
@@ -2116,4 +2858,91 @@ document.addEventListener('DOMContentLoaded', () => {
     renderInventoryTray();
     renderShop();
     renderCollections();
+    
+    // ==================== DEVELOPER TOOLS ENGINE ====================
+  const DEV_UID = "ZaOjo0lPMTYrHnA8sK5769agLO52"; // <--- CHANGE THIS!
+  
+  function initDevTools() {
+        const fab = document.getElementById('devFab');
+        const panel = document.getElementById('devPanel');
+        const closeBtn = document.getElementById('closeDev');
+
+        if (!fab || !panel) return;
+
+        // 1. Security Check
+        if (firebaseActive) {
+            auth.onAuthStateChanged((user) => {
+                if (user && user.uid === DEV_UID) {
+                    fab.style.display = 'flex';
+                } else {
+                    fab.style.display = 'none';
+                }
+            });
+        }
+
+        // 2. Click to Open Panel
+        let isDragging = false;
+        fab.addEventListener('click', () => {
+            if (!isDragging) panel.style.display = 'flex';
+        });
+        closeBtn.addEventListener('click', () => panel.style.display = 'none');
+
+        // 3. UNIVERSAL DRAG LOGIC (Works on PC & Mobile)
+        let offsetHoldX, offsetHoldY;
+
+        fab.addEventListener('pointerdown', (e) => {
+            isDragging = false;
+            // Record where we grabbed the button
+            offsetHoldX = e.clientX - fab.getBoundingClientRect().left;
+            offsetHoldY = e.clientY - fab.getBoundingClientRect().top;
+            
+            // Tell the browser to keep tracking this finger/mouse even if it leaves the button area
+            fab.setPointerCapture(e.pointerId);
+
+            function onPointerMove(ev) {
+                isDragging = true;
+                
+                // Calculate new position
+                let newX = ev.clientX - offsetHoldX;
+                let newY = ev.clientY - offsetHoldY;
+
+                // Apply styles
+                fab.style.left = newX + 'px';
+                fab.style.top = newY + 'px';
+                fab.style.right = 'auto';
+                fab.style.bottom = 'auto';
+            }
+
+            // Move event
+            fab.addEventListener('pointermove', onPointerMove);
+
+            // Stop event
+            fab.addEventListener('pointerup', () => {
+                fab.removeEventListener('pointermove', onPointerMove);
+                // Small delay so a drag doesn't count as a "click"
+                setTimeout(() => isDragging = false, 50);
+            }, { once: true });
+        });
+    }
+  
+  // Dev Cheat Functions (Global so HTML can see them)
+  window.devAddGold = () => { playerState.money += 100000; updateStatsUI(); saveGame(); showNotification("DEV", "+100K Gold Added", "level-up"); };
+  window.devAddTokens = () => { playerState.tokens += 100; updateStatsUI(); saveGame(); showNotification("DEV", "+100 Tokens Added", "level-up"); };
+  window.devFillEnergy = () => { playerState.currentEnergy = playerState.maxEnergy; updateStatsUI(); saveGame(); showNotification("DEV", "Energy Filled", "shop"); };
+  window.devLevelUp = () => { awardXp(playerState.xpNeeded); showNotification("DEV", "Level Bypassed", "level-up"); };
+  window.devUnlockAll = () => { 
+      collectionsData.forEach(c => c.obtained = true); 
+      cavesData.forEach(cave => { if(cave.lootPool) cave.lootPool.forEach(ore => {
+          const id = ore.name.toLowerCase().replace(/\s+/g, '-');
+          playerState.unlockedOres[`${id}-normal`] = true;
+          playerState.unlockedOres[`${id}-variant`] = true;
+          playerState.unlockedOres[`${id}-mutation`] = true;
+          playerState.unlockedOres[`${id}-hybrid`] = true;
+      })});
+      renderCollections(); saveGame(); showNotification("DEV", "All Cards Unlocked", "collection"); 
+  };
+  window.devReset = () => { if(confirm("ERASE EVERYTHING?")) { localStorage.clear(); window.location.reload(); } };
+  
+  // Launch Dev Tools
+  initDevTools();
 });
