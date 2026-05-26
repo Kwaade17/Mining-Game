@@ -707,47 +707,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateStatsUI() {
         if (labelLevel) labelLevel.textContent = playerState.level;
-        if (sidebarLevel) sidebarLevel.textContent = `Lvl. ${playerState.level}`; // <-- ADD THIS LINE
-        if (labelXp) labelXp.textContent = playerState.xp;
+        if (sidebarLevel) sidebarLevel.textContent = `Lvl. ${playerState.level}`;
         
+        // Format Money and Tokens (Compact)
         if (labelMoney) labelMoney.textContent = formatMoney(playerState.money, true);
-        if (labelTokens) labelTokens.textContent = formatMoney(playerState.tokens);
+        if (labelTokens) labelTokens.textContent = formatMoney(playerState.tokens, true);
         
         if (labelOres) labelOres.textContent = playerState.inventory.length;
         if (labelCapacity) labelCapacity.textContent = playerState.maxBagCapacity;
-        if (labelEnergy) labelEnergy.textContent = `${Math.floor(playerState.currentEnergy)}%`;
-        if (labelInvCount) labelInvCount.textContent = playerState.inventory.length;
-        if (labelInvMax) labelInvMax.textContent = playerState.maxBagCapacity;
+        
+        // FIX: Format Large Energy Percentages
+        if (labelEnergy) {
+            const energyVal = Math.floor(playerState.currentEnergy);
+            labelEnergy.textContent = energyVal > 9999 ? `${formatMoney(energyVal, true)}%` : `${energyVal}%`;
+        }
 
-        // 1. Update full XP fills and Sidebar stats
+        // 1. Sidebar XP Progress
         if (sidebarXpFill && sidebarXpText) {
             const xpPercent = Math.min(100, (playerState.xp / playerState.xpNeeded) * 100);
             sidebarXpFill.style.width = `${xpPercent}%`;
-            sidebarXpText.textContent = `XP: ${playerState.xp} / ${playerState.xpNeeded}`;
+            // FIX: Use compact formatting for sidebar XP (e.g., 1.5e+22 -> 150Sx)
+            sidebarXpText.textContent = `XP: ${formatMoney(playerState.xp, true)} / ${formatMoney(playerState.xpNeeded, true)}`;
         }
 
-        // 2. Update the new contained navbar XP bar and remaining text limit
+        // 2. Navbar XP Progress
         const navXpFill = document.getElementById('navXpFill');
         const navXpText = document.getElementById('navXpText');
         if (navXpFill && navXpText) {
             const xpPercent = Math.min(100, (playerState.xp / playerState.xpNeeded) * 100);
             navXpFill.style.width = `${xpPercent}%`;
             
-            // Calculate how much XP is remaining to level up
             const xpLeft = playerState.xpNeeded - playerState.xp;
-            navXpText.textContent = `${xpLeft} XP to Level Up`;
+            // FIX: Use compact formatting for XP Left
+            navXpText.textContent = `${formatMoney(xpLeft, true)} XP to Level Up`;
         }
 
-        // 3. Update the new Floating Mobile Stats Bar labels
+        // 3. Floating Mobile Stats Bar
         const floatMoney = document.getElementById('float-money');
         const floatTokens = document.getElementById('float-tokens');
         const floatBag = document.getElementById('float-bag');
         const floatEnergy = document.getElementById('float-energy');
 
         if (floatMoney) floatMoney.textContent = formatMoney(playerState.money, true);
-        if (floatTokens) floatTokens.textContent = formatMoney(playerState.tokens);
+        if (floatTokens) floatTokens.textContent = formatMoney(playerState.tokens, true);
         if (floatBag) floatBag.textContent = `${playerState.inventory.length} / ${playerState.maxBagCapacity}`;
-        if (floatEnergy) floatEnergy.textContent = `${Math.floor(playerState.currentEnergy)}%`;
+        if (floatEnergy) {
+            const eVal = Math.floor(playerState.currentEnergy);
+            floatEnergy.textContent = eVal > 9999 ? `${formatMoney(eVal, true)}%` : `${eVal}%`;
+        }
 
         const displayName = playerState.username ? playerState.username : "Miner Joe";
         if (navUsername) navUsername.textContent = displayName;
@@ -2926,9 +2933,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   
   // Dev Cheat Functions (Global so HTML can see them)
-  window.devAddGold = () => { playerState.money += 100000000; updateStatsUI(); saveGame(); showNotification("DEV", "+100K Gold Added", "level-up"); };
-  window.devAddTokens = () => { playerState.tokens += 100000000; updateStatsUI(); saveGame(); showNotification("DEV", "+100 Tokens Added", "level-up"); };
-  window.devFillEnergy = () => { playerState.currentEnergy = playerState.maxEnergy; updateStatsUI(); saveGame(); showNotification("DEV", "Energy Filled", "shop"); };
+  window.devAddGold = () => { playerState.money += 100000000; updateStatsUI(); saveGame(); showNotification("DEV", "+100M Gold Added", "level-up"); };
+  window.devAddTokens = () => { playerState.tokens += 100000000; updateStatsUI(); saveGame(); showNotification("DEV", "+100M Tokens Added", "level-up"); };
+  window.devFillEnergy = () => { 
+      playerState.currentEnergy = playerState.maxEnergy; // Resets to 100% instead of adding more
+      updateStatsUI(); 
+      saveGame(); 
+  };
   window.devLevelUp = () => { awardXp(playerState.xpNeeded); showNotification("DEV", "Level Bypassed", "level-up"); };
   window.devUnlockAll = () => { 
       collectionsData.forEach(c => c.obtained = true); 

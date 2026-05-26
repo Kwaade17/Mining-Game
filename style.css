@@ -1057,3 +1057,24 @@ body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); co
 #devFab:hover {
     filter: brightness(1.2);
 }
+
+/* Ensure XP text is always compact and centered */
+.sidebar-xp-text {
+    font-size: 0.65rem !important; /* Slightly smaller to fit big numbers */
+    white-space: nowrap;
+}
+
+.nav-xp-text {
+    font-size: 0.6rem !important;
+    letter-spacing: 0.5px;
+}
+
+/* Ensure the floating stats bar can handle wider text */
+.floating-stats-bar {
+    padding: 6px 8px; /* Slightly tighter padding */
+}
+
+.float-stat {
+    font-size: 0.7rem; /* Shrink slightly */
+    min-width: 60px;   /* Give them a bit more room */
+}
