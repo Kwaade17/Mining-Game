@@ -32,9 +32,11 @@ if (typeof firebase !== "undefined") {
 
 let isProcessingClaim = false; // Prevents multiple revenue modals from stacking
 
+let isShuttingDown = false; // Prevents background saves during reset
+
 document.addEventListener("DOMContentLoaded", () => {
     // ==================== SESSION STATE ====================
-    const GAME_VERSION = "2.1.0"; // Active version used to check shop updates
+    const GAME_VERSION = "2.1.1"; // Active version used to check shop updates
 
     const playerState = {
         username: "", // Custom player display name
@@ -299,6 +301,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ==================== PERSISTENT LOCAL STORAGE ENGINE ====================
     function saveGame() {
+        if (isShuttingDown) return; // Block saving if the game is resetting
         localStorage.setItem("miner_save", JSON.stringify(playerState));
         const colMap = {};
         collectionsData.forEach(item => {
@@ -3723,10 +3726,30 @@ document.addEventListener("DOMContentLoaded", () => {
         saveGame();
         showNotification("DEV", "All Cards Unlocked", "collection");
     };
+    // FIXED: Hard Reset now clears LocalStorage AND Signs Out of Firebase
     window.devReset = () => {
-        if (confirm("ERASE EVERYTHING?")) {
+        if (confirm("🔥 HARD RESET: This will wipe your local save and SIGN YOU OUT. Continue?")) {
+            isShuttingDown = true; // Stop all background save processes immediately
+            
+            // 1. Wipe all local storage
             localStorage.clear();
-            window.location.reload();
+            sessionStorage.clear();
+
+            // 2. Clear current memory to be safe
+            playerState.money = 0;
+            playerState.inventory = [];
+            playerState.username = "";
+
+            // 3. Handle Firebase and Reload
+            if (firebaseActive && auth) {
+                auth.signOut().then(() => {
+                    window.location.replace(window.location.href); // Harder reload
+                }).catch(() => {
+                    window.location.replace(window.location.href);
+                });
+            } else {
+                window.location.replace(window.location.href);
+            }
         }
     };
 
