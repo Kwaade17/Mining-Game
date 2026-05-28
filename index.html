@@ -131,6 +131,8 @@
                         Miner Joe
                     </h3>
                     <p class="sidebar-rank">Novice Digger</p>
+                    <!-- NEW: Rebirth Level Display -->
+                    <p id="sidebarRebirth" style="font-size: 0.7rem; color: var(--gold-accent); margin: 2px 0; font-weight: bold; display: none;">Rebirth Rank: 0</p>
                     <p class="sidebar-level" id="sidebarLevel">Lvl. 1</p>
 
                     <!-- Sidebar XP Progress Bar -->
@@ -145,6 +147,10 @@
                             >XP: 0 / 100</span
                         >
                     </div>
+                    
+                    <button id="rebirthBtn" style="display: none; background: linear-gradient(135deg, #7c3aed, #4f46e5); color: white; border: none; margin-top: 10px; width: 100%; font-size: 0.75rem; padding: 8px; font-weight: 900; border-radius: 6px; cursor: pointer; box-shadow: 0 0 15px rgba(124, 58, 237, 0.4); border: 1px solid rgba(255,255,255,0.2);">
+            <i class="fa-solid fa-arrows-rotate"></i> REBIRTH AVAILABLE
+        </button>
 
                     <!-- DAILY CLAIM BUTTON (NEW FEATURE) -->
                     <button

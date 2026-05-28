@@ -59,6 +59,8 @@ document.addEventListener("DOMContentLoaded", () => {
         activePickaxeMultiplier: 1.0,
         xpMultiplier: 1.0,
         sellMultiplier: 1.0, // <-- ADD THIS LINE
+        rebirthCount: 0,      // Total times rebirthed
+        rebirthMultiplier: 1, // Permanent 1.25x, 1.50x, etc.
         inventory: [],
         soundsMuted: false, // Tracks global audio state
         unlockedOres: {}, // Dictionary tracking 320 progressive dynamic ore cards
@@ -298,6 +300,59 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         return true;
     }
+    
+    function triggerRebirth() {
+        if (playerState.level < 100) {
+            SoundEngine.playError();
+            showNotification("Locked", "You must reach Level 100 to Rebirth!", "error");
+            return;
+        }
+
+        const nextMult = playerState.rebirthMultiplier + 0.25;
+
+        openDetailModal(
+            "Ascend to Rebirth?",
+            "✨",
+            `By rebirthing, you will lose your Gold, Levels, and Pickaxes, but your soul will become stronger.<br><br><strong>New Multiplier: x${nextMult.toFixed(2)}</strong>`,
+            [
+                { label: "Current Rebirths", value: playerState.rebirthCount },
+                { label: "New XP Boost", value: "+10%" },
+                { label: "New Gold Boost", value: "+25%" }
+            ],
+            {
+                label: "ASCEND NOW",
+                callback: () => {
+                    // 1. Increase Rebirth Stats
+                    playerState.rebirthCount++;
+                    playerState.rebirthMultiplier += 0.25;
+                    playerState.xpMultiplier += 0.10;
+
+                    // 2. WIPE Progress
+                    playerState.money = 200;
+                    playerState.level = 1;
+                    playerState.xp = 0;
+                    playerState.xpNeeded = 100;
+                    playerState.inventory = [];
+                    playerState.maxBagCapacity = 20;
+                    playerState.activePickaxeMultiplier = 1.0;
+                    playerState.currentEnergy = playerState.maxEnergy;
+
+                    // 3. Effect & Save
+                    SoundEngine.playLevelUp();
+                    showNotification("ASCENDED", `Welcome to Rebirth Rank ${playerState.rebirthCount}!`, "level-up", 6000);
+                    
+                    saveGame();
+                    updateMapPageStructure(); // Re-lock caves
+                    updateStatsUI();
+                    renderShop(); // Reset buy buttons
+                    renderInventoryTray();
+                    
+                    // Close sidebar if on mobile
+                    if (window.innerWidth < 768) sidebar.classList.remove('open');
+                }
+            }
+        );
+    }
 
     // ==================== PERSISTENT LOCAL STORAGE ENGINE ====================
     function saveGame() {
@@ -389,6 +444,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (playerState.saveMode === undefined) {
                     playerState.saveMode = "local"; // <-- ADD THIS
                 }
+                if (playerState.rebirthCount === undefined) playerState.rebirthCount = 0;
+                if (playerState.rebirthMultiplier === undefined) playerState.rebirthMultiplier = 1.0;
             } catch (err) {
                 console.error("Save load failed: ", err);
             }
@@ -899,6 +956,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 dailyClaimBtn.style.color = "var(--gold-accent)";
             }
         }
+        
+        // Inside updateStatsUI()
+        const rebirthBtn = document.getElementById('rebirthBtn');
+        const sidebarRebirth = document.getElementById('sidebarRebirth');
+
+        if (rebirthBtn) {
+         // Show button if Lvl 100+
+         rebirthBtn.style.display = playerState.level >= 100 ? 'block' : 'none';
+         rebirthBtn.onclick = triggerRebirth;
+        }
+
+        if (sidebarRebirth) {
+         // Show Rebirth Rank if they have rebirthed at least once
+         if (playerState.rebirthCount > 0) {
+           sidebarRebirth.style.display = 'block';
+           sidebarRebirth.textContent = `Rebirth Rank: ${playerState.rebirthCount}`;
+          }
+        }
 
         checkAchievements();
     }
@@ -968,7 +1043,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // 2. Calculate the sell price using your precalculated finalValue and sellMultiplier
             const itemPrice = Math.floor(
-                (item.finalValue || item.baseValue) * playerState.sellMultiplier
+                (item.finalValue || item.baseValue) * playerState.sellMultiplier * playerState.rebirthMultiplier // <--- ADD THIS
             );
 
             // 3. Extract the weight value directly from your stored actualWeight
@@ -1104,7 +1179,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Calculate item price directly using your stored finalValue
                 const itemPrice = Math.floor(
                     (item.finalValue || item.baseValue) *
-                        playerState.sellMultiplier
+                        playerState.sellMultiplier * playerState.rebirthMultiplier // <--- ADD THIS
                 );
                 totalEarned += itemPrice;
             });
