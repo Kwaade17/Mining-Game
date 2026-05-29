@@ -210,7 +210,7 @@
                                 Marketplace</a
                             >
                         </li>
-                        <!-- <-- INSERT THIS -->
+                        <li><a href="#" class="nav-link" data-view="view-leaderboard"><i class="fa-solid fa-ranking-star fa-fw"></i> Hall of Fame</a></li>
                     </ul>
 
                     <!-- Sidebar Divider for separated button -->
@@ -479,6 +479,38 @@
                             "
                         >
                             <!-- Server-wide listings will render here dynamically -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 6. LEADERBOARD VIEW (NEW) -->
+                <div id="view-leaderboard" class="game-view">
+                    <div class="col-wrapper">
+                        <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; border: none;">
+                            <h3><i class="fa-solid fa-crown"></i> Hall of Fame</h3>
+                            <select id="leaderboardCategory" class="shop-filter" style="max-width: 150px;">
+                                <option value="level">By Level</option>
+                                <option value="rebirthCount">By Rebirths</option>
+                                <option value="money">By Gold</option>
+                            </select>
+                        </div>
+                        
+                        <div class="leaderboard-container" style="background: var(--stone-dark); border-radius: 12px; border: 2px solid #333; overflow: hidden; margin-top: 10px;">
+                            <table class="leaderboard-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+                                <thead style="background: #1a1a1a; color: var(--gold-accent); font-size: 0.75rem; text-transform: uppercase;">
+                                    <tr>
+                                        <th style="padding: 12px;">Rank</th>
+                                        <th>Miner</th>
+                                        <th id="statHeader">Level</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leaderboardBody">
+                                    <!-- Top players injected here -->
+                                </tbody>
+                            </table>
+                            <div id="leaderboardLoading" style="padding: 40px; text-align: center; color: var(--text-muted);">
+                                <i class="fa-solid fa-spinner fa-spin"></i> Loading Rankings...
+                            </div>
                         </div>
                     </div>
                 </div>
