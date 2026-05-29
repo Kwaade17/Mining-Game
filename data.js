@@ -1395,6 +1395,14 @@ const shopData = [
         desc: "Permanently doubles all earned XP.",
         cost: 60,
         icon: "🎫"
+    },
+    {
+        id: "twice-weight-pass",
+        category: "passes",
+        name: "Additional Weight Pass",
+        desc: "There's a 50% chance of adding a bonus weight on an ore after mining.",
+        cost: 80,
+        icon: "⚖️"
     }
 ];
 

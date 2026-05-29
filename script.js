@@ -34,6 +34,10 @@ let isProcessingClaim = false; // Prevents multiple revenue modals from stacking
 
 let isShuttingDown = false; // Prevents background saves during reset
 
+const leaderCatSelect = document.getElementById('leaderboardCategory');
+const leaderboardBody = document.getElementById('leaderboardBody');
+const leaderboardLoading = document.getElementById('leaderboardLoading');
+
 document.addEventListener("DOMContentLoaded", () => {
     // ==================== SESSION STATE ====================
     const GAME_VERSION = "2.1.1"; // Active version used to check shop updates
@@ -50,7 +54,8 @@ document.addEventListener("DOMContentLoaded", () => {
         hasTokenSub: false, // <-- ADD THIS
         hasMagnet: false, // <-- ADD THIS
         hasStarterBundle: false, // <-- ADD THIS
-        hasMinerPack: false, // <-- ADD THIS
+        haMinerPack: false, // <-- ADD THIS
+        hasWeightPass: false, // <-- This is my own pass
         tokenSubTimer: 0, // <-- ADD THIS
         lastClaimTime: 0, // <-- ADD THIS (Daily Claim timestamp)
         saveMode: "local", // <-- ADD THIS (local or cloud)
@@ -258,6 +263,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (item.category === "passes") {
                 if (item.id === "double-xp-pass")
                     return (playerState.xpMultiplier || 1.0) >= 2.0;
+                if (item.id === "twice-weight-pass")
+                    return !!playerState.hasWeightPass;
             }
             if (item.category === "packs") {
                 if (item.id === "starter-bundle")
@@ -335,11 +342,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     playerState.inventory = [];
                     playerState.maxBagCapacity = 20;
                     playerState.activePickaxeMultiplier = 1.0;
+                    playerState.maxEnergy = 100;
                     playerState.currentEnergy = playerState.maxEnergy;
 
                     // 3. Effect & Save
                     SoundEngine.playLevelUp();
                     showNotification("ASCENDED", `Welcome to Rebirth Rank ${playerState.rebirthCount}!`, "level-up", 6000);
+                    
                     
                     saveGame();
                     updateMapPageStructure(); // Re-lock caves
@@ -446,6 +455,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 if (playerState.rebirthCount === undefined) playerState.rebirthCount = 0;
                 if (playerState.rebirthMultiplier === undefined) playerState.rebirthMultiplier = 1.0;
+                if (playerState.hasWeightPass === undefined) playerState.hasWeightPass = false;
             } catch (err) {
                 console.error("Save load failed: ", err);
             }
@@ -464,6 +474,18 @@ document.addEventListener("DOMContentLoaded", () => {
             } catch (err) {
                 console.error("Collections load failed: ", err);
             }
+        }
+        
+        // Sync tiny scorecard to Global Leaderboard if online
+        if (playerState.saveMode === "cloud" && firebaseActive && auth.currentUser) {
+            const scorecard = {
+                username: playerState.username,
+                level: playerState.level,
+                money: playerState.money,
+                rebirthCount: playerState.rebirthCount,
+                lastSeen: firebase.database.ServerValue.TIMESTAMP
+            };
+            db.ref('leaderboards/' + auth.currentUser.uid).set(scorecard);
         }
     }
 
@@ -981,7 +1003,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function awardXp(amount) {
         const activeMultiplier =
             playerState.buffs && playerState.buffs.xpBoost > 0
-                ? playerState.xpMultiplier * 2
+                ? playerState.xpMultiplier * 1.1
                 : playerState.xpMultiplier;
         playerState.xp += amount * activeMultiplier;
 
@@ -990,10 +1012,10 @@ document.addEventListener("DOMContentLoaded", () => {
             playerState.level += 1;
 
             // NERF: Increased progression difficulty from 1.5x to 1.6x curve
-            playerState.xpNeeded = Math.floor(playerState.xpNeeded * 1.6);
+            playerState.xpNeeded = Math.floor(playerState.xpNeeded * 1.2);
 
             // BUFF: Increased energy growth from 1.1x to 1.15x per level
-            playerState.maxEnergy = Math.floor(playerState.maxEnergy * 1.15);
+            playerState.maxEnergy = Math.floor(playerState.maxEnergy * 1.12);
             playerState.currentEnergy = playerState.maxEnergy;
 
             // BUFF: Award +1 Premium Token on every level up!
@@ -1305,9 +1327,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const rolledVar = rollWeightedSelection(variantsData);
-        const weightFluctuation = 0.8 + Math.random() * 0.4;
+        const weightFluctuation = (0.8 + Math.random() * 0.4);
+        const weightMult = rollBonusWeight(clickEvent);
         const actualWeight = parseFloat(
-            (selectedOre.baseWeight * weightFluctuation).toFixed(2)
+            (weightMult + (selectedOre.baseWeight * weightFluctuation)).toFixed(2)
         );
         const subTotal = Math.floor(
             selectedOre.baseValue * rolledVar.multiplier * actualWeight
@@ -1323,6 +1346,7 @@ document.addEventListener("DOMContentLoaded", () => {
             baseWeight: selectedOre.baseWeight,
             variant: rolledVar.name,
             variantMultiplier: rolledVar.multiplier,
+            weightMultiplier: weightMult,
             actualWeight: actualWeight,
             subTotalValue: subTotal,
             mutation: rolledMut.name,
@@ -1376,7 +1400,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 6000,
                 {
                     label: "View Gallery",
-                    callback: () => navigateToView("view-collections")
+                    callback: () => navigateToView("view-collections"),
                 }
             );
             SoundEngine.playUnlock();
@@ -1434,6 +1458,20 @@ document.addEventListener("DOMContentLoaded", () => {
             newOre.isNew = false;
             renderInventoryTray();
         }, 5000);
+    }
+    
+    function rollBonusWeight(clickEvent) {
+      // If they have the pass, roll for the 4x bonus
+      if (playerState.hasWeightPass) {
+        const roll = Math.random();
+        if (roll <= 0.5) {
+          const getBonusWeight = parseFloat((1 + Math.random() * 4).toFixed(1));
+          spawnFloatingText( `+${getBonusWeight} Bonus Weight`, clickEvent.clientX, clickEvent.clientY + 30, "float-ore" );
+          return getBonusWeight
+        }
+      }
+      // CRITICAL: Always return 1.0 as a base multiplier so the math doesn't break
+      return 1.0; 
     }
 
     // ==================== CAVE GRID RENDERER ====================
@@ -1852,8 +1890,9 @@ document.addEventListener("DOMContentLoaded", () => {
                                 const card = document.createElement("div");
                                 card.className = "pass-card";
                                 const isBought =
-                                    pass.id === "double-xp-pass" &&
-                                    playerState.xpMultiplier === 2.0;
+                                    pass.id === "double-xp-pass" && playerState.xpMultiplier >= 2.0
+                                    ||
+                                    pass.id === "twice-weight-pass" && playerState.hasWeightPass
                                 card.setAttribute(
                                     "data-bought",
                                     isBought ? "true" : "false"
@@ -2032,6 +2071,8 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (item.category === "passes") {
             if (item.id === "double-xp-pass") {
                 playerState.xpMultiplier = 2.0;
+            } else if (item.id === "twice-weight-pass") {
+                playerState.hasWeightPass = true
             }
         }
 
@@ -2520,6 +2561,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (targetId === "view-shop") renderShop();
                 if (targetId === "view-collections") renderCollections();
                 if (targetId === "view-marketplace") renderMarketplace(); // <-- INSERT THIS
+                if (targetId === "view-leaderboard") renderLeaderboard();
             }
 
             // Auto-close sidebar on mobile viewports
@@ -2930,7 +2972,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let activeMarketListings = [];
 
-    // Helper: Build display name with variant & mutation prefixes
+    // Helper: Build display name with variant & mutation prefxes
     function getItemDisplayName(item) {
         let prefix = "";
         if (item.variant && item.variant !== "Normal") {
@@ -3073,6 +3115,61 @@ document.addEventListener("DOMContentLoaded", () => {
                     SoundEngine.playError();
                 });
         });
+    }
+    
+    function renderLeaderboard() {
+        if (!firebaseActive || !leaderboardBody) return;
+        
+        const category = leaderCatSelect.value;
+        const statLabel = leaderCatSelect.options[leaderCatSelect.selectedIndex].text.replace("By ", "");
+        document.getElementById('statHeader').textContent = statLabel;
+
+        leaderboardBody.innerHTML = '';
+        leaderboardLoading.style.display = 'block';
+
+        // Fetch top 50 based on selected category
+        db.ref('leaderboards').orderByChild(category).limitToLast(50).once('value', (snapshot) => {
+            const players = [];
+            snapshot.forEach(child => {
+                players.push({ uid: child.key, ...child.val() });
+            });
+
+            // Firebase returns ascending, we want descending (highest first)
+            players.reverse();
+
+            leaderboardLoading.style.display = 'none';
+            
+            players.forEach((p, index) => {
+                const row = document.createElement('tr');
+                const isMe = auth.currentUser && p.uid === auth.currentUser.uid;
+                if (isMe) row.className = 'my-score-highlight';
+                if (index < 3) row.classList.add(`leaderboard-row-${index}`);
+
+                let rankDisplay = index + 1;
+                if (index === 0) rankDisplay = '<span class="rank-medal">🥇</span>';
+                if (index === 1) rankDisplay = '<span class="rank-medal">🥈</span>';
+                if (index === 2) rankDisplay = '<span class="rank-medal">🥉</span>';
+
+                const val = (category === 'money') ? formatMoney(p[category], true) : p[category];
+
+                row.innerHTML = `
+                    <td style="padding: 12px; font-weight: 900;">${rankDisplay}</td>
+                    <td>
+                        <div class="miner-name-cell">
+                            <div class="profile-avatar" style="width:24px; height:24px; font-size:0.7rem;">👤</div>
+                            ${p.username} ${isMe ? '<small>(You)</small>' : ''}
+                        </div>
+                    </td>
+                    <td class="leaderboard-val">${val}</td>
+                `;
+                leaderboardBody.appendChild(row);
+            });
+        });
+    }
+
+    // Listener for Category Switch
+    if (leaderCatSelect) {
+        leaderCatSelect.addEventListener('change', renderLeaderboard);
     }
 
     // Render Live Marketplace Listings
@@ -3604,6 +3701,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                                 saveGame(); // Writes to localStorage
                                 updateStatsUI();
+                                updateMapPageStructure();
                                 renderShop();
                                 renderInventoryTray();
                                 renderCollections();
@@ -3782,8 +3880,24 @@ document.addEventListener("DOMContentLoaded", () => {
         saveGame();
     };
     window.devLevelUp = () => {
-        awardXp(playerState.xpNeeded);
+        SoundEngine.playLevelUp();
+        playerState.level += 50;
+        playerState.xpNeeded = Math.floor(playerState.level * (playerState.xpNeeded * 1.2));
+
+        showNotification(
+            "🎉 Level Up!",
+            `Awesome! You reached Level ${playerState.level}! Gained +1 Premium Token and Max Energy increased to ${playerState.maxEnergy}%!`,
+            "level-up",
+            5000
+        );
+
+        if (playerState.level >= 10) unlockCollectionItem("cavern-cup");
+
+        updateMapPageStructure();
         showNotification("DEV", "Level Bypassed", "level-up");
+        updateStatsUI();
+        renderCollections();
+        saveGame();
     };
     window.devUnlockAll = () => {
         collectionsData.forEach(c => (c.obtained = true));
