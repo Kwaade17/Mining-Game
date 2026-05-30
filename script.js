@@ -34,7 +34,7 @@ let isShuttingDown = false; // Prevents background saves during reset
 
 document.addEventListener("DOMContentLoaded", () => {
   // ==================== SESSION STATE ====================
-  const GAME_VERSION = "2.2.6"; // Active version used to check shop updates
+  const GAME_VERSION = "2.2.7"; // Active version used to check shop updates
 
   const playerState = {
     username: "", // Custom player display name
@@ -52,6 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
     hasWeightPass: false, // <-- This is my own pass
     tokenSubTimer: 0, // <-- ADD THIS
     lastClaimTime: 0, // <-- ADD THIS (Daily Claim timestamp)
+    lastSaveTime: 0, // <-- ADD THIS: Tracks exactly when the save happened
     saveMode: "local", // <-- ADD THIS (local or cloud)
     currentEnergy: 100,
     maxEnergy: 100,
@@ -354,6 +355,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==================== PERSISTENT LOCAL STORAGE ENGINE ====================
   function saveGame() {
     if (isShuttingDown) return; // Block saving if the game is resetting
+
+    // Update the timestamp before saving
+    playerState.lastSaveTime = Date.now();
+
     localStorage.setItem("miner_save", JSON.stringify(playerState));
     const colMap = {};
     collectionsData.forEach((item) => {
@@ -361,11 +366,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     localStorage.setItem("miner_col_save", JSON.stringify(colMap));
 
-    if (
-      playerState.saveMode === "cloud" &&
-      navigator.onLine &&
-      firebaseActive
-    ) {
+    if ( playerState.saveMode === "cloud" && navigator.onLine && firebaseActive ) {
       const user = auth.currentUser;
       if (user) {
         // 1. Save private data
@@ -3308,6 +3309,36 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
+    // ==================== REAL-TIME CROSS-DEVICE SYNC ====================
+    function startCloudSyncListener() {
+        if (!firebaseActive || !auth.currentUser) return;
+
+        const userRef = db.ref('users/' + auth.currentUser.uid + '/saveState');
+        
+        // Listen for ANY change made by other devices
+        userRef.on('value', (snapshot) => {
+            const cloudData = snapshot.val();
+            
+            if (cloudData && cloudData.lastSaveTime) {
+                // Only update if the cloud data is NEWER than our current local data
+                if (cloudData.lastSaveTime > playerState.lastSaveTime) {
+                    console.log("🔄 Cross-device sync: Cloud data is newer. Updating UI...");
+                    
+                    // Update the local state
+                    Object.assign(playerState, cloudData);
+                    
+                    // Refresh everything the player sees
+                    updateStatsUI();
+                    updateMapPageStructure();
+                    renderInventoryTray();
+                    renderShop();
+                    // No need to call saveGame here, as that would trigger the other device
+                    localStorage.setItem('miner_save', JSON.stringify(playerState));
+                }
+            }
+        });
+    }
+
   // Periodically Check and Claim Pending Earnings from Successful Sales (Grouped Version)
   function claimPendingEarnings() {
     if (
@@ -3629,6 +3660,9 @@ document.addEventListener("DOMContentLoaded", () => {
         playerState.saveMode = "cloud";
         if (user.displayName) playerState.username = user.displayName;
 
+        // NEW: Start listening for changes from other devices!
+        startCloudSyncListener();
+
         // Refresh market to show "Buy" buttons for items you don't own
         renderMarketplace();
         claimPendingEarnings();
@@ -3636,6 +3670,8 @@ document.addEventListener("DOMContentLoaded", () => {
         playerState.saveMode = "local";
         // Refresh market to show "Guest" view (Buy buttons disabled/inspect only)
         renderMarketplace();
+        // Optional: Stop listening if signed out
+        if (auth.currentUser) db.ref('users/' + auth.currentUser.uid + '/saveState').off();
       }
       updateStatsUI();
     });
