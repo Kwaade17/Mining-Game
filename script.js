@@ -3333,26 +3333,24 @@ document.addEventListener("DOMContentLoaded", () => {
         cloudSyncRef.on('value', (snapshot) => {
             const cloudData = snapshot.val();
 
-            if (cloudData && cloudData.lastSaveTime) {
-                // Only update if the cloud data is NEWER than our current local data
-                if (cloudData.lastSaveTime > playerState.lastSaveTime) {
-                    console.log('🔄 Cross-device sync: Cloud data is newer. Updating UI...');
+            if (!cloudData) return;
+            if (cloudData.lastSaveTime === undefined) return;
 
-                    // Update the local state
-                    Object.assign(playerState, cloudData);
-                    playerState.lastSaveTime = cloudData.lastSaveTime;
-                    playerState.saveMode = 'cloud';
+            // Update local state whenever cloud save is different from our current one.
+            if (cloudData.lastSaveTime !== playerState.lastSaveTime) {
+                console.log('🔄 Cross-device sync: Cloud save change detected. Updating UI...');
 
-                    // Refresh everything the player sees
-                    updateStatsUI();
-                    updateMapPageStructure();
-                    renderInventoryTray();
-                    renderShop();
-                    renderCollections();
+                Object.assign(playerState, cloudData);
+                playerState.lastSaveTime = cloudData.lastSaveTime;
+                playerState.saveMode = 'cloud';
 
-                    // Persist the updated cloud snapshot locally
-                    localStorage.setItem('miner_save', JSON.stringify(playerState));
-                }
+                updateStatsUI();
+                updateMapPageStructure();
+                renderInventoryTray();
+                renderShop();
+                renderCollections();
+
+                localStorage.setItem('miner_save', JSON.stringify(playerState));
             }
         });
 
