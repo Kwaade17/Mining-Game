@@ -2190,18 +2190,23 @@ body {
 
 @media (max-width: 767px) {
     /* 1. Ensure the main view allows scrolling */
+    /* Hide all views by default on mobile */
     .game-view {
+        display: none !important; 
         overflow-y: auto !important;
-        display: block !important; /* Stack sections naturally */
+    }
+
+    /* ONLY show the active view */
+    .game-view.active {
+        display: block !important; 
     }
 
     .main-game-layout {
         flex-direction: column !important;
         align-items: center !important;
-        justify-content: flex-start !important; /* Start at the top, not center */
-        height: auto !important; /* Let it be as tall as it needs to be */
+        justify-content: flex-start !important;
+        height: auto !important;
         gap: 20px;
-        /* Safe padding: 48px for stats bar + 30px extra breathing room */
         padding-top: 80px !important; 
         padding-bottom: 50px;
     }
