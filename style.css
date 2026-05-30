@@ -2186,21 +2186,55 @@ body {
     background: var(--gold-accent);
 }
 
-/* Responsive: Stacking for Tablets and Phones */
-@media (max-width: 1000px) {
+/* ==================== MOBILE RESPONSIVE FIX (v2.2.6) ==================== */
+
+@media (max-width: 767px) {
+    /* 1. Ensure the main view allows scrolling */
+    .game-view {
+        overflow-y: auto !important;
+        display: block !important; /* Stack sections naturally */
+    }
+
     .main-game-layout {
-        flex-direction: column;
-        align-items: center;
-        overflow-y: auto;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important; /* Start at the top, not center */
+        height: auto !important; /* Let it be as tall as it needs to be */
+        gap: 20px;
+        /* Safe padding: 48px for stats bar + 30px extra breathing room */
+        padding-top: 80px !important; 
+        padding-bottom: 50px;
     }
+
+    /* 2. Map Section Adjustments */
     .map-section {
-        width: 100%;
-        max-width: 400px;
-        flex: none;
+        width: 100% !important;
+        max-width: 380px; /* Keep the 3x3 grid look */
+        height: auto !important; /* Remove fixed height */
+        min-height: unset !important;
+        flex: none !important;
     }
+
+    /* 3. Inventory Section Adjustments */
     .inventory-section {
-        width: 100%;
-        max-width: 500px;
-        min-height: 350px;
+        width: 100% !important;
+        max-width: 380px;
+        height: 500px !important; /* Give the bag a fixed height on mobile too */
+        flex: none !important;
+    }
+
+    .inventory-grid {
+        /* Slightly smaller slots for mobile to fit more on screen */
+        grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)) !important;
+    }
+
+    /* 4. Hide username to save space on mobile nav */
+    .user-profile .username {
+        display: none !important;
+    }
+
+    /* 5. Ensure the floating stats bar stays on top */
+    .floating-stats-bar {
+        top: 70px !important;
     }
 }
