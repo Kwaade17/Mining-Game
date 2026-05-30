@@ -487,6 +487,8 @@ document.addEventListener("DOMContentLoaded", () => {
             };
             db.ref('leaderboards/' + auth.currentUser.uid).set(scorecard);
         }
+
+        checkAchievements(); // In case any achievements were missed while offline
     }
 
     // ==================== CURRENCY FORMATTER ENGINE ====================
@@ -3427,6 +3429,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     saveGame();
                     updateStatsUI();
                     renderInventoryTray();
+                    checkAchievements(); // Trigger achievement check in case they bought a high-tier ore that can unlock something
                 }
             }
         );
