@@ -50,7 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
         hasTokenSub: false, // <-- ADD THIS
         hasMagnet: false, // <-- ADD THIS
         hasStarterBundle: false, // <-- ADD THIS
-        haMinerPack: false, // <-- ADD THIS
+        hasMinerPack: false, // <-- ADD THIS
         hasWeightPass: false, // <-- This is my own pass
         tokenSubTimer: 0, // <-- ADD THIS
         lastClaimTime: 0, // <-- ADD THIS (Daily Claim timestamp)
