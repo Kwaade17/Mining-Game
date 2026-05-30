@@ -34,7 +34,7 @@ let isShuttingDown = false; // Prevents background saves during reset
 
 document.addEventListener("DOMContentLoaded", () => {
   // ==================== SESSION STATE ====================
-  const GAME_VERSION = "2.2.6"; // Active version used to check shop updates
+  const GAME_VERSION = "2.2.7"; // Active version used to check shop updates
 
   const playerState = {
     username: "", // Custom player display name
@@ -384,6 +384,56 @@ document.addEventListener("DOMContentLoaded", () => {
             db.ref('leaderboards/' + auth.currentUser.uid).set(scorecard);
         }
     }
+
+  // ==================== CLOUD SAVE LOADER FOR CROSS-DEVICE SYNC (v2.2.7) ====================
+  function loadCloudSave() {
+    if (!firebaseActive || !auth.currentUser) {
+      console.log("Cloud load skipped: Not authenticated");
+      return Promise.resolve();
+    }
+
+    const userId = auth.currentUser.uid;
+    console.log("Loading cloud save for user:", userId);
+
+    return Promise.all([
+      // Fetch player state from cloud
+      db.ref("users/" + userId + "/saveState").once("value"),
+      // Fetch collections data from cloud
+      db.ref("users/" + userId + "/collections").once("value"),
+    ])
+      .then(([saveSnapshot, colSnapshot]) => {
+        // Load player state from cloud
+        if (saveSnapshot.exists()) {
+          const cloudSave = saveSnapshot.val();
+          console.log("Cloud save found, merging with local state...");
+
+          // Merge cloud save with existing playerState, preserving critical fields
+          Object.assign(playerState, cloudSave);
+
+          // Ensure saveMode stays as "cloud"
+          playerState.saveMode = "cloud";
+        }
+
+        // Load collections from cloud
+        if (colSnapshot.exists()) {
+          const cloudCollections = colSnapshot.val();
+          console.log("Cloud collections found, syncing...");
+
+          collectionsData.forEach((item) => {
+            if (cloudCollections[item.id] !== undefined) {
+              item.obtained = cloudCollections[item.id];
+            }
+          });
+        }
+
+        console.log("Cloud save loaded successfully");
+        return Promise.resolve();
+      })
+      .catch((err) => {
+        console.error("Error loading cloud save:", err);
+        return Promise.resolve(); // Don't crash, continue with local save
+      });
+  }
 
   function loadGame() {
     const savedState = localStorage.getItem("miner_save");
@@ -3629,15 +3679,25 @@ document.addEventListener("DOMContentLoaded", () => {
         playerState.saveMode = "cloud";
         if (user.displayName) playerState.username = user.displayName;
 
-        // Refresh market to show "Buy" buttons for items you don't own
-        renderMarketplace();
-        claimPendingEarnings();
+        // Load cloud save data for cross-device synchronization (v2.2.7)
+        loadCloudSave().then(() => {
+          // After cloud save is loaded, refresh UI and marketplace
+          updateStatsUI();
+          renderInventoryTray();
+          renderCollections();
+          renderShop();
+          updateMapPageStructure();
+
+          // Refresh market to show "Buy" buttons for items you don't own
+          renderMarketplace();
+          claimPendingEarnings();
+        });
       } else {
         playerState.saveMode = "local";
         // Refresh market to show "Guest" view (Buy buttons disabled/inspect only)
         renderMarketplace();
+        updateStatsUI();
       }
-      updateStatsUI();
     });
   }
 
