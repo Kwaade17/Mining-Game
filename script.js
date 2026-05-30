@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
         hasTokenSub: false, // <-- ADD THIS
         hasMagnet: false, // <-- ADD THIS
         hasStarterBundle: false, // <-- ADD THIS
-        hasMinerPack: false, // <-- ADD THIS
+        haMinerPack: false, // <-- ADD THIS
         hasWeightPass: false, // <-- This is my own pass
         tokenSubTimer: 0, // <-- ADD THIS
         lastClaimTime: 0, // <-- ADD THIS (Daily Claim timestamp)
@@ -2978,7 +2978,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let activeMarketListings = [];
 
-    // Helper: Build display name with variant & mutation prefixes
+    // Helper: Build display name with variant & mutation prefxes
     function getItemDisplayName(item) {
         let prefix = "";
         if (item.variant && item.variant !== "Normal") {
@@ -3707,6 +3707,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                                 saveGame(); // Writes to localStorage
                                 updateStatsUI();
+                                updateMapPageStructure();
                                 renderShop();
                                 renderInventoryTray();
                                 renderCollections();
@@ -3885,8 +3886,9 @@ document.addEventListener("DOMContentLoaded", () => {
         saveGame();
     };
     window.devLevelUp = () => {
-        playerState.level += 50
         SoundEngine.playLevelUp();
+        playerState.level += 50;
+        playerState.xpNeeded = Math.floor(playerState.level * (playerState.xpNeeded * 1.2));
 
         showNotification(
             "🎉 Level Up!",
@@ -3899,6 +3901,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         updateMapPageStructure();
         showNotification("DEV", "Level Bypassed", "level-up");
+        updateStatsUI();
         renderCollections();
         saveGame();
     };
