@@ -31,8 +31,6 @@ if (typeof firebase !== "undefined") {
 let isProcessingClaim = false; // Prevents multiple revenue modals from stacking
 
 let isShuttingDown = false; // Prevents background saves during reset
-let cloudSyncRef = null;
-let cloudCollectionsRef = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   // ==================== SESSION STATE ====================
@@ -54,8 +52,6 @@ document.addEventListener("DOMContentLoaded", () => {
     hasWeightPass: false, // <-- This is my own pass
     tokenSubTimer: 0, // <-- ADD THIS
     lastClaimTime: 0, // <-- ADD THIS (Daily Claim timestamp)
-    lastSaveTime: 0, // <-- ADD THIS: Tracks exactly when the save happened
-    cloudSaveId: "",
     saveMode: "local", // <-- ADD THIS (local or cloud)
     currentEnergy: 100,
     maxEnergy: 100,
@@ -359,10 +355,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function saveGame() {
         if (isShuttingDown) return;
 
-        // Keep local save identifiers and timestamps up to date for cross-device conflict detection
-        playerState.cloudSaveId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-        playerState.lastSaveTime = Date.now();
-
         // 1. Save locally immediately for responsiveness
         localStorage.setItem('miner_save', JSON.stringify(playerState));
         const colMap = {};
@@ -372,11 +364,9 @@ document.addEventListener("DOMContentLoaded", () => {
         // 2. Only push to cloud if online and logged in
         if (playerState.saveMode === "cloud" && navigator.onLine && firebaseActive && auth.currentUser) {
             
-            // We use a temporary object so we don't put Firebase placeholders in localStorage
+            // Upload current player state to Firebase
             const cloudSave = {
-                ...playerState,
-                // CRITICAL: Tell Firebase to use ITS clock, not the phone's clock
-                lastSaveTime: firebase.database.ServerValue.TIMESTAMP 
+                ...playerState
             };
 
             db.ref('users/' + auth.currentUser.uid + '/saveState').set(cloudSave)
@@ -451,12 +441,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (playerState.saveMode === undefined) {
           playerState.saveMode = "local"; // <-- ADD THIS
-        }
-        if (playerState.lastSaveTime === undefined) {
-          playerState.lastSaveTime = 0;
-        }
-        if (playerState.cloudSaveId === undefined) {
-          playerState.cloudSaveId = "";
         }
         if (playerState.rebirthCount === undefined)
           playerState.rebirthCount = 0;
@@ -3324,70 +3308,6 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
-    // ==================== REAL-TIME CROSS-DEVICE SYNC ====================
-    function startCloudSyncListener() {
-        if (!firebaseActive || !auth.currentUser) return;
-
-        if (cloudSyncRef) cloudSyncRef.off();
-        if (cloudCollectionsRef) cloudCollectionsRef.off();
-
-        cloudSyncRef = db.ref('users/' + auth.currentUser.uid + '/saveState');
-        cloudCollectionsRef = db.ref('users/' + auth.currentUser.uid + '/collections');
-
-        // Listen for ANY change made by other devices to the core save state
-        cloudSyncRef.on('value', (snapshot) => {
-            const cloudData = snapshot.val();
-            if (!cloudData) return;
-            if (cloudData.lastSaveTime === undefined) return;
-
-            // Ignore the same-write echo from this device
-            if (cloudData.cloudSaveId && cloudData.cloudSaveId === playerState.cloudSaveId) {
-                return;
-            }
-
-            const isRemoteUpdate = cloudData.cloudSaveId
-                ? cloudData.cloudSaveId !== playerState.cloudSaveId
-                : cloudData.lastSaveTime > playerState.lastSaveTime;
-
-            if (!isRemoteUpdate) return;
-
-            console.log('🔄 Cross-device sync: Remote cloud save detected. Updating UI...');
-
-            Object.assign(playerState, cloudData);
-            playerState.saveMode = 'cloud';
-
-            updateStatsUI();
-            updateMapPageStructure();
-            renderInventoryTray();
-            renderShop();
-            renderCollections();
-
-            localStorage.setItem('miner_save', JSON.stringify(playerState));
-        });
-
-        // Keep the collections data synced too, since it is stored separately in the database
-        cloudCollectionsRef.on('value', (snapshot) => {
-            const cloudCollections = snapshot.val();
-            if (!cloudCollections) return;
-
-            let changed = false;
-            collectionsData.forEach((item) => {
-                if (cloudCollections[item.id] !== undefined && item.obtained !== cloudCollections[item.id]) {
-                    item.obtained = cloudCollections[item.id];
-                    item.isNew = false;
-                    changed = true;
-                }
-            });
-
-            if (changed) {
-                renderCollections();
-                const colMap = {};
-                collectionsData.forEach((item) => { colMap[item.id] = item.obtained; });
-                localStorage.setItem('miner_col_save', JSON.stringify(colMap));
-            }
-        });
-    }
-
   // Periodically Check and Claim Pending Earnings from Successful Sales (Grouped Version)
   function claimPendingEarnings() {
     if (
@@ -3702,15 +3622,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Monitor Firebase Auth state dynamically (FIXED for Marketplace Sync)
+  // Monitor Firebase Auth state dynamically
   if (firebaseActive) {
     auth.onAuthStateChanged((user) => {
       if (user) {
         playerState.saveMode = "cloud";
         if (user.displayName) playerState.username = user.displayName;
-
-        // NEW: Start listening for changes from other devices!
-        startCloudSyncListener();
 
         // Refresh market to show "Buy" buttons for items you don't own
         renderMarketplace();
@@ -3719,14 +3636,6 @@ document.addEventListener("DOMContentLoaded", () => {
         playerState.saveMode = "local";
         // Refresh market to show "Guest" view (Buy buttons disabled/inspect only)
         renderMarketplace();
-        if (cloudSyncRef) {
-          cloudSyncRef.off();
-          cloudSyncRef = null;
-        }
-        if (cloudCollectionsRef) {
-          cloudCollectionsRef.off();
-          cloudCollectionsRef = null;
-        }
       }
       updateStatsUI();
     });
