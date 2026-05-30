@@ -34,10 +34,6 @@ let isProcessingClaim = false; // Prevents multiple revenue modals from stacking
 
 let isShuttingDown = false; // Prevents background saves during reset
 
-const leaderCatSelect = document.getElementById('leaderboardCategory');
-const leaderboardBody = document.getElementById('leaderboardBody');
-const leaderboardLoading = document.getElementById('leaderboardLoading');
-
 document.addEventListener("DOMContentLoaded", () => {
     // ==================== SESSION STATE ====================
     const GAME_VERSION = "2.1.1"; // Active version used to check shop updates
@@ -141,6 +137,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Active Buffs Panel container
     const buffsContainer = document.getElementById("buffsContainer");
+
+    // Leaderboard selectors
+    const leaderCatSelect = document.getElementById('leaderboardCategory');
+    const leaderboardBody = document.getElementById('leaderboardBody');
+    const leaderboardLoading = document.getElementById('leaderboardLoading');
 
     let currentMapPage = 1,
         cavesPerPage = 9,
@@ -373,26 +374,23 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         localStorage.setItem("miner_col_save", JSON.stringify(colMap));
 
-        // Locate inside saveGame() and update:
-        // Background Cloud Sync Integration (Offline-First Sync)
-        if (
-            playerState.saveMode === "cloud" &&
-            navigator.onLine &&
-            firebaseActive
-        ) {
-            const user = auth.currentUser;
-            if (user) {
-                db.ref("users/" + user.uid + "/saveState")
-                    .set(playerState)
-                    .catch(err =>
-                        console.error("Cloud progress sync failed:", err)
-                    );
-                db.ref("users/" + user.uid + "/collections")
-                    .set(colMap)
-                    .catch(err =>
-                        console.error("Cloud collections sync failed:", err)
-                    );
-            }
+        if (playerState.saveMode === "cloud" && navigator.onLine && firebaseActive) {
+           const user = auth.currentUser;
+           if (user) {
+               // 1. Save private data
+               db.ref('users/' + user.uid + '/saveState').set(playerState);
+               db.ref('users/' + user.uid + '/collections').set(colMap);
+               
+               // 2. NEW: Push public scorecard to Leaderboard
+               const scorecard = {
+                   username: playerState.username,
+                   level: playerState.level,
+                   money: playerState.money,
+                   rebirthCount: playerState.rebirthCount,
+                   lastSeen: firebase.database.ServerValue.TIMESTAMP
+               };
+               db.ref('leaderboards/' + user.uid).set(scorecard);
+           }
         }
     }
 
@@ -3135,37 +3133,39 @@ document.addEventListener("DOMContentLoaded", () => {
         leaderboardBody.innerHTML = '';
         leaderboardLoading.style.display = 'block';
 
-        // Fetch top 50 based on selected category
         db.ref('leaderboards').orderByChild(category).limitToLast(50).once('value', (snapshot) => {
             const players = [];
             snapshot.forEach(child => {
                 players.push({ uid: child.key, ...child.val() });
             });
 
-            // Firebase returns ascending, we want descending (highest first)
             players.reverse();
-
             leaderboardLoading.style.display = 'none';
             
+            if (players.length === 0) {
+                leaderboardBody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">No players ranked yet. Mine or Level up to join!</td></tr>';
+                return;
+            }
+
             players.forEach((p, index) => {
                 const row = document.createElement('tr');
                 const isMe = auth.currentUser && p.uid === auth.currentUser.uid;
                 if (isMe) row.className = 'my-score-highlight';
-                if (index < 3) row.classList.add(`leaderboard-row-${index}`);
-
+                
                 let rankDisplay = index + 1;
-                if (index === 0) rankDisplay = '<span class="rank-medal">🥇</span>';
-                if (index === 1) rankDisplay = '<span class="rank-medal">🥈</span>';
-                if (index === 2) rankDisplay = '<span class="rank-medal">🥉</span>';
+                if (index === 0) rankDisplay = '🥇';
+                else if (index === 1) rankDisplay = '🥈';
+                else if (index === 2) rankDisplay = '🥉';
 
-                const val = (category === 'money') ? formatMoney(p[category], true) : p[category];
+                // Use compact formatting for ALL stats (Level, Money, Rebirths)
+                const val = formatMoney(p[category], true);
 
                 row.innerHTML = `
                     <td style="padding: 12px; font-weight: 900;">${rankDisplay}</td>
                     <td>
                         <div class="miner-name-cell">
                             <div class="profile-avatar" style="width:24px; height:24px; font-size:0.7rem;">👤</div>
-                            ${p.username} ${isMe ? '<small>(You)</small>' : ''}
+                            ${p.username || "Unknown"} ${isMe ? '<small>(You)</small>' : ''}
                         </div>
                     </td>
                     <td class="leaderboard-val">${val}</td>
