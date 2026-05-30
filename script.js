@@ -3338,24 +3338,15 @@ document.addEventListener("DOMContentLoaded", () => {
         cloudSyncRef.on('value', (snapshot) => {
             const cloudData = snapshot.val();
 
-            if (!cloudData) return;
-            if (cloudData.lastSaveTime === undefined) return;
+            if (cloudData && cloudData.lastSaveTime) {
+                // Only update if the cloud data is NEWER than our current local data
+                if (cloudData.lastSaveTime > playerState.lastSaveTime) {
+                    console.log('🔄 Cross-device sync: Cloud data is newer. Updating UI...');
 
-            // Ignore local writes that echo back from Firebase on the same device.
-            if (cloudData.cloudSaveId && cloudData.cloudSaveId === playerState.cloudSaveId) {
-                return;
-            }
-
-            // Apply remote updates when the cloud save ID differs, or fallback to timestamp for old saves.
-            const isRemoteUpdate = cloudData.cloudSaveId
-                ? cloudData.cloudSaveId !== playerState.cloudSaveId
-                : cloudData.lastSaveTime > playerState.lastSaveTime;
-
-            if (isRemoteUpdate) {
-                console.log('🔄 Cross-device sync: Remote cloud save detected. Updating UI...');
-
-                Object.assign(playerState, cloudData);
-                playerState.saveMode = 'cloud';
+                    // Update the local state
+                    Object.assign(playerState, cloudData);
+                    playerState.lastSaveTime = cloudData.lastSaveTime;
+                    playerState.saveMode = 'cloud';
 
                 updateStatsUI();
                 updateMapPageStructure();
