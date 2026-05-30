@@ -1,766 +1,739 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Mining Game</title>
-        <link rel="stylesheet" href="style.css" />
-        <!-- Marked.js Markdown Parser CDN -->
-        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-        <!-- Font Awesome Vector Icons -->
-        <link
-            rel="stylesheet"
-            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-        />
-        <!-- Firebase SDK Compat (v10) - LOAD THESE BEFORE script.js -->
-        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-        <script src="data.js" defer></script>
-        <script src="script.js" defer></script>
-    </head>
-    <body>
-        <!-- Top Navigation Bar -->
-        <header class="navbar">
-            <button
-                class="menu-toggle"
-                id="menuToggle"
-                aria-label="Toggle Menu"
-            >
-                <i class="fa-solid fa-bars"></i>
-            </button>
-            <div class="logo">
-                <i class="fa-solid fa-pickaxe"></i> Mining Game
-            </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mining Game</title>
+    <link rel="stylesheet" href="style.css" />
+    <!-- Marked.js Markdown Parser CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Font Awesome Vector Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Firebase SDK Compat (v10) - LOAD THESE BEFORE script.js -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script src="data.js" defer></script>
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+      <button class="menu-toggle" id="menuToggle" aria-label="Toggle Menu">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <div class="logo"><i class="fa-solid fa-pickaxe"></i> Mining Game</div>
 
-            <!-- Centered XP Progress Bar Container inside Nav -->
-            <div class="nav-xp-container" id="navXpContainer">
-                <div class="nav-xp-bar-wrapper">
-                    <div class="nav-xp-bar-fill" id="navXpFill"></div>
-                </div>
-                <span class="nav-xp-text" id="navXpText"
-                    >100 XP to Level Up</span
-                >
-            </div>
+      <!-- Centered XP Progress Bar Container inside Nav -->
+      <div class="nav-xp-container" id="navXpContainer">
+        <div class="nav-xp-bar-wrapper">
+          <div class="nav-xp-bar-fill" id="navXpFill"></div>
+        </div>
+        <span class="nav-xp-text" id="navXpText">100 XP to Level Up</span>
+      </div>
 
-            <!-- Stats Container (Hides on Mobile Viewports) -->
-            <div class="stats-container">
-                <!-- Level -->
-                <div
-                    class="stat-item"
-                    id="nav-level-badge"
-                    title="Player Level"
-                >
-                    <span class="stat-icon font-semibold text-amber-400"
-                        >Lvl</span
-                    >
-                    <span id="player-level">1</span>
-                </div>
-                <!-- Money -->
-                <div class="stat-item" title="Gold Coins">
-                    <span class="stat-icon">🪙</span>
-                    <span id="player-money">120</span>
-                </div>
-                <!-- Tokens -->
-                <div class="stat-item" title="Premium Tokens">
-                    <span class="stat-icon">🎟️</span>
-                    <span id="player-tokens">0</span>
-                </div>
-                <!-- Mined Ores -->
-                <div class="stat-item" title="Total Mined Ores">
-                    <span class="stat-icon">🪨</span>
-                    <span id="ores-mined">0</span>
-                </div>
-                <!-- Bag -->
-                <div class="stat-item" title="Bag Limit">
-                    <span class="stat-icon">🎒</span>
-                    <span id="bag-capacity">20</span>
-                </div>
-                <!-- Energy -->
-                <div class="stat-item" title="Current Energy">
-                    <span class="stat-icon">⚡</span>
-                    <span id="player-energy">100%</span>
-                </div>
-            </div>
+      <!-- Stats Container (Hides on Mobile Viewports) -->
+      <div class="stats-container">
+        <!-- Level -->
+        <div class="stat-item" id="nav-level-badge" title="Player Level">
+          <span class="stat-icon font-semibold text-amber-400">Lvl</span>
+          <span id="player-level">1</span>
+        </div>
+        <!-- Money -->
+        <div class="stat-item" title="Gold Coins">
+          <span class="stat-icon">🪙</span>
+          <span id="player-money">120</span>
+        </div>
+        <!-- Tokens -->
+        <div class="stat-item" title="Premium Tokens">
+          <span class="stat-icon">🎟️</span>
+          <span id="player-tokens">0</span>
+        </div>
+        <!-- Mined Ores -->
+        <div class="stat-item" title="Total Mined Ores">
+          <span class="stat-icon">🪨</span>
+          <span id="ores-mined">0</span>
+        </div>
+        <!-- Bag -->
+        <div class="stat-item" title="Bag Limit">
+          <span class="stat-icon">🎒</span>
+          <span id="bag-capacity">20</span>
+        </div>
+        <!-- Energy -->
+        <div class="stat-item" title="Current Energy">
+          <span class="stat-icon">⚡</span>
+          <span id="player-energy">100%</span>
+        </div>
+      </div>
 
-            <!-- User Profile -->
-            <div class="user-profile" id="userProfile">
-                <span class="username" id="navUsername">Miner Joe</span>
-                <div class="profile-circle">👤</div>
-                <div class="profile-dropdown">
-                    <a href="#" class="dropdown-item" id="dropdownAccount"
-                        ><i class="fa-solid fa-user fa-fw"></i> Account</a
-                    >
-                    <a href="#" class="dropdown-item" id="dropdownSettings"
-                        ><i class="fa-solid fa-volume-high fa-fw"></i> Mute
-                        Sounds</a
-                    >
-                    <a
-                        href="#"
-                        class="dropdown-item logout-item"
-                        id="dropdownSignOut"
-                        ><i class="fa-solid fa-right-from-bracket fa-fw"></i>
-                        Sign Out</a
-                    >
-                </div>
-            </div>
-        </header>
+      <!-- User Profile -->
+      <div class="user-profile" id="userProfile">
+        <span class="username" id="navUsername">Miner Joe</span>
+        <div class="profile-circle">👤</div>
+        <div class="profile-dropdown">
+          <a href="#" class="dropdown-item" id="dropdownAccount"
+            ><i class="fa-solid fa-user fa-fw"></i> Account</a
+          >
+          <a href="#" class="dropdown-item" id="dropdownSettings"
+            ><i class="fa-solid fa-volume-high fa-fw"></i> Mute Sounds</a
+          >
+          <a href="#" class="dropdown-item logout-item" id="dropdownSignOut"
+            ><i class="fa-solid fa-right-from-bracket fa-fw"></i> Sign Out</a
+          >
+        </div>
+      </div>
+    </header>
 
-        <!-- Main Game Wrapper -->
-        <div class="game-wrapper">
-            <!-- New Floating Stats Bar for Mobile Viewports (Displays below nav) -->
-            <div class="floating-stats-bar" id="floatingStatsBar">
-                <div class="float-stat" title="Gold Coins">
-                    <span>🪙</span> <span id="float-money">0</span>
-                </div>
-                <div class="float-stat" title="Premium Tokens">
-                    <span>🎟️</span> <span id="float-tokens">0</span>
-                </div>
-                <div class="float-stat" title="Bag Space">
-                    <span>🎒</span> <span id="float-bag">0 / 20</span>
-                </div>
-                <div class="float-stat" title="Current Energy">
-                    <span>⚡</span> <span id="float-energy">100%</span>
-                </div>
-            </div>
-            <!-- Sidebar -->
-            <aside class="sidebar" id="sidebar">
-                <div class="sidebar-profile">
-                    <div class="sidebar-avatar-large">👤</div>
-                    <h3 class="sidebar-username" id="sideUsername">
-                        Miner Joe
-                    </h3>
-                    <p class="sidebar-rank">Novice Digger</p>
-                    <!-- NEW: Rebirth Level Display -->
-                    <p id="sidebarRebirth" style="font-size: 0.7rem; color: var(--gold-accent); margin: 2px 0; font-weight: bold; display: none;">Rebirth Rank: 0</p>
-                    <p class="sidebar-level" id="sidebarLevel">Lvl. 1</p>
+    <!-- Main Game Wrapper -->
+    <div class="game-wrapper">
+      <!-- New Floating Stats Bar for Mobile Viewports (Displays below nav) -->
+      <div class="floating-stats-bar" id="floatingStatsBar">
+        <div class="float-stat" title="Gold Coins">
+          <span>🪙</span> <span id="float-money">0</span>
+        </div>
+        <div class="float-stat" title="Premium Tokens">
+          <span>🎟️</span> <span id="float-tokens">0</span>
+        </div>
+        <div class="float-stat" title="Bag Space">
+          <span>🎒</span> <span id="float-bag">0 / 20</span>
+        </div>
+        <div class="float-stat" title="Current Energy">
+          <span>⚡</span> <span id="float-energy">100%</span>
+        </div>
+      </div>
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-profile">
+          <div class="sidebar-avatar-large">👤</div>
+          <h3 class="sidebar-username" id="sideUsername">Miner Joe</h3>
+          <p class="sidebar-rank">Novice Digger</p>
+          <!-- NEW: Rebirth Level Display -->
+          <p
+            id="sidebarRebirth"
+            style="
+              font-size: 0.7rem;
+              color: var(--gold-accent);
+              margin: 2px 0;
+              font-weight: bold;
+              display: none;
+            "
+          >
+            Rebirth Rank: 0
+          </p>
+          <p class="sidebar-level" id="sidebarLevel">Lvl. 1</p>
 
-                    <!-- Sidebar XP Progress Bar -->
-                    <div class="sidebar-xp-container">
-                        <div class="sidebar-xp-bar">
-                            <div
-                                class="sidebar-xp-fill"
-                                id="sidebarXpFill"
-                            ></div>
-                        </div>
-                        <span class="sidebar-xp-text" id="sidebarXpText"
-                            >XP: 0 / 100</span
-                        >
-                    </div>
-                    
-                    <button id="rebirthBtn" style="display: none; background: linear-gradient(135deg, #7c3aed, #4f46e5); color: white; border: none; margin-top: 10px; width: 100%; font-size: 0.75rem; padding: 8px; font-weight: 900; border-radius: 6px; cursor: pointer; box-shadow: 0 0 15px rgba(124, 58, 237, 0.4); border: 1px solid rgba(255,255,255,0.2);">
+          <!-- Sidebar XP Progress Bar -->
+          <div class="sidebar-xp-container">
+            <div class="sidebar-xp-bar">
+              <div class="sidebar-xp-fill" id="sidebarXpFill"></div>
+            </div>
+            <span class="sidebar-xp-text" id="sidebarXpText">XP: 0 / 100</span>
+          </div>
+
+          <button
+            id="rebirthBtn"
+            style="
+              display: none;
+              background: linear-gradient(135deg, #7c3aed, #4f46e5);
+              color: white;
+              border: none;
+              margin-top: 10px;
+              width: 100%;
+              font-size: 0.75rem;
+              padding: 8px;
+              font-weight: 900;
+              border-radius: 6px;
+              cursor: pointer;
+              box-shadow: 0 0 15px rgba(124, 58, 237, 0.4);
+              border: 1px solid rgba(255, 255, 255, 0.2);
+            "
+          >
             <i class="fa-solid fa-arrows-rotate"></i> REBIRTH AVAILABLE
-        </button>
+          </button>
 
-                    <!-- DAILY CLAIM BUTTON (NEW FEATURE) -->
-                    <button
-                        id="dailyClaimBtn"
-                        style="
-                            background-color: var(--cave-btn);
-                            color: var(--gold-accent);
-                            border: 1px solid var(--gold-accent);
-                            margin-top: 12px;
-                            width: 100%;
-                            text-align: center;
-                            font-size: 0.75rem;
-                            padding: 6px 10px;
-                            font-weight: bold;
-                            border-radius: 6px;
-                            cursor: pointer;
-                            transition: all 0.2s;
-                        "
-                    >
-                        <i class="fa-solid fa-gift"></i> Daily Claim
-                    </button>
-                </div>
-                <nav class="sidebar-nav">
-                    <!-- Core Gameplay Links -->
-                    <ul>
-                        <li>
-                            <a
-                                href="#"
-                                class="nav-link active"
-                                data-view="view-game"
-                                ><i class="fa-solid fa-gamepad fa-fw"></i> Main
-                                Game</a
-                            >
-                        </li>
-                        <li>
-                            <a href="#" class="nav-link" data-view="view-shop"
-                                ><i class="fa-solid fa-cart-shopping fa-fw"></i>
-                                Shop</a
-                            >
-                        </li>
-                        <li>
-                            <a
-                                href="#"
-                                class="nav-link"
-                                data-view="view-collections"
-                                ><i class="fa-solid fa-trophy fa-fw"></i>
-                                Collections</a
-                            >
-                        </li>
-                        <li>
-                            <a
-                                href="#"
-                                class="nav-link"
-                                data-view="view-marketplace"
-                                id="navLinkMarket"
-                                ><i class="fa-solid fa-shop fa-fw"></i>
-                                Marketplace</a
-                            >
-                        </li>
-                        <li><a href="#" class="nav-link" data-view="view-leaderboard"><i class="fa-solid fa-ranking-star fa-fw"></i> Hall of Fame</a></li>
-                    </ul>
+          <!-- DAILY CLAIM BUTTON (NEW FEATURE) -->
+          <button
+            id="dailyClaimBtn"
+            style="
+              background-color: var(--cave-btn);
+              color: var(--gold-accent);
+              border: 1px solid var(--gold-accent);
+              margin-top: 12px;
+              width: 100%;
+              text-align: center;
+              font-size: 0.75rem;
+              padding: 6px 10px;
+              font-weight: bold;
+              border-radius: 6px;
+              cursor: pointer;
+              transition: all 0.2s;
+            "
+          >
+            <i class="fa-solid fa-gift"></i> Daily Claim
+          </button>
+        </div>
+        <nav class="sidebar-nav">
+          <!-- Core Gameplay Links -->
+          <ul>
+            <li>
+              <a href="#" class="nav-link active" data-view="view-game"
+                ><i class="fa-solid fa-gamepad fa-fw"></i> Main Game</a
+              >
+            </li>
+            <li>
+              <a href="#" class="nav-link" data-view="view-shop"
+                ><i class="fa-solid fa-cart-shopping fa-fw"></i> Shop</a
+              >
+            </li>
+            <li>
+              <a href="#" class="nav-link" data-view="view-collections"
+                ><i class="fa-solid fa-trophy fa-fw"></i> Collections</a
+              >
+            </li>
+            <li>
+              <a
+                href="#"
+                class="nav-link"
+                data-view="view-marketplace"
+                id="navLinkMarket"
+                ><i class="fa-solid fa-shop fa-fw"></i> Marketplace</a
+              >
+            </li>
+            <li>
+              <a href="#" class="nav-link" data-view="view-leaderboard"
+                ><i class="fa-solid fa-ranking-star fa-fw"></i> Hall of Fame</a
+              >
+            </li>
+          </ul>
 
-                    <!-- Sidebar Divider for separated button -->
-                    <hr class="sidebar-divider" />
+          <!-- Sidebar Divider for separated button -->
+          <hr class="sidebar-divider" />
 
-                    <!-- Separated Document Link -->
-                    <ul>
-                        <li>
-                            <a href="#" class="nav-link" data-view="view-readme"
-                                ><i class="fa-solid fa-book fa-fw"></i> Game
-                                Manual</a
-                            >
-                        </li>
-                    </ul>
-                </nav>
-            </aside>
+          <!-- Separated Document Link -->
+          <ul>
+            <li>
+              <a href="#" class="nav-link" data-view="view-readme"
+                ><i class="fa-solid fa-book fa-fw"></i> Game Manual</a
+              >
+            </li>
+          </ul>
+        </nav>
+      </aside>
 
-            <!-- Main Display Area -->
-            <main class="game-area">
-                <!-- 1. MAIN GAME VIEW -->
-                <div id="view-game" class="game-view active">
-                    <div class="map-wrapper">
-                        <!-- Active Buffs Panel -->
+      <!-- Main Display Area -->
+      <main class="game-area">
+        <!-- 1. MAIN GAME VIEW -->
+            <div id="view-game" class="game-view active">
+                <div class="main-game-layout">
+                    
+                    <!-- Left Side: Map & Navigation -->
+                    <div class="map-section">
                         <div class="buffs-container" id="buffsContainer"></div>
-
-                        <!-- Cave Grid Container -->
-                        <div class="container" id="caveContainer"></div>
-
-                        <!-- Map Navigation Footer -->
-                        <div class="map-navigation">
-                            <button class="nav-btn" id="prevMapBtn">
-                                ◀ Prev
-                            </button>
-                            <span id="mapPageLabel" class="map-page-label"
-                                >Map 1 / 1</span
-                            >
-                            <button class="nav-btn" id="nextMapBtn">
-                                Next ▶
-                            </button>
-                        </div>
-
-                        <!-- Horizontal Inventory Tray -->
-                        <div class="inventory-tray">
-                            <div class="inventory-header">
-                                <h4 class="inventory-title">
-                                    💼 Inventory (<span id="inv-count">0</span>
-                                    / <span id="inv-max">20</span>)
-                                </h4>
-                                <button class="sell-all-btn" id="sellAllBtn">
-                                    Sell All Ores
-                                </button>
-                            </div>
-                            <div
-                                class="inventory-scroll"
-                                id="inventoryScroll"
-                            ></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 2. SHOP VIEW -->
-                <div id="view-shop" class="game-view">
-                    <div class="shop-wrapper">
-                        <!-- Token Exchange Widget -->
-                        <div
-                            class="exchange-widget"
-                            style="
-                                background-color: var(--stone-dark);
-                                border: 2px solid var(--gold-accent);
-                                border-radius: 8px;
-                                padding: 15px;
-                                text-align: center;
-                                margin: 0 15px 15px 15px;
-                                display: flex;
-                                flex-direction: column;
-                                gap: 10px;
-                                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-                            "
-                        >
-                            <h4
-                                style="
-                                    margin: 0;
-                                    color: var(--gold-accent);
-                                    font-size: 0.95rem;
-                                    text-transform: uppercase;
-                                    letter-spacing: 0.5px;
-                                "
-                            >
-                                🎟️ Token Exchange
-                            </h4>
-                            <p
-                                style="
-                                    margin: 0;
-                                    font-size: 0.75rem;
-                                    color: var(--text-muted);
-                                "
-                            >
-                                Convert earned Gold Coins (🪙) to Premium Tokens
-                                (🎟️).
-                            </p>
-                            <div
-                                style="
-                                    font-size: 0.85rem;
-                                    font-weight: bold;
-                                    color: var(--text-light);
-                                    margin: 5px 0;
-                                "
-                            >
-                                Rate: 🪙 10,000 Coins = 🎟️ 1 Token
-                            </div>
-                            <div
-                                style="
-                                    display: flex;
-                                    gap: 8px;
-                                    justify-content: center;
-                                    align-items: center;
-                                "
-                            >
-                                <button
-                                    id="convertOneBtn"
-                                    class="card-buy-btn"
-                                    style="
-                                        width: auto;
-                                        font-size: 0.75rem;
-                                        padding: 6px 12px;
-                                        text-transform: uppercase;
-                                    "
-                                >
-                                    Convert 1 Token
-                                </button>
-                                <button
-                                    id="convertAllBtn"
-                                    class="card-buy-btn"
-                                    style="
-                                        width: auto;
-                                        font-size: 0.75rem;
-                                        padding: 6px 12px;
-                                        background-color: #2e7d32;
-                                        color: white;
-                                        text-transform: uppercase;
-                                    "
-                                >
-                                    Exchange All
-                                </button>
-                            </div>
-                        </div>
-                        <div class="shop-controls">
-                            <input
-                                type="text"
-                                id="shopSearchInput"
-                                class="shop-search"
-                                placeholder="Search shop items..."
-                            />
-                            <select id="shopSectionFilter" class="shop-filter">
-                                <option value="all">All Sections</option>
-                                <option value="mining-speed">
-                                    Mining Speed
-                                </option>
-                                <option value="bag-capacity">
-                                    Bag Capacity
-                                </option>
-                                <option value="energy">Energy</option>
-                                <option value="boosts">Boosts/Potions</option>
-                                <option value="money-perks">Money Perks</option>
-                            </select>
-                        </div>
-                        <div
-                            class="shop-sections-list"
-                            id="shopSectionsList"
-                        ></div>
-                    </div>
-                </div>
-
-                <!-- 3. COLLECTIONS VIEW -->
-                <div id="view-collections" class="game-view">
-                    <div class="col-wrapper">
-                        <div class="col-controls">
-                            <input
-                                type="text"
-                                id="colSearchInput"
-                                class="col-search"
-                                placeholder="Search collections..."
-                            />
-                            <select id="colSectionFilter" class="col-filter">
-                                <option value="all">All Categories</option>
-                                <option value="caves">Caves</option>
-                                <option value="pickaxes">Pickaxes</option>
-                                <option value="ores">Ores</option>
-                                <option value="mutations">Mutations</option>
-                                <option value="awards">Awards</option>
-                            </select>
-                        </div>
-                        <div
-                            class="col-sections-list"
-                            id="colSectionsList"
-                        ></div>
-                    </div>
-                </div>
-
-                <!-- 4. README MANUAL VIEW -->
-                <div id="view-readme" class="game-view">
-                    <div class="readme-wrapper">
-                        <div class="readme-content" id="readmeContent">
-                            <p
-                                style="
-                                    color: #666;
-                                    text-align: center;
-                                    margin: auto;
-                                "
-                            >
-                                Loading manual...
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 5. MARKETPLACE VIEW (NEW FEATURE) -->
-                <div id="view-marketplace" class="game-view">
-                    <div
-                        class="market-wrapper"
-                        style="
-                            width: 100%;
-                            max-width: 600px;
-                            margin: 0 auto;
-                            display: flex;
-                            flex-direction: column;
-                            gap: 15px;
-                        "
-                    >
-                        <div
-                            class="market-header"
-                            style="
-                                display: flex;
-                                justify-content: space-between;
-                                align-items: center;
-                                padding: 0 15px;
-                            "
-                        >
-                            <h3
-                                class="section-header"
-                                style="margin: 0; border: none; padding: 0"
-                            >
-                                <i class="fa-solid fa-shop"></i> Cavern
-                                Marketplace
-                            </h3>
-                            <button
-                                id="addListingBtn"
-                                class="nav-btn"
-                                style="
-                                    padding: 5px 12px;
-                                    font-size: 0.75rem;
-                                    border-radius: 6px;
-                                "
-                            >
-                                <i class="fa-solid fa-cart-plus"></i> Sell Ore
-                            </button>
-                        </div>
-                        <div
-                            class="market-list"
-                            id="marketList"
-                            style="
-                                display: flex;
-                                flex-direction: column;
-                                gap: 12px;
-                                padding: 0 15px;
-                            "
-                        >
-                            <!-- Server-wide listings will render here dynamically -->
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 6. LEADERBOARD VIEW (NEW) -->
-                <div id="view-leaderboard" class="game-view">
-                    <div class="col-wrapper">
-                        <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; border: none;">
-                            <h3><i class="fa-solid fa-crown"></i> Hall of Fame</h3>
-                            <select id="leaderboardCategory" class="shop-filter" style="max-width: 150px;">
-                                <option value="level">By Level</option>
-                                <option value="rebirthCount">By Rebirths</option>
-                                <option value="money">By Gold</option>
-                            </select>
-                        </div>
                         
-                        <div class="leaderboard-container" style="background: var(--stone-dark); border-radius: 12px; border: 2px solid #333; overflow: hidden; margin-top: 10px;">
-                            <table class="leaderboard-table" style="width: 100%; border-collapse: collapse; text-align: left;">
-                                <thead style="background: #1a1a1a; color: var(--gold-accent); font-size: 0.75rem; text-transform: uppercase;">
-                                    <tr>
-                                        <th style="padding: 12px;">Rank</th>
-                                        <th>Miner</th>
-                                        <th id="statHeader">Level</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="leaderboardBody">
-                                    <!-- Top players injected here -->
-                                </tbody>
-                            </table>
-                            <div id="leaderboardLoading" style="padding: 40px; text-align: center; color: var(--text-muted);">
-                                <i class="fa-solid fa-spinner fa-spin"></i> Loading Rankings...
-                            </div>
+                        <div class="container" id="caveContainer"></div>
+                        
+                        <!-- Map Navigation Footer Centered -->
+                        <div class="map-navigation">
+                            <button class="nav-btn" id="prevMapBtn">◀</button>
+                            <span id="mapPageLabel" class="map-page-label">Map 1 / 2</span>
+                            <button class="nav-btn" id="nextMapBtn">▶</button>
                         </div>
                     </div>
-                </div>
-            </main>
-        </div>
 
-        <!-- Reusable Info Modal -->
-        <div id="infoModal" class="modal-overlay">
-            <div class="modal-card">
-                <button
-                    class="modal-close-btn"
-                    id="modalCloseBtn"
-                    aria-label="Close modal"
-                >
-                    ×
-                </button>
-                <div class="modal-icon-container">
-                    <div class="modal-icon" id="modalIcon">🔮</div>
-                </div>
-                <h3 class="modal-title" id="modalTitle">Item Details</h3>
-                <div class="modal-body">
-                    <p class="modal-description" id="modalDescription">
-                        Detailed information about the item goes here.
-                    </p>
-                    <div class="modal-stats" id="modalStats"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Unified Authentication & Guest Access Modal -->
-        <div id="authModal" class="modal-overlay">
-            <div
-                class="modal-card"
-                style="max-width: 320px; gap: 12px; padding: 25px"
-            >
-                <div class="modal-icon-container">
-                    <div class="modal-icon" id="authIcon">
-                        <i class="fa-solid fa-user-lock"></i>
+                    <!-- Right Side: Grid Inventory -->
+                    <div class="inventory-section">
+                        <div class="inventory-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #333;">
+                            <h4 class="inventory-title" style="margin: 0; font-size: 0.9rem; color: var(--gold-accent);">
+                                <i class="fa-solid fa-bag-shopping"></i> Bag (<span id="inv-count">0</span> / <span id="inv-max">20</span>)
+                            </h4>
+                            <button class="sell-all-btn" id="sellAllBtn" style="padding: 6px 15px; background: #15803d; border-radius: 6px; font-size: 0.75rem; border: 1px solid #22c55e;">Sell All Ores</button>
+                        </div>
+                        <!-- Changed from scroll to grid -->
+                        <div class="inventory-grid" id="inventoryScroll"></div>
                     </div>
-                </div>
-                <h3 class="modal-title" id="authTitle">Sign In</h3>
-                <p class="modal-description" id="authDesc">
-                    Sync your character data, unlock leaderboards, and trade
-                    online!
-                </p>
 
-                <!-- Auth Form Fields -->
-                <div
-                    style="
-                        display: flex;
-                        flex-direction: column;
-                        gap: 8px;
-                        width: 100%;
-                    "
-                >
-                    <input
-                        type="text"
-                        id="authUsername"
-                        class="shop-search"
-                        placeholder="Username (Sign Up Only)"
-                        style="
-                            text-align: center;
-                            max-width: 100%;
-                            display: none;
-                        "
-                    />
-                    <input
-                        type="email"
-                        id="authEmail"
-                        class="shop-search"
-                        placeholder="Email Address"
-                        style="text-align: center; max-width: 100%"
-                    />
-                    <input
-                        type="password"
-                        id="authPassword"
-                        class="shop-search"
-                        placeholder="Password"
-                        style="text-align: center; max-width: 100%"
-                    />
                 </div>
-
-                <!-- Action Buttons -->
-                <div
-                    style="
-                        display: flex;
-                        flex-direction: column;
-                        gap: 8px;
-                        width: 100%;
-                        margin-top: 5px;
-                    "
-                >
-                    <button
-                        class="card-buy-btn"
-                        id="authSubmitBtn"
-                        style="
-                            width: 100%;
-                            padding: 10px;
-                            text-transform: uppercase;
-                        "
-                    >
-                        Sign In
-                    </button>
-                    <button
-                        class="card-buy-btn"
-                        id="authGuestBtn"
-                        style="
-                            width: 100%;
-                            padding: 10px;
-                            background-color: #374151;
-                            color: white;
-                            text-transform: uppercase;
-                            border-color: #4b5563;
-                        "
-                    >
-                        Play as Guest (Offline)
-                    </button>
-                </div>
-
-                <!-- Switch link -->
-                <p
-                    style="
-                        font-size: 0.72rem;
-                        color: var(--text-muted);
-                        cursor: pointer;
-                        margin-top: 5px;
-                    "
-                    id="authToggleText"
-                >
-                    Don't have an account?
-                    <strong style="color: var(--gold-accent)">Sign Up</strong>
-                </p>
             </div>
-        </div>
 
-        <!-- Market Add Listing Modal -->
-        <div id="marketModal" class="modal-overlay">
+        <!-- 2. SHOP VIEW -->
+        <div id="view-shop" class="game-view">
+          <div class="shop-wrapper">
+            <!-- Token Exchange Widget -->
             <div
-                class="modal-card"
-                style="max-width: 320px; gap: 12px; padding: 20px"
+              class="exchange-widget"
+              style="
+                background-color: var(--stone-dark);
+                border: 2px solid var(--gold-accent);
+                border-radius: 8px;
+                padding: 15px;
+                text-align: center;
+                margin: 0 15px 15px 15px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+              "
             >
-                <button class="modal-close-btn" id="marketModalCloseBtn">
-                    ×
-                </button>
-                <h3 class="modal-title" style="font-size: 1.05rem">
-                    <i class="fa-solid fa-cart-plus"></i> Sell specimen
-                </h3>
-                <p class="modal-description" style="font-size: 0.72rem">
-                    Select an ore from your active bag, input your price, and
-                    choose your preferred currency.
-                </p>
-
-                <!-- Selector for owned inventory ores -->
-                <select
-                    id="marketOreSelect"
-                    class="shop-filter"
-                    style="width: 100%; max-width: 100%"
-                >
-                    <option value="" disabled selected>Select an Ore...</option>
-                </select>
-
-                <!-- Price Input -->
-                <input
-                    type="number"
-                    id="marketPriceInput"
-                    class="shop-search"
-                    placeholder="Enter Price..."
-                    min="1"
-                    style="text-align: center; max-width: 100%"
-                />
-
-                <!-- Currency Selector -->
-                <select
-                    id="marketCurrencySelect"
-                    class="shop-filter"
-                    style="width: 100%; max-width: 100%"
-                >
-                    <option value="gold" selected>Gold Coins (🪙)</option>
-                    <option value="tokens">Premium Tokens (🎟️)</option>
-                </select>
-
-                <button
-                    class="card-buy-btn"
-                    id="marketSubmitBtn"
-                    style="width: 100%"
-                >
-                    List Product
-                </button>
-            </div>
-        </div>
-
-        <!-- Developer Tools (Only visible to the developer) -->
-        <div id="devFab" style="display: none">
-            <i class="fa-solid fa-screwdriver-wrench"></i>
-        </div>
-
-        <div
-            id="devPanel"
-            class="modal-overlay"
-            style="display: none; z-index: 10000"
-        >
-            <div
-                class="modal-card"
+              <h4
                 style="
-                    max-width: 300px;
-                    padding: 20px;
-                    border: 2px solid #ef4444;
+                  margin: 0;
+                  color: var(--gold-accent);
+                  font-size: 0.95rem;
+                  text-transform: uppercase;
+                  letter-spacing: 0.5px;
                 "
-            >
-                <h3 style="color: #ef4444; margin-bottom: 10px">
-                    <i class="fa-solid fa-code"></i> Dev Console
-                </h3>
-                <div
-                    style="
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 8px;
-                    "
-                >
-                    <button class="card-buy-btn" onclick="devAddGold()">
-                        +100M Gold
-                    </button>
-                    <button class="card-buy-btn" onclick="devAddTokens()">
-                        +100M Tokens
-                    </button>
-                    <button class="card-buy-btn" onclick="devLevelUp()">
-                        + 50 Level
-                    </button>
-                    <button class="card-buy-btn" onclick="devFillEnergy()">
-                        Full Energy
-                    </button>
-                    <button class="card-buy-btn" onclick="devUnlockAll()">
-                        Unlock All
-                    </button>
-                    <button
-                        class="card-buy-btn"
-                        style="background: #7f1d1d"
-                        onclick="devReset()"
-                    >
-                        Hard Reset
-                    </button>
-                </div>
+              >
+                🎟️ Token Exchange
+              </h4>
+              <p
+                style="margin: 0; font-size: 0.75rem; color: var(--text-muted)"
+              >
+                Convert earned Gold Coins (🪙) to Premium Tokens (🎟️).
+              </p>
+              <div
+                style="
+                  font-size: 0.85rem;
+                  font-weight: bold;
+                  color: var(--text-light);
+                  margin: 5px 0;
+                "
+              >
+                Rate: 🪙 10,000 Coins = 🎟️ 1 Token
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: 8px;
+                  justify-content: center;
+                  align-items: center;
+                "
+              >
                 <button
-                    class="nav-btn"
-                    style="margin-top: 15px; width: 100%"
-                    id="closeDev"
+                  id="convertOneBtn"
+                  class="card-buy-btn"
+                  style="
+                    width: auto;
+                    font-size: 0.75rem;
+                    padding: 6px 12px;
+                    text-transform: uppercase;
+                  "
                 >
-                    Close
+                  Convert 1 Token
                 </button>
+                <button
+                  id="convertAllBtn"
+                  class="card-buy-btn"
+                  style="
+                    width: auto;
+                    font-size: 0.75rem;
+                    padding: 6px 12px;
+                    background-color: #2e7d32;
+                    color: white;
+                    text-transform: uppercase;
+                  "
+                >
+                  Exchange All
+                </button>
+              </div>
             </div>
+            <div class="shop-controls">
+              <input
+                type="text"
+                id="shopSearchInput"
+                class="shop-search"
+                placeholder="Search shop items..."
+              />
+              <select id="shopSectionFilter" class="shop-filter">
+                <option value="all">All Sections</option>
+                <option value="mining-speed">Mining Speed</option>
+                <option value="bag-capacity">Bag Capacity</option>
+                <option value="energy">Energy</option>
+                <option value="boosts">Boosts/Potions</option>
+                <option value="money-perks">Money Perks</option>
+              </select>
+            </div>
+            <div class="shop-sections-list" id="shopSectionsList"></div>
+          </div>
         </div>
-    </body>
+
+        <!-- 3. COLLECTIONS VIEW -->
+        <div id="view-collections" class="game-view">
+          <div class="col-wrapper">
+            <div class="col-controls">
+              <input
+                type="text"
+                id="colSearchInput"
+                class="col-search"
+                placeholder="Search collections..."
+              />
+              <select id="colSectionFilter" class="col-filter">
+                <option value="all">All Categories</option>
+                <option value="caves">Caves</option>
+                <option value="pickaxes">Pickaxes</option>
+                <option value="ores">Ores</option>
+                <option value="mutations">Mutations</option>
+                <option value="awards">Awards</option>
+              </select>
+            </div>
+            <div class="col-sections-list" id="colSectionsList"></div>
+          </div>
+        </div>
+
+        <!-- 4. README MANUAL VIEW -->
+        <div id="view-readme" class="game-view">
+          <div class="readme-wrapper">
+            <div class="readme-content" id="readmeContent">
+              <p style="color: #666; text-align: center; margin: auto">
+                Loading manual...
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. MARKETPLACE VIEW (NEW FEATURE) -->
+        <div id="view-marketplace" class="game-view">
+          <div
+            class="market-wrapper"
+            style="
+              width: 100%;
+              max-width: 600px;
+              margin: 0 auto;
+              display: flex;
+              flex-direction: column;
+              gap: 15px;
+            "
+          >
+            <div
+              class="market-header"
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0 15px;
+              "
+            >
+              <h3
+                class="section-header"
+                style="margin: 0; border: none; padding: 0"
+              >
+                <i class="fa-solid fa-shop"></i> Cavern Marketplace
+              </h3>
+              <button
+                id="addListingBtn"
+                class="nav-btn"
+                style="
+                  padding: 5px 12px;
+                  font-size: 0.75rem;
+                  border-radius: 6px;
+                "
+              >
+                <i class="fa-solid fa-cart-plus"></i> Sell Ore
+              </button>
+            </div>
+            <div
+              class="market-list"
+              id="marketList"
+              style="
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                padding: 0 15px;
+              "
+            >
+              <!-- Server-wide listings will render here dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. LEADERBOARD VIEW (NEW) -->
+        <div id="view-leaderboard" class="game-view">
+          <div class="col-wrapper">
+            <div
+              class="section-header"
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border: none;
+              "
+            >
+              <h3><i class="fa-solid fa-crown"></i> Hall of Fame</h3>
+              <select
+                id="leaderboardCategory"
+                class="shop-filter"
+                style="max-width: 150px"
+              >
+                <option value="level">By Level</option>
+                <option value="rebirthCount">By Rebirths</option>
+                <option value="money">By Gold</option>
+              </select>
+            </div>
+
+            <div
+              class="leaderboard-container"
+              style="
+                background: var(--stone-dark);
+                border-radius: 12px;
+                border: 2px solid #333;
+                overflow: hidden;
+                margin-top: 10px;
+              "
+            >
+              <table
+                class="leaderboard-table"
+                style="width: 100%; border-collapse: collapse; text-align: left"
+              >
+                <thead
+                  style="
+                    background: #1a1a1a;
+                    color: var(--gold-accent);
+                    font-size: 0.75rem;
+                    text-transform: uppercase;
+                  "
+                >
+                  <tr>
+                    <th style="padding: 12px">Rank</th>
+                    <th>Miner</th>
+                    <th id="statHeader">Level</th>
+                  </tr>
+                </thead>
+                <tbody id="leaderboardBody">
+                  <!-- Top players injected here -->
+                </tbody>
+              </table>
+              <div
+                id="leaderboardLoading"
+                style="
+                  padding: 40px;
+                  text-align: center;
+                  color: var(--text-muted);
+                "
+              >
+                <i class="fa-solid fa-spinner fa-spin"></i> Loading Rankings...
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Reusable Info Modal -->
+    <div id="infoModal" class="modal-overlay">
+      <div class="modal-card">
+        <button
+          class="modal-close-btn"
+          id="modalCloseBtn"
+          aria-label="Close modal"
+        >
+          ×
+        </button>
+        <div class="modal-icon-container">
+          <div class="modal-icon" id="modalIcon">🔮</div>
+        </div>
+        <h3 class="modal-title" id="modalTitle">Item Details</h3>
+        <div class="modal-body">
+          <p class="modal-description" id="modalDescription">
+            Detailed information about the item goes here.
+          </p>
+          <div class="modal-stats" id="modalStats"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Unified Authentication & Guest Access Modal -->
+    <div id="authModal" class="modal-overlay">
+      <div
+        class="modal-card"
+        style="max-width: 320px; gap: 12px; padding: 25px"
+      >
+        <div class="modal-icon-container">
+          <div class="modal-icon" id="authIcon">
+            <i class="fa-solid fa-user-lock"></i>
+          </div>
+        </div>
+        <h3 class="modal-title" id="authTitle">Sign In</h3>
+        <p class="modal-description" id="authDesc">
+          Sync your character data, unlock leaderboards, and trade online!
+        </p>
+
+        <!-- Auth Form Fields -->
+        <div
+          style="display: flex; flex-direction: column; gap: 8px; width: 100%"
+        >
+          <input
+            type="text"
+            id="authUsername"
+            class="shop-search"
+            placeholder="Username (Sign Up Only)"
+            style="text-align: center; max-width: 100%; display: none"
+          />
+          <input
+            type="email"
+            id="authEmail"
+            class="shop-search"
+            placeholder="Email Address"
+            style="text-align: center; max-width: 100%"
+          />
+          <input
+            type="password"
+            id="authPassword"
+            class="shop-search"
+            placeholder="Password"
+            style="text-align: center; max-width: 100%"
+          />
+        </div>
+
+        <!-- Action Buttons -->
+        <div
+          style="
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+            margin-top: 5px;
+          "
+        >
+          <button
+            class="card-buy-btn"
+            id="authSubmitBtn"
+            style="width: 100%; padding: 10px; text-transform: uppercase"
+          >
+            Sign In
+          </button>
+          <button
+            class="card-buy-btn"
+            id="authGuestBtn"
+            style="
+              width: 100%;
+              padding: 10px;
+              background-color: #374151;
+              color: white;
+              text-transform: uppercase;
+              border-color: #4b5563;
+            "
+          >
+            Play as Guest (Offline)
+          </button>
+        </div>
+
+        <!-- Switch link -->
+        <p
+          style="
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            margin-top: 5px;
+          "
+          id="authToggleText"
+        >
+          Don't have an account?
+          <strong style="color: var(--gold-accent)">Sign Up</strong>
+        </p>
+      </div>
+    </div>
+
+    <!-- Market Add Listing Modal -->
+    <div id="marketModal" class="modal-overlay">
+      <div
+        class="modal-card"
+        style="max-width: 320px; gap: 12px; padding: 20px"
+      >
+        <button class="modal-close-btn" id="marketModalCloseBtn">×</button>
+        <h3 class="modal-title" style="font-size: 1.05rem">
+          <i class="fa-solid fa-cart-plus"></i> Sell specimen
+        </h3>
+        <p class="modal-description" style="font-size: 0.72rem">
+          Select an ore from your active bag, input your price, and choose your
+          preferred currency.
+        </p>
+
+        <!-- Selector for owned inventory ores -->
+        <select
+          id="marketOreSelect"
+          class="shop-filter"
+          style="width: 100%; max-width: 100%"
+        >
+          <option value="" disabled selected>Select an Ore...</option>
+        </select>
+
+        <!-- Price Input -->
+        <input
+          type="number"
+          id="marketPriceInput"
+          class="shop-search"
+          placeholder="Enter Price..."
+          min="1"
+          style="text-align: center; max-width: 100%"
+        />
+
+        <!-- Currency Selector -->
+        <select
+          id="marketCurrencySelect"
+          class="shop-filter"
+          style="width: 100%; max-width: 100%"
+        >
+          <option value="gold" selected>Gold Coins (🪙)</option>
+          <option value="tokens">Premium Tokens (🎟️)</option>
+        </select>
+
+        <button class="card-buy-btn" id="marketSubmitBtn" style="width: 100%">
+          List Product
+        </button>
+      </div>
+    </div>
+
+    <!-- Developer Tools (Only visible to the developer) -->
+    <div id="devFab" style="display: none">
+      <i class="fa-solid fa-screwdriver-wrench"></i>
+    </div>
+
+    <div
+      id="devPanel"
+      class="modal-overlay"
+      style="display: none; z-index: 10000"
+    >
+      <div
+        class="modal-card"
+        style="max-width: 300px; padding: 20px; border: 2px solid #ef4444"
+      >
+        <h3 style="color: #ef4444; margin-bottom: 10px">
+          <i class="fa-solid fa-code"></i> Dev Console
+        </h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
+          <button class="card-buy-btn" onclick="devAddGold()">
+            +100M Gold
+          </button>
+          <button class="card-buy-btn" onclick="devAddTokens()">
+            +100M Tokens
+          </button>
+          <button class="card-buy-btn" onclick="devLevelUp()">
+            + 50 Level
+          </button>
+          <button class="card-buy-btn" onclick="devFillEnergy()">
+            Full Energy
+          </button>
+          <button class="card-buy-btn" onclick="devUnlockAll()">
+            Unlock All
+          </button>
+          <button
+            class="card-buy-btn"
+            style="background: #7f1d1d"
+            onclick="devReset()"
+          >
+            Hard Reset
+          </button>
+        </div>
+        <button
+          class="nav-btn"
+          style="margin-top: 15px; width: 100%"
+          id="closeDev"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </body>
 </html>
