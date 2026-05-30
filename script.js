@@ -1361,8 +1361,6 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         playerState.inventory.push(newOre);
-        
-        console.log(newOre);
 
         // ==================== SECRET ACHIEVEMENTS TRIGGERS ====================
         // 1. Ethereal Gaze Secret Unlock (Mine an Ethereal mutation)
