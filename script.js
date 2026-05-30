@@ -3337,26 +3337,33 @@ document.addEventListener("DOMContentLoaded", () => {
         // Listen for ANY change made by other devices to the core save state
         cloudSyncRef.on('value', (snapshot) => {
             const cloudData = snapshot.val();
+            if (!cloudData) return;
+            if (cloudData.lastSaveTime === undefined) return;
 
-            if (cloudData && cloudData.lastSaveTime) {
-                // Only update if the cloud data is NEWER than our current local data
-                if (cloudData.lastSaveTime > playerState.lastSaveTime) {
-                    console.log('🔄 Cross-device sync: Cloud data is newer. Updating UI...');
-
-                    // Update the local state
-                    Object.assign(playerState, cloudData);
-                    playerState.lastSaveTime = cloudData.lastSaveTime;
-                    playerState.saveMode = 'cloud';
-
-                updateStatsUI();
-                updateMapPageStructure();
-                renderInventoryTray();
-                renderShop();
-                renderCollections();
-
-                localStorage.setItem('miner_save', JSON.stringify(playerState));
+            // Ignore the same-write echo from this device
+            if (cloudData.cloudSaveId && cloudData.cloudSaveId === playerState.cloudSaveId) {
+                return;
             }
-        }
+
+            const isRemoteUpdate = cloudData.cloudSaveId
+                ? cloudData.cloudSaveId !== playerState.cloudSaveId
+                : cloudData.lastSaveTime > playerState.lastSaveTime;
+
+            if (!isRemoteUpdate) return;
+
+            console.log('🔄 Cross-device sync: Remote cloud save detected. Updating UI...');
+
+            Object.assign(playerState, cloudData);
+            playerState.saveMode = 'cloud';
+
+            updateStatsUI();
+            updateMapPageStructure();
+            renderInventoryTray();
+            renderShop();
+            renderCollections();
+
+            localStorage.setItem('miner_save', JSON.stringify(playerState));
+        });
 
         // Keep the collections data synced too, since it is stored separately in the database
         cloudCollectionsRef.on('value', (snapshot) => {
