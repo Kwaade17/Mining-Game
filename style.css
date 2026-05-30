@@ -2189,16 +2189,9 @@ body {
 /* ==================== MOBILE RESPONSIVE FIX (v2.2.6) ==================== */
 
 @media (max-width: 767px) {
-    /* 1. Ensure the main view allows scrolling */
-    /* Hide all views by default on mobile */
+    /* 1. Reduce the "Gap" at the top of the screen */
     .game-view {
-        display: none !important; 
-        overflow-y: auto !important;
-    }
-
-    /* ONLY show the active view */
-    .game-view.active {
-        display: block !important; 
+        padding-top: 0 !important; /* Remove default view padding */
     }
 
     .main-game-layout {
@@ -2206,21 +2199,39 @@ body {
         align-items: center !important;
         justify-content: flex-start !important;
         height: auto !important;
-        gap: 20px;
+        gap: 15px;
+        /* Adjusted: 70px for the floating bar + 10px breathing room */
         padding-top: 80px !important; 
-        padding-bottom: 50px;
+        padding-bottom: 30px;
+        margin: 0 !important; /* Force it to the top */
     }
 
-    /* 2. Map Section Adjustments */
+    /* ONLY show the active view */
+    .game-view.active {
+        display: block !important; 
+    }
+
+    /* 2. Tighten the Map Section container */
     .map-section {
         width: 100% !important;
-        max-width: 380px; /* Keep the 3x3 grid look */
-        height: auto !important; /* Remove fixed height */
-        min-height: unset !important;
-        flex: none !important;
+        max-width: 380px; 
+        padding: 10px !important; /* Reduce inner padding */
+        background-color: transparent !important; /* Remove double-box effect */
+        border: none !important; /* Makes it feel less "heavy" on mobile */
     }
 
-    /* 3. Inventory Section Adjustments */
+    .map-navigation {
+        /* Ensure it doesn't try to "stick" to the top */
+        margin-top: 5px !important; 
+        width: 100% !important;
+    }
+
+    /* 3. Ensure the Cave Grid is flush */
+    .container {
+        margin-top: 0 !important;
+    }
+
+    /* 4. Inventory Section Adjustments */
     .inventory-section {
         width: 100% !important;
         max-width: 380px;
@@ -2233,12 +2244,12 @@ body {
         grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)) !important;
     }
 
-    /* 4. Hide username to save space on mobile nav */
+    /* 5. Hide username to save space on mobile nav */
     .user-profile .username {
         display: none !important;
     }
 
-    /* 5. Ensure the floating stats bar stays on top */
+    /* 6. Ensure the floating stats bar stays on top */
     .floating-stats-bar {
         top: 70px !important;
     }
