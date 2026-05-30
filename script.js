@@ -34,7 +34,7 @@ let isShuttingDown = false; // Prevents background saves during reset
 
 document.addEventListener("DOMContentLoaded", () => {
   // ==================== SESSION STATE ====================
-  const GAME_VERSION = "2.2.6"; // Active version used to check shop updates
+  const GAME_VERSION = "2.2.7"; // Active version used to check shop updates
 
   const playerState = {
     username: "", // Custom player display name
@@ -318,7 +318,7 @@ document.addEventListener("DOMContentLoaded", () => {
           playerState.rebirthMultiplier += 0.25;
           playerState.xpMultiplier += 0.1;
 
-          // 2. WIPE Progress
+          // 2. IPE Progress
           playerState.money = 200;
           playerState.level = 1;
           playerState.xp = 0;
@@ -384,6 +384,56 @@ document.addEventListener("DOMContentLoaded", () => {
             db.ref('leaderboards/' + auth.currentUser.uid).set(scorecard);
         }
     }
+
+  // ==================== CLOUD SAVE LOADER FOR CROSS-DEVICE SYNC (v2.2.7) ====================
+  function loadCloudSave() {
+    if (!firebaseActive || !auth.currentUser) {
+      console.log("Cloud load skipped: Not authenticated");
+      return Promise.resolve();
+    }
+
+    const userId = auth.currentUser.uid;
+    console.log("Loading cloud save for user:", userId);
+
+    return Promise.all([
+      // Fetch player state from cloud
+      db.ref("users/" + userId + "/saveState").once("value"),
+      // Fetch collections data from cloud
+      db.ref("users/" + userId + "/collections").once("value"),
+    ])
+      .then(([saveSnapshot, colSnapshot]) => {
+        // Load player state from cloud
+        if (saveSnapshot.exists()) {
+          const cloudSave = saveSnapshot.val();
+          console.log("Cloud save found, merging with local state...");
+
+          // Merge cloud save with existing playerState, preserving critical fields
+          Object.assign(playerState, cloudSave);
+
+          // Ensure saveMode stays as "cloud"
+          playerState.saveMode = "cloud";
+        }
+
+        // Load collections from cloud
+        if (colSnapshot.exists()) {
+          const cloudCollections = colSnapshot.val();
+          console.log("Cloud collections found, syncing...");
+
+          collectionsData.forEach((item) => {
+            if (cloudCollections[item.id] !== undefined) {
+              item.obtained = cloudCollections[item.id];
+            }
+          });
+        }
+
+        console.log("Cloud save loaded successfully");
+        return Promise.resolve();
+      })
+      .catch((err) => {
+        console.error("Error loading cloud save:", err);
+        return Promise.resolve(); // Don't crash, continue with local save
+      });
+  }
 
   function loadGame() {
     const savedState = localStorage.getItem("miner_save");
@@ -1053,11 +1103,15 @@ document.addEventListener("DOMContentLoaded", () => {
             if (item.mutation && item.mutation !== 'Normal') {
                 prefix += `${item.mutation.replace(' Mutation', '')} `;
             }
+            
+            // Get the final value of the mined ore
+            const finVal = Math.floor((item.finalValue || item.baseValue) * playerState.sellMultiplier * playerState.rebirthMultiplier);
     
             card.innerHTML = `
                 ${item.isNew ? '<span class="new-badge">NEW</span>' : ''}
                 <div class="loot-icon">${item.icon || '🪨'}</div>
                 <span class="loot-name">${prefix}${item.name}</span>
+                <span class="loot-name">🪙 ${formatMoney(finVal, true)}</span>
             `;
 
             card.addEventListener('click', () => {
@@ -1082,9 +1136,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 const stats = [
                     { label: "Rarity", value: rarityLabels[item.rarity] || item.rarity.toUpperCase() },
                     { label: "Origin", value: `🧗 ${sourceCave}` },
-                    { label: "Weight", value: `⚖️ ${displayWeight} kg ${playerState.hasWeightPass ? "X2" : "X1"}` },
-                    { label: "Value", value: `🪙 ${formatMoney(itemPrice)}` },
-                    { label: "Modifier", value: `${item.variant || 'Normal'} x Mut.` }
+                    { label: "Variant Mutation", value: `${item.variant || 'Normal'}` },
+                    { label: "Mutation", value: `${item.mutation}` },
+                    { label: "Weight", value: `⚖️ ${displayWeight} kg` },
+                    { label: "Value", value: `🪙 ${formatMoney(itemPrice)}` }
                 ];
     
                 openDetailModal(`${prefix}${item.name}`, item.icon || '🪨', description, stats);
@@ -3629,15 +3684,25 @@ document.addEventListener("DOMContentLoaded", () => {
         playerState.saveMode = "cloud";
         if (user.displayName) playerState.username = user.displayName;
 
-        // Refresh market to show "Buy" buttons for items you don't own
-        renderMarketplace();
-        claimPendingEarnings();
+        // Load cloud save data for cross-device synchronization (v2.2.7)
+        loadCloudSave().then(() => {
+          // After cloud save is loaded, refresh UI and marketplace
+          updateStatsUI();
+          renderInventoryTray();
+          renderCollections();
+          renderShop();
+          updateMapPageStructure();
+
+          // Refresh market to show "Buy" buttons for items you don't own
+          renderMarketplace();
+          claimPendingEarnings();
+        });
       } else {
         playerState.saveMode = "local";
         // Refresh market to show "Guest" view (Buy buttons disabled/inspect only)
         renderMarketplace();
+        updateStatsUI();
       }
-      updateStatsUI();
     });
   }
 
