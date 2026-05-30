@@ -36,7 +36,7 @@ let isShuttingDown = false; // Prevents background saves during reset
 
 document.addEventListener("DOMContentLoaded", () => {
     // ==================== SESSION STATE ====================
-    const GAME_VERSION = "2.1.1"; // Active version used to check shop updates
+    const GAME_VERSION = "2.2.5"; // Active version used to check shop updates
 
     const playerState = {
         username: "", // Custom player display name
@@ -835,37 +835,25 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
 
-        // Passively generate 5 coins every second if Coin Subscription is active
+        // Fixed: Only one check for Coin Subscription
         if (playerState.hasCoinSub) {
-            playerState.money += 5;
+            playerState.money += 50; // Awarding the higher value you set
             changed = true;
         }
 
-        // Passive Coin Subscription Pension Tick
-        if (playerState.hasCoinSub) {
-            playerState.money += 5;
-            changed = true;
-        }
-
-        // Passive Token Subscription Pension Tick (1 Premium Token every 60s)
         if (playerState.hasTokenSub) {
             playerState.tokenSubTimer++;
             if (playerState.tokenSubTimer >= 60) {
                 playerState.tokens += 1;
                 playerState.tokenSubTimer = 0;
-                showNotification(
-                    "🎟️ Token Pension!",
-                    "Received +1 Premium Token from your VIP Subscription!",
-                    "shop",
-                    3500
-                );
+                showNotification("🎟️ Token Pension!", "Received +1 Premium Token!", "shop", 3500);
                 changed = true;
             }
         }
 
         if (changed) {
             renderBuffsUI();
-            updateStatsUI(); // Keeps the numbers in sync
+            updateStatsUI();
             saveGame();
         }
     }, 1000);
@@ -1465,17 +1453,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     function rollBonusWeight(clickEvent) {
-      // If they have the pass, roll for the 4x bonus
       if (playerState.hasWeightPass) {
         const roll = Math.random();
         if (roll <= 0.5) {
           const getBonusWeight = parseFloat((1 + Math.random() * 4).toFixed(1));
-          spawnFloatingText( `+${getBonusWeight} Bonus Weight`, clickEvent.clientX, clickEvent.clientY + 30, "float-ore" );
-          return getBonusWeight
+          spawnFloatingText(`+${getBonusWeight} Bonus Weight`, clickEvent.clientX, clickEvent.clientY + 30, "float-ore");
+          return getBonusWeight;
         }
       }
-      // CRITICAL: Always return 1.0 as a base multiplier so the math doesn't break
-      return 1.0; 
+      return 0; // Return 0 extra weight if roll fails or no pass
     }
 
     // ==================== CAVE GRID RENDERER ====================
