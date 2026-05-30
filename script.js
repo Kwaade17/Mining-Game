@@ -55,6 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tokenSubTimer: 0, // <-- ADD THIS
     lastClaimTime: 0, // <-- ADD THIS (Daily Claim timestamp)
     lastSaveTime: 0, // <-- ADD THIS: Tracks exactly when the save happened
+    cloudSaveId: "",
     saveMode: "local", // <-- ADD THIS (local or cloud)
     currentEnergy: 100,
     maxEnergy: 100,
@@ -358,7 +359,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function saveGame() {
         if (isShuttingDown) return;
 
-        // Keep local save timestamps up to date for cross-device conflict detection
+        // Keep local save identifiers and timestamps up to date for cross-device conflict detection
+        playerState.cloudSaveId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
         playerState.lastSaveTime = Date.now();
 
         // 1. Save locally immediately for responsiveness
@@ -452,6 +454,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (playerState.lastSaveTime === undefined) {
           playerState.lastSaveTime = 0;
+        }
+        if (playerState.cloudSaveId === undefined) {
+          playerState.cloudSaveId = "";
         }
         if (playerState.rebirthCount === undefined)
           playerState.rebirthCount = 0;
@@ -3333,26 +3338,32 @@ document.addEventListener("DOMContentLoaded", () => {
         cloudSyncRef.on('value', (snapshot) => {
             const cloudData = snapshot.val();
 
-            if (cloudData && cloudData.lastSaveTime) {
-                // Only update if the cloud data is NEWER than our current local data
-                if (cloudData.lastSaveTime > playerState.lastSaveTime) {
-                    console.log('🔄 Cross-device sync: Cloud data is newer. Updating UI...');
+            if (!cloudData) return;
+            if (cloudData.lastSaveTime === undefined) return;
 
-                    // Update the local state
-                    Object.assign(playerState, cloudData);
-                    playerState.lastSaveTime = cloudData.lastSaveTime;
-                    playerState.saveMode = 'cloud';
+            // Ignore local writes that echo back from Firebase on the same device.
+            if (cloudData.cloudSaveId && cloudData.cloudSaveId === playerState.cloudSaveId) {
+                return;
+            }
 
-                    // Refresh everything the player sees
-                    updateStatsUI();
-                    updateMapPageStructure();
-                    renderInventoryTray();
-                    renderShop();
-                    renderCollections();
+            // Apply remote updates when the cloud save ID differs, or fallback to timestamp for old saves.
+            const isRemoteUpdate = cloudData.cloudSaveId
+                ? cloudData.cloudSaveId !== playerState.cloudSaveId
+                : cloudData.lastSaveTime > playerState.lastSaveTime;
 
-                    // Persist the updated cloud snapshot locally
-                    localStorage.setItem('miner_save', JSON.stringify(playerState));
-                }
+            if (isRemoteUpdate) {
+                console.log('🔄 Cross-device sync: Remote cloud save detected. Updating UI...');
+
+                Object.assign(playerState, cloudData);
+                playerState.saveMode = 'cloud';
+
+                updateStatsUI();
+                updateMapPageStructure();
+                renderInventoryTray();
+                renderShop();
+                renderCollections();
+
+                localStorage.setItem('miner_save', JSON.stringify(playerState));
             }
         });
 
