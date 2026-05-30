@@ -31,6 +31,8 @@ if (typeof firebase !== "undefined") {
 let isProcessingClaim = false; // Prevents multiple revenue modals from stacking
 
 let isShuttingDown = false; // Prevents background saves during reset
+let cloudSyncRef = null;
+let cloudCollectionsRef = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   // ==================== SESSION STATE ====================
@@ -356,6 +358,9 @@ document.addEventListener("DOMContentLoaded", () => {
   function saveGame() {
         if (isShuttingDown) return;
 
+        // Keep local save timestamps up to date for cross-device conflict detection
+        playerState.lastSaveTime = Date.now();
+
         // 1. Save locally immediately for responsiveness
         localStorage.setItem('miner_save', JSON.stringify(playerState));
         const colMap = {};
@@ -444,6 +449,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (playerState.saveMode === undefined) {
           playerState.saveMode = "local"; // <-- ADD THIS
+        }
+        if (playerState.lastSaveTime === undefined) {
+          playerState.lastSaveTime = 0;
         }
         if (playerState.rebirthCount === undefined)
           playerState.rebirthCount = 0;
@@ -3315,28 +3323,58 @@ document.addEventListener("DOMContentLoaded", () => {
     function startCloudSyncListener() {
         if (!firebaseActive || !auth.currentUser) return;
 
-        const userRef = db.ref('users/' + auth.currentUser.uid + '/saveState');
-        
-        // Listen for ANY change made by other devices
-        userRef.on('value', (snapshot) => {
+        if (cloudSyncRef) cloudSyncRef.off();
+        if (cloudCollectionsRef) cloudCollectionsRef.off();
+
+        cloudSyncRef = db.ref('users/' + auth.currentUser.uid + '/saveState');
+        cloudCollectionsRef = db.ref('users/' + auth.currentUser.uid + '/collections');
+
+        // Listen for ANY change made by other devices to the core save state
+        cloudSyncRef.on('value', (snapshot) => {
             const cloudData = snapshot.val();
-            
+
             if (cloudData && cloudData.lastSaveTime) {
                 // Only update if the cloud data is NEWER than our current local data
                 if (cloudData.lastSaveTime > playerState.lastSaveTime) {
-                    console.log("🔄 Cross-device sync: Cloud data is newer. Updating UI...");
-                    
+                    console.log('🔄 Cross-device sync: Cloud data is newer. Updating UI...');
+
                     // Update the local state
                     Object.assign(playerState, cloudData);
-                    
+                    playerState.lastSaveTime = cloudData.lastSaveTime;
+                    playerState.saveMode = 'cloud';
+
                     // Refresh everything the player sees
                     updateStatsUI();
                     updateMapPageStructure();
                     renderInventoryTray();
                     renderShop();
-                    // No need to call saveGame here, as that would trigger the other device
+                    renderCollections();
+
+                    // Persist the updated cloud snapshot locally
                     localStorage.setItem('miner_save', JSON.stringify(playerState));
                 }
+            }
+        });
+
+        // Keep the collections data synced too, since it is stored separately in the database
+        cloudCollectionsRef.on('value', (snapshot) => {
+            const cloudCollections = snapshot.val();
+            if (!cloudCollections) return;
+
+            let changed = false;
+            collectionsData.forEach((item) => {
+                if (cloudCollections[item.id] !== undefined && item.obtained !== cloudCollections[item.id]) {
+                    item.obtained = cloudCollections[item.id];
+                    item.isNew = false;
+                    changed = true;
+                }
+            });
+
+            if (changed) {
+                renderCollections();
+                const colMap = {};
+                collectionsData.forEach((item) => { colMap[item.id] = item.obtained; });
+                localStorage.setItem('miner_col_save', JSON.stringify(colMap));
             }
         });
     }
@@ -3672,8 +3710,14 @@ document.addEventListener("DOMContentLoaded", () => {
         playerState.saveMode = "local";
         // Refresh market to show "Guest" view (Buy buttons disabled/inspect only)
         renderMarketplace();
-        // Optional: Stop listening if signed out
-        if (auth.currentUser) db.ref('users/' + auth.currentUser.uid + '/saveState').off();
+        if (cloudSyncRef) {
+          cloudSyncRef.off();
+          cloudSyncRef = null;
+        }
+        if (cloudCollectionsRef) {
+          cloudCollectionsRef.off();
+          cloudCollectionsRef = null;
+        }
       }
       updateStatsUI();
     });
