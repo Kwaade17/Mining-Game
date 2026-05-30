@@ -34,7 +34,7 @@ let isShuttingDown = false; // Prevents background saves during reset
 
 document.addEventListener("DOMContentLoaded", () => {
   // ==================== SESSION STATE ====================
-  const GAME_VERSION = "2.2.6"; // Active version used to check shop updates
+  const GAME_VERSION = "2.2.7"; // Active version used to check shop updates
 
   const playerState = {
     username: "", // Custom player display name
@@ -52,6 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
     hasWeightPass: false, // <-- This is my own pass
     tokenSubTimer: 0, // <-- ADD THIS
     lastClaimTime: 0, // <-- ADD THIS (Daily Claim timestamp)
+    lastSaveTime: 0, // <-- ADD THIS: Tracks exactly when the save happened
     saveMode: "local", // <-- ADD THIS (local or cloud)
     currentEnergy: 100,
     maxEnergy: 100,
@@ -353,37 +354,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ==================== PERSISTENT LOCAL STORAGE ENGINE ====================
   function saveGame() {
-    if (isShuttingDown) return; // Block saving if the game is resetting
-    localStorage.setItem("miner_save", JSON.stringify(playerState));
-    const colMap = {};
-    collectionsData.forEach((item) => {
-      colMap[item.id] = item.obtained;
-    });
-    localStorage.setItem("miner_col_save", JSON.stringify(colMap));
+        if (isShuttingDown) return;
 
-    if (
-      playerState.saveMode === "cloud" &&
-      navigator.onLine &&
-      firebaseActive
-    ) {
-      const user = auth.currentUser;
-      if (user) {
-        // 1. Save private data
-        db.ref("users/" + user.uid + "/saveState").set(playerState);
-        db.ref("users/" + user.uid + "/collections").set(colMap);
+        // 1. Save locally immediately for responsiveness
+        localStorage.setItem('miner_save', JSON.stringify(playerState));
+        const colMap = {};
+        collectionsData.forEach(item => { colMap[item.id] = item.obtained; });
+        localStorage.setItem('miner_col_save', JSON.stringify(colMap));
 
-        // 2. NEW: Push public scorecard to Leaderboard
-        const scorecard = {
-          username: playerState.username,
-          level: playerState.level,
-          money: playerState.money,
-          rebirthCount: playerState.rebirthCount,
-          lastSeen: firebase.database.ServerValue.TIMESTAMP,
-        };
-        db.ref("leaderboards/" + user.uid).set(scorecard);
-      }
+        // 2. Only push to cloud if online and logged in
+        if (playerState.saveMode === "cloud" && navigator.onLine && firebaseActive && auth.currentUser) {
+            
+            // We use a temporary object so we don't put Firebase placeholders in localStorage
+            const cloudSave = {
+                ...playerState,
+                // CRITICAL: Tell Firebase to use ITS clock, not the phone's clock
+                lastSaveTime: firebase.database.ServerValue.TIMESTAMP 
+            };
+
+            db.ref('users/' + auth.currentUser.uid + '/saveState').set(cloudSave)
+                .catch(err => console.error("Cloud sync failed:", err));
+            db.ref('users/' + auth.currentUser.uid + '/collections').set(colMap);
+            
+            // Also update the public leaderboard
+            const scorecard = {
+                username: playerState.username,
+                level: playerState.level,
+                money: playerState.money,
+                rebirthCount: playerState.rebirthCount,
+                lastSeen: firebase.database.ServerValue.TIMESTAMP
+            };
+            db.ref('leaderboards/' + auth.currentUser.uid).set(scorecard);
+        }
     }
-  }
 
   function loadGame() {
     const savedState = localStorage.getItem("miner_save");
@@ -3308,6 +3311,36 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
+    // ==================== REAL-TIME CROSS-DEVICE SYNC ====================
+    function startCloudSyncListener() {
+        if (!firebaseActive || !auth.currentUser) return;
+
+        const userRef = db.ref('users/' + auth.currentUser.uid + '/saveState');
+        
+        // Listen for ANY change made by other devices
+        userRef.on('value', (snapshot) => {
+            const cloudData = snapshot.val();
+            
+            if (cloudData && cloudData.lastSaveTime) {
+                // Only update if the cloud data is NEWER than our current local data
+                if (cloudData.lastSaveTime > playerState.lastSaveTime) {
+                    console.log("🔄 Cross-device sync: Cloud data is newer. Updating UI...");
+                    
+                    // Update the local state
+                    Object.assign(playerState, cloudData);
+                    
+                    // Refresh everything the player sees
+                    updateStatsUI();
+                    updateMapPageStructure();
+                    renderInventoryTray();
+                    renderShop();
+                    // No need to call saveGame here, as that would trigger the other device
+                    localStorage.setItem('miner_save', JSON.stringify(playerState));
+                }
+            }
+        });
+    }
+
   // Periodically Check and Claim Pending Earnings from Successful Sales (Grouped Version)
   function claimPendingEarnings() {
     if (
@@ -3629,6 +3662,9 @@ document.addEventListener("DOMContentLoaded", () => {
         playerState.saveMode = "cloud";
         if (user.displayName) playerState.username = user.displayName;
 
+        // NEW: Start listening for changes from other devices!
+        startCloudSyncListener();
+
         // Refresh market to show "Buy" buttons for items you don't own
         renderMarketplace();
         claimPendingEarnings();
@@ -3636,6 +3672,8 @@ document.addEventListener("DOMContentLoaded", () => {
         playerState.saveMode = "local";
         // Refresh market to show "Guest" view (Buy buttons disabled/inspect only)
         renderMarketplace();
+        // Optional: Stop listening if signed out
+        if (auth.currentUser) db.ref('users/' + auth.currentUser.uid + '/saveState').off();
       }
       updateStatsUI();
     });
