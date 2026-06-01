@@ -318,7 +318,7 @@ document.addEventListener("DOMContentLoaded", () => {
           playerState.rebirthMultiplier += 0.25;
           playerState.xpMultiplier += 0.1;
 
-          // 2. WIPE Progress
+          // 2. IPE Progress
           playerState.money = 200;
           playerState.level = 1;
           playerState.xp = 0;
@@ -1103,11 +1103,15 @@ document.addEventListener("DOMContentLoaded", () => {
             if (item.mutation && item.mutation !== 'Normal') {
                 prefix += `${item.mutation.replace(' Mutation', '')} `;
             }
+            
+            // Get the final value of the mined ore
+            const finVal = Math.floor((item.finalValue || item.baseValue) * playerState.sellMultiplier * playerState.rebirthMultiplier);
     
             card.innerHTML = `
                 ${item.isNew ? '<span class="new-badge">NEW</span>' : ''}
                 <div class="loot-icon">${item.icon || '🪨'}</div>
                 <span class="loot-name">${prefix}${item.name}</span>
+                <span class="loot-name">🪙 ${formatMoney(finVal, true)}</span>
             `;
 
             card.addEventListener('click', () => {
@@ -1132,9 +1136,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 const stats = [
                     { label: "Rarity", value: rarityLabels[item.rarity] || item.rarity.toUpperCase() },
                     { label: "Origin", value: `🧗 ${sourceCave}` },
-                    { label: "Weight", value: `⚖️ ${displayWeight} kg ${playerState.hasWeightPass ? "X2" : "X1"}` },
-                    { label: "Value", value: `🪙 ${formatMoney(itemPrice)}` },
-                    { label: "Modifier", value: `${item.variant || 'Normal'} x Mut.` }
+                    { label: "Variant Mutation", value: `${item.variant || 'Normal'}` },
+                    { label: "Mutation", value: `${item.mutation}` },
+                    { label: "Weight", value: `⚖️ ${displayWeight} kg` },
+                    { label: "Value", value: `🪙 ${formatMoney(itemPrice)}` }
                 ];
     
                 openDetailModal(`${prefix}${item.name}`, item.icon || '🪨', description, stats);
