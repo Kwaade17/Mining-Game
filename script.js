@@ -34,7 +34,7 @@ let isShuttingDown = false; // Prevents background saves during reset
 
 document.addEventListener("DOMContentLoaded", () => {
   // ==================== SESSION STATE ====================
-  const GAME_VERSION = "2.3.2"; // Active version used to check shop updates
+  const GAME_VERSION = "2.4.0"; // Active version used to check shop updates
 
   const playerState = {
     username: "", // Custom player display name
@@ -290,7 +290,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function triggerRebirth() {
-    if (playerState.level < 100) {
+    if (playerState.level < 50) {
       SoundEngine.playError();
       showNotification(
         "Locked",
@@ -1033,7 +1033,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (rebirthBtn) {
       // Show button if Lvl 100+
-      rebirthBtn.style.display = playerState.level >= 100 ? "block" : "none";
+      rebirthBtn.style.display = playerState.level >= 50 ? "block" : "none";
       rebirthBtn.onclick = triggerRebirth;
     }
 
