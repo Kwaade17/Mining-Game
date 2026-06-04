@@ -2269,3 +2269,15 @@ body {
     animation: etherealGlow 3s infinite ease-in-out;
     border-color: #fff !important;
 }
+
+/* ==================== MARKETPLACE RARITY GLOWS ==================== */
+.market-card.epic { border-color: #a855f7 !important; }
+.market-card.legendary { border-color: #eab308 !important; box-shadow: 0 0 10px rgba(234, 179, 8, 0.2); }
+.market-card.mythic { border-color: #ef4444 !important; box-shadow: 0 0 15px rgba(239, 68, 68, 0.3); }
+
+/* Ethereal Market Card - Rare Ghostly Effect */
+.market-card.ethereal {
+    animation: etherealGlow 3s infinite ease-in-out;
+    border-color: #fff !important;
+    background: linear-gradient(135deg, #1a1a1a, #2e1065) !important;
+}

@@ -3187,7 +3187,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const card = document.createElement("div");
-      card.className = "market-card";
+      const rarityClass = item.itemDetails ? item.itemDetails.rarity : 'common';
+      card.className = `market-card ${rarityClass}`;
 
       const currencySymbol = item.currency === "tokens" ? "🎟️" : "🪙";
       const priceText = `${currencySymbol} ${formatMoney(item.price, true)}`;
@@ -3222,6 +3223,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
       marketList.appendChild(card);
     });
+    
+    const marketSearch = document.getElementById('marketSearch');
+    if (marketSearch) {
+        marketSearch.addEventListener('input', renderMarketplace);
+    }
 
     // Bind Action Listeners
     marketList.querySelectorAll(".buy-listing-btn").forEach((btn) => {
@@ -3469,37 +3475,38 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  // Monitor live marketplace database node (FIXED: Reliable Live Sync)
+  // Monitor live marketplace database node
   if (firebaseActive) {
-    db.ref("marketplace").on(
-      "value",
-      (snapshot) => {
-        console.log("📦 Marketplace Update Received from Server.");
-        activeMarketListings = [];
+      db.ref('marketplace').on('value', (snapshot) => {
+          activeMarketListings = [];
+          const currentUid = auth.currentUser ? auth.currentUser.uid : null;
 
-        snapshot.forEach((child) => {
-          activeMarketListings.push(child.val());
-        });
+          snapshot.forEach((child) => {
+              const item = child.val();
+              activeMarketListings.push(item);
 
-        // Re-run sorting: Active top, Newest first, Sold bottom
-        activeMarketListings.sort((a, b) => {
-          if (a.status === "active" && b.status === "sold") return -1;
-          if (a.status === "sold" && b.status === "active") return 1;
-          return b.createdTime - a.createdTime;
-        });
+              // NEW: Instant Notification if YOUR item was just bought while you are online
+              if (item.sellerId === currentUid && item.status === "sold" && item.earningsClaimed === false) {
+                  // Check if we already showed a notification for this specific item in this session
+                  if (!sessionStorage.getItem(`notified_sold_${item.id}`)) {
+                      showNotification("💰 Item Sold!", `Your ${item.oreName} was purchased for ${item.currency === 'tokens' ? '🎟️' : '🪙'} ${formatMoney(item.price)}!`, "sell", 5000);
+                      SoundEngine.playCoin();
+                      sessionStorage.setItem(`notified_sold_${item.id}`, "true");
+                      
+                      // Automatically trigger the claim modal
+                      setTimeout(claimPendingEarnings, 1000);
+                  }
+              }
+          });
 
-        // Force UI update
-        renderMarketplace();
-
-        // Check for earnings if we are logged in
-        if (auth.currentUser) {
-          claimPendingEarnings();
-        }
-      },
-      (error) => {
-        console.error("Marketplace Listener Error:", error);
-      },
-    );
+          // ... (keep your existing sorting logic below) ...
+          activeMarketListings.sort((a, b) => {
+              if (a.status === "active" && b.status === "sold") return -1;
+              if (a.status === "sold" && b.status === "active") return 1;
+              return b.createdTime - a.createdTime;
+          });
+          renderMarketplace();
+      });
   }
 
   // ==================== AUTHENTICATION & DATA MIGRATION ENGINE ====================
