@@ -3840,28 +3840,36 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
   
-  // ==================== LIVE PRESENCE SYSTEM ====================
+  // ==================== LIVE PRESENCE SYSTEM (REFINED) ====================
   function initPresenceSystem() {
     if (!firebaseActive) return;
     
     const onlineCountEl = document.getElementById('onlineCount');
-    // We use a specific node to track active connections
     const connectionsRef = db.ref('status/connections');
+    
+    // Use a persistent reference for this specific session
     const myConnRef = connectionsRef.push();
     
-    // Monitor connection state
+    // Monitor connection state via Firebase internal .info node
     db.ref('.info/connected').on('value', (snap) => {
       if (snap.val() === true) {
-        // When this browser tab closes, Firebase automatically removes this node
+        // When tab is closed or internet is lost, remove this miner from the count
         myConnRef.onDisconnect().remove();
-        myConnRef.set(true);
+        
+        // Add this connection to the server
+        myConnRef.set({
+          active: true,
+          lastActive: firebase.database.ServerValue.TIMESTAMP
+        });
       }
     });
     
-    // Update the UI whenever the total count changes
+    // Listen for server-wide changes to the connection list
     connectionsRef.on('value', (snap) => {
+      const count = snap.numChildren();
       if (onlineCountEl) {
-        onlineCountEl.textContent = snap.numChildren() || 1;
+        // Always show at least 1 (yourself)
+        onlineCountEl.textContent = count > 0 ? count : 1;
       }
     });
   }
