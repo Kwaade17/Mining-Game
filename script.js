@@ -34,7 +34,7 @@ let isShuttingDown = false; // Prevents background saves during reset
 
 document.addEventListener("DOMContentLoaded", () => {
   // ==================== SESSION STATE ====================
-  const GAME_VERSION = "2.3.0"; // Active version used to check shop updates
+  const GAME_VERSION = "2.3.1"; // Active version used to check shop updates
 
   const playerState = {
     username: "", // Custom player display name
@@ -338,6 +338,9 @@ document.addEventListener("DOMContentLoaded", () => {
             "level-up",
             6000,
           );
+          
+          // Inside the callback of the rebirth modal:
+          logGlobalEvent(`🔥 ${playerState.username} has ASCENDED to Rebirth Rank ${playerState.rebirthCount}!`);
 
           saveGame();
           updateMapPageStructure(); // Re-lock caves
@@ -1055,6 +1058,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (playerState.xp >= playerState.xpNeeded) {
       playerState.xp -= playerState.xpNeeded;
       playerState.level += 1;
+      
+      // Inside the if (playerState.xp >= playerState.xpNeeded) block:
+      logGlobalEvent(`${playerState.username} reached Level ${playerState.level}!`);
 
       // NERF: Increased progression difficulty from 1.5x to 1.6x curve
       playerState.xpNeeded = Math.floor(playerState.xpNeeded * 1.2);
@@ -1331,8 +1337,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     playerState.inventory.push(newOre);
     
-    if (newOre.rarity === "legendary" || newOre.rarity === "mythic") {
-      logGlobalEvent(`${playerState.username} just extracted a ${newOre.rarity} ${newOre.name}!`);
+    // Change your rarity check to:
+    if (newOre.rarity === "rare" || newOre.rarity === "epic" || newOre.rarity === "legendary" || newOre.rarity === "mythic") {
+        logGlobalEvent(`${playerState.username} found a ${newOre.rarity} ${newOre.name}!`);
     }
 
     // ==================== SECRET ACHIEVEMENTS TRIGGERS ====================
@@ -3785,15 +3792,43 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
   
-  // ==================== GLOBAL ACTIVITY LOG ====================
-  function logGlobalEvent(message) {
-      if (!firebaseActive) return;
-      const logRef = db.ref('activity_log').push();
-      logRef.set({
-          text: message,
-          timestamp: firebase.database.ServerValue.TIMESTAMP
-      });
-  }
+  // ==================== GLOBAL ACTIVITY LOG (v2.3.1) ====================
+    function logGlobalEvent(message) {
+        if (!firebaseActive || !auth.currentUser) return;
+        
+        console.log("📡 Attempting to log event:", message); // Debug log
+        
+        const logRef = db.ref('activity_log').push();
+        logRef.set({
+            text: message,
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        }).catch(err => console.error("Logger Database Error:", err));
+    }
+
+    // Listener for the Log
+    if (firebaseActive) {
+        // We limit to last 8 events for a better filled look
+        db.ref('activity_log').limitToLast(8).on('value', (snapshot) => {
+            const feed = document.getElementById('activityFeed');
+            if (!feed) return;
+            
+            feed.innerHTML = '';
+            
+            if (!snapshot.exists()) {
+                feed.innerHTML = '<div>Waiting for cavern activity...</div>';
+                return;
+            }
+
+            snapshot.forEach(child => {
+                const data = child.val();
+                const entry = document.createElement('div');
+                entry.style.padding = "4px 0";
+                entry.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
+                entry.innerHTML = `<span style="color:var(--gold-accent); margin-right: 5px;">⚡</span> ${data.text}`;
+                feed.prepend(entry); // Newest at the top
+            });
+        });
+    }
 
     // Listener for the Log (Put this in your initialization)
     if (firebaseActive) {
