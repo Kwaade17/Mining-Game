@@ -2281,3 +2281,10 @@ body {
     border-color: #fff !important;
     background: linear-gradient(135deg, #1a1a1a, #2e1065) !important;
 }
+
+/* ==================== LIVE PRESENCE PULSE ==================== */
+@keyframes pulseGlow {
+    0% { opacity: 0.5; filter: drop-shadow(0 0 0px #4ade80); }
+    50% { opacity: 1; filter: drop-shadow(0 0 4px #4ade80); }
+    100% { opacity: 0.5; filter: drop-shadow(0 0 0px #4ade80); }
+}

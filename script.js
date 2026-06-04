@@ -3140,11 +3140,9 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderMarketplace() {
       if (!marketList) return;
 
-      // 1. Get the search text from the input bar
       const searchInput = document.getElementById('marketSearch');
       const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
       
-      // 2. Show loading state if data hasn't arrived from server yet
       if (firebaseActive && activeMarketListings.length === 0 && auth.currentUser) {
           marketList.innerHTML = `<div class="empty-inv" style="text-align: center; padding: 25px;"><i class="fa-solid fa-spinner fa-spin"></i> Checking for server listings...</div>`;
           return;
@@ -3152,15 +3150,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       marketList.innerHTML = '';
 
-      // 3. NEW: Filter the master list based on your search
       const filteredListings = activeMarketListings.filter(item => {
           const nameMatch = item.oreName.toLowerCase().includes(searchQuery);
           const sellerMatch = item.sellerName ? item.sellerName.toLowerCase().includes(searchQuery) : false;
-          // Return item if name OR seller matches the search
           return nameMatch || sellerMatch;
       });
 
-      // 4. Handle Empty or "No Results" states
       if (filteredListings.length === 0) {
           const msg = searchQuery === '' ? "No items currently listed on the server." : "No ores found matching your search.";
           marketList.innerHTML = `<div class="empty-inv" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 25px;">${msg}</div>`;
@@ -3170,17 +3165,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const now = Date.now();
       const currentUserId = auth.currentUser ? auth.currentUser.uid : null;
 
-      // 5. Build cards only for the filtered items
       filteredListings.forEach(item => {
-          // Self-cleaning logic (stays the same as your current code)
           if (item.status === "sold" && item.soldTime && (now - item.soldTime > 24 * 60 * 60 * 1000)) {
               if (firebaseActive) db.ref('marketplace/' + item.id).remove();
               return;
           }
 
           const card = document.createElement('div');
-          
-          // Add Rarity Glow to the card class
           const rarityClass = (item.itemDetails && item.itemDetails.rarity) ? item.itemDetails.rarity : 'common';
           card.className = `market-card ${rarityClass}`;
 
@@ -3197,7 +3188,7 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
           card.innerHTML = `
-              <div class="market-info-block">
+              <div class="market-info-block" style="cursor: zoom-in;" title="Click to inspect specimen">
                   <div class="circle-icon" style="width: 36px; height: 36px; font-size: 1.15rem;">${item.oreIcon}</div>
                   <div class="market-details">
                       <span class="market-ore-name">${item.oreName}</span>
@@ -3209,10 +3200,30 @@ document.addEventListener("DOMContentLoaded", () => {
                   ${controlHtml}
               </div>`;
 
+          // NEW: Add the click-to-inspect listener for the info block
+          const infoArea = card.querySelector('.market-info-block');
+          if (infoArea) {
+              infoArea.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  SoundEngine.playClick();
+                  
+                  const ore = item.itemDetails; // The original mined object
+                  const stats = [
+                      { label: "Rarity Tier", value: (ore.rarity || "Common").toUpperCase() },
+                      { label: "Specimen Weight", value: `⚖️ ${ore.actualWeight || 0} kg` },
+                      { label: "Variant Mutation", value: ore.variant || "Normal" },
+                      { label: "Active Mutation", value: ore.mutation || "Normal" },
+                      { label: "Server Listing Price", value: `${currencySymbol} ${formatMoney(item.price)}` }
+                  ];
+
+                  openDetailModal(`Inspect: ${item.oreName}`, item.oreIcon, "This specimen was extracted from the caverns and is now available for trade. Review its properties before finalizing the purchase.", stats);
+              });
+          }
+
           marketList.appendChild(card);
       });
 
-      // Re-bind Action Listeners
+      // Re-bind buttons
       marketList.querySelectorAll('.buy-listing-btn').forEach(btn => {
           btn.addEventListener('click', (e) => { e.stopPropagation(); buyMarketplaceItem(btn.getAttribute('data-id')); });
       });
@@ -3688,7 +3699,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (user) {
         playerState.saveMode = "cloud";
         if (user.displayName) playerState.username = user.displayName;
-
+        
         // Load cloud save data for cross-device synchronization (v2.2.7)
         loadCloudSave().then(() => {
           // After cloud save is loaded, refresh UI and marketplace
@@ -3776,58 +3787,84 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   
   // ==================== GLOBAL ACTIVITY LOG (v2.3.1) ====================
-    function logGlobalEvent(message) {
-        if (!firebaseActive || !auth.currentUser) return;
-        
-        console.log("📡 Attempting to log event:", message); // Debug log
-        
-        const logRef = db.ref('activity_log').push();
-        logRef.set({
-            text: message,
-            timestamp: firebase.database.ServerValue.TIMESTAMP
-        }).catch(err => console.error("Logger Database Error:", err));
-    }
+  function logGlobalEvent(message) {
+      if (!firebaseActive || !auth.currentUser) return;
+      
+      console.log("📡 Attempting to log event:", message); // Debug log
+      
+      const logRef = db.ref('activity_log').push();
+      logRef.set({
+          text: message,
+          timestamp: firebase.database.ServerValue.TIMESTAMP
+      }).catch(err => console.error("Logger Database Error:", err));
+  }
 
-    // Listener for the Log
-    if (firebaseActive) {
-        // We limit to last 8 events for a better filled look
-        db.ref('activity_log').limitToLast(8).on('value', (snapshot) => {
-            const feed = document.getElementById('activityFeed');
-            if (!feed) return;
-            
-            feed.innerHTML = '';
-            
-            if (!snapshot.exists()) {
-                feed.innerHTML = '<div>Waiting for cavern activity...</div>';
-                return;
-            }
+  // Listener for the Log
+  if (firebaseActive) {
+      // We limit to last 8 events for a better filled look
+      db.ref('activity_log').limitToLast(8).on('value', (snapshot) => {
+          const feed = document.getElementById('activityFeed');
+          if (!feed) return;
+          
+          feed.innerHTML = '';
+          
+          if (!snapshot.exists()) {
+              feed.innerHTML = '<div>Waiting for cavern activity...</div>';
+              return;
+          }
 
-            snapshot.forEach(child => {
-                const data = child.val();
-                const entry = document.createElement('div');
-                entry.style.padding = "4px 0";
-                entry.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
-                entry.innerHTML = `<span style="color:var(--gold-accent); margin-right: 5px;">⚡</span> ${data.text}`;
-                feed.prepend(entry); // Newest at the top
-            });
-        });
-    }
+          snapshot.forEach(child => {
+              const data = child.val();
+              const entry = document.createElement('div');
+              entry.style.padding = "4px 0";
+              entry.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
+              entry.innerHTML = `<span style="color:var(--gold-accent); margin-right: 5px;">⚡</span> ${data.text}`;
+              feed.prepend(entry); // Newest at the top
+          });
+      });
+  }
 
-    // Listener for the Log (Put this in your initialization)
-    if (firebaseActive) {
-        db.ref('activity_log').limitToLast(5).on('value', (snapshot) => {
-            const feed = document.getElementById('activityFeed');
-            if (!feed) return;
-            feed.innerHTML = '';
-            snapshot.forEach(child => {
-                const entry = document.createElement('div');
-                entry.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
-                entry.style.paddingBottom = "2px";
-                entry.innerHTML = `<i class="fa-solid fa-bolt" style="color:var(--gold-accent); font-size:0.5rem;"></i> ${child.val().text}`;
-                feed.prepend(entry); // Newest at the top
-            });
-        });
-    }
+  // Listener for the Log (Put this in your initialization)
+  if (firebaseActive) {
+      db.ref('activity_log').limitToLast(5).on('value', (snapshot) => {
+          const feed = document.getElementById('activityFeed');
+          if (!feed) return;
+          feed.innerHTML = '';
+          snapshot.forEach(child => {
+              const entry = document.createElement('div');
+              entry.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
+              entry.style.paddingBottom = "2px";
+              entry.innerHTML = `<i class="fa-solid fa-bolt" style="color:var(--gold-accent); font-size:0.5rem;"></i> ${child.val().text}`;
+              feed.prepend(entry); // Newest at the top
+          });
+      });
+  }
+  
+  // ==================== LIVE PRESENCE SYSTEM ====================
+  function initPresenceSystem() {
+    if (!firebaseActive) return;
+    
+    const onlineCountEl = document.getElementById('onlineCount');
+    // We use a specific node to track active connections
+    const connectionsRef = db.ref('status/connections');
+    const myConnRef = connectionsRef.push();
+    
+    // Monitor connection state
+    db.ref('.info/connected').on('value', (snap) => {
+      if (snap.val() === true) {
+        // When this browser tab closes, Firebase automatically removes this node
+        myConnRef.onDisconnect().remove();
+        myConnRef.set(true);
+      }
+    });
+    
+    // Update the UI whenever the total count changes
+    connectionsRef.on('value', (snap) => {
+      if (onlineCountEl) {
+        onlineCountEl.textContent = snap.numChildren() || 1;
+      }
+    });
+  }
 
   // ==================== INITIALIZATION ====================
   loadGame(); // Restore progress from local storage on reload
@@ -3840,6 +3877,8 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Start the listener
   startUpdateListener();
+  
+  initPresenceSystem();
 
   // ==================== DEVELOPER TOOLS ENGINE ====================
   const DEV_UID = "ZaOjo0lPMTYrHnA8sK5769agLO52"; // <--- CHANGE THIS!
