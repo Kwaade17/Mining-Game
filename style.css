@@ -2254,3 +2254,18 @@ body {
         top: 70px !important;
     }
 }
+
+/* ==================== RARITY AURAS (v2.3.0) ==================== */
+.loot-item-square[class*="mythic"] { box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); border-color: #ef4444 !important; }
+.loot-item-square[class*="legendary"] { box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); border-color: #f59e0b !important; }
+
+/* Ethereal - Pulsing Ghostly Aura */
+@keyframes etherealGlow {
+    0% { box-shadow: 0 0 5px #fff; }
+    50% { box-shadow: 0 0 20px #fff, 0 0 30px #6366f1; }
+    100% { box-shadow: 0 0 5px #fff; }
+}
+.loot-item-square[class*="ethereal"] {
+    animation: etherealGlow 3s infinite ease-in-out;
+    border-color: #fff !important;
+}

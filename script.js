@@ -34,7 +34,7 @@ let isShuttingDown = false; // Prevents background saves during reset
 
 document.addEventListener("DOMContentLoaded", () => {
   // ==================== SESSION STATE ====================
-  const GAME_VERSION = "2.2.8"; // Active version used to check shop updates
+  const GAME_VERSION = "2.3.0"; // Active version used to check shop updates
 
   const playerState = {
     username: "", // Custom player display name
@@ -1330,6 +1330,10 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     playerState.inventory.push(newOre);
+    
+    if (newOre.rarity === "legendary" || newOre.rarity === "mythic") {
+      logGlobalEvent(`${playerState.username} just extracted a ${newOre.rarity} ${newOre.name}!`);
+    }
 
     // ==================== SECRET ACHIEVEMENTS TRIGGERS ====================
     // 1. Ethereal Gaze Secret Unlock (Mine an Ethereal mutation)
@@ -3354,6 +3358,8 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
           playerState.inventory.push(listing.itemDetails);
+          
+          logGlobalEvent(`${listing.buyerName} purchased ${listing.oreName} from ${listing.sellerName}!`);
 
           SoundEngine.playLevelUp();
           showNotification(
@@ -3778,6 +3784,32 @@ document.addEventListener("DOMContentLoaded", () => {
           }, 1000);
       });
   }
+  
+  // ==================== GLOBAL ACTIVITY LOG ====================
+  function logGlobalEvent(message) {
+      if (!firebaseActive) return;
+      const logRef = db.ref('activity_log').push();
+      logRef.set({
+          text: message,
+          timestamp: firebase.database.ServerValue.TIMESTAMP
+      });
+  }
+
+    // Listener for the Log (Put this in your initialization)
+    if (firebaseActive) {
+        db.ref('activity_log').lmitToLast(5).on('value', (snapshot) => {
+            const feed = document.getElementById('activityFeed');
+            if (!feed) return;
+            feed.innerHTML = '';
+            snapshot.forEach(child => {
+                const entry = document.createElement('div');
+                entry.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
+                entry.style.paddingBottom = "2px";
+                entry.innerHTML = `<i class="fa-solid fa-bolt" style="color:var(--gold-accent); font-size:0.5rem;"></i> ${child.val().text}`;
+                feed.prepend(entry); // Newest at the top
+            });
+        });
+    }
 
   // ==================== INITIALIZATION ====================
   loadGame(); // Restore progress from local storage on reload
