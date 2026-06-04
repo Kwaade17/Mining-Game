@@ -34,7 +34,7 @@ let isShuttingDown = false; // Prevents background saves during reset
 
 document.addEventListener("DOMContentLoaded", () => {
   // ==================== SESSION STATE ====================
-  const GAME_VERSION = "2.3.1"; // Active version used to check shop updates
+  const GAME_VERSION = "2.3.2"; // Active version used to check shop updates
 
   const playerState = {
     username: "", // Custom player display name
@@ -2421,6 +2421,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+  
+  // Inside DOMContentLoaded:
+  const marketSearchInput = document.getElementById('marketSearch');
+  if (marketSearchInput) {
+      // Every time you type a letter, it triggers the render function
+      marketSearchInput.addEventListener('input', renderMarketplace);
+  }
 
   // ==================== SEARCH/FILTER SYSTEM ====================
   function filterShopItems() {
@@ -3129,120 +3136,89 @@ document.addEventListener("DOMContentLoaded", () => {
     leaderCatSelect.addEventListener("change", renderLeaderboard);
   }
 
-  // Render Live Marketplace Listings
+  // Render Live Marketplace Listings (v2.3.2 - With Search Filtering)
   function renderMarketplace() {
-    if (!marketList) return;
+      if (!marketList) return;
 
-    // 1. Show loading if Firebase is working but array is still empty
-    if (firebaseActive && activeMarketListings.length === 0) {
-      marketList.innerHTML = `<div class="empty-inv" style="text-align: center; padding: 25px;"><i class="fa-solid fa-spinner fa-spin"></i> Checking for server listings...</div>`;
-      return;
-    }
-
-    marketList.innerHTML = "";
-
-    // 2. Real "No items found" state
-    if (activeMarketListings.length === 0) {
-      marketList.innerHTML = `<div class="empty-inv" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 25px;">No items currently listed on the server.</div>`;
-      return;
-    }
-
-    const now = Date.now();
-    const currentUserId = auth.currentUser ? auth.currentUser.uid : null;
-
-    activeMarketListings.forEach((item) => {
-      // Self-cleaning: If an item was sold more than 24 hours ago, remove it from the database silently
-      if (
-        item.status === "sold" &&
-        item.soldTime &&
-        now - item.soldTime > 24 * 60 * 60 * 1000
-      ) {
-        if (firebaseActive) db.ref("marketplace/" + item.id).remove();
-        return;
+      // 1. Get the search text from the input bar
+      const searchInput = document.getElementById('marketSearch');
+      const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+      
+      // 2. Show loading state if data hasn't arrived from server yet
+      if (firebaseActive && activeMarketListings.length === 0 && auth.currentUser) {
+          marketList.innerHTML = `<div class="empty-inv" style="text-align: center; padding: 25px;"><i class="fa-solid fa-spinner fa-spin"></i> Checking for server listings...</div>`;
+          return;
       }
 
-      // Self-cleaning: If an active item has been listed for more than 7 days, return it to the owner
-      if (item.status === "active" && now > item.expiryTime) {
-        if (currentUserId === item.sellerId && firebaseActive) {
-          // Return the ore to the seller's inventory
-          playerState.inventory.push(item.itemDetails);
-          db.ref("marketplace/" + item.id)
-            .remove()
-            .then(() => {
-              saveGame();
-              renderInventoryTray();
-              updateStatsUI();
-              showNotification(
-                "Listing Expired",
-                `Your listing for ${item.oreName} has expired (7 days) and returned to your inventory.`,
-                "shop",
-                5000,
-              );
-            });
-        } else if (firebaseActive) {
-          // Clear the expired listing for other players
-          db.ref("marketplace/" + item.id).remove();
-        }
-        return;
-      }
+      marketList.innerHTML = '';
 
-      const card = document.createElement("div");
-      const rarityClass = item.itemDetails ? item.itemDetails.rarity : 'common';
-      card.className = `market-card ${rarityClass}`;
-
-      const currencySymbol = item.currency === "tokens" ? "🎟️" : "🪙";
-      const priceText = `${currencySymbol} ${formatMoney(item.price, true)}`;
-
-      // Build dynamic controls based on player states and relations
-      let controlHtml = "";
-      if (item.status === "sold") {
-        controlHtml = `<span class="market-badge-sold">Sold</span>`;
-      } else if (currentUserId === item.sellerId) {
-        // If it is their own item, display an edit/cancel button to reclaim it
-        controlHtml = `
-                    <div style="display: flex; gap: 6px;">
-                        <button class="nav-btn cancel-listing-btn" data-id="${item.id}" style="background-color: #3b0707; border-color: #7f1d1d; color: #fca5a5; padding: 4px 8px; font-size: 0.7rem;"><i class="fa-solid fa-trash-can"></i> Reclaim</button>
-                    </div>`;
-      } else {
-        // If it is another player's item, display the buy trigger
-        controlHtml = `<button class="card-buy-btn buy-listing-btn" data-id="${item.id}" style="width: auto; padding: 4px 12px; font-size: 0.72rem;">Buy</button>`;
-      }
-
-      card.innerHTML = `
-                <div class="market-info-block">
-                    <div class="circle-icon" style="width: 36px; height: 36px; font-size: 1.15rem;">${item.oreIcon}</div>
-                    <div class="market-details">
-                        <span class="market-ore-name">${item.oreName}</span>
-                        <span class="market-seller-label">Seller: ${item.sellerName || "Anonymous Miner"}</span>
-                    </div>
-                </div>
-                <div class="market-meta-block">
-                    <span class="market-price-tag">${priceText}</span>
-                    ${controlHtml}
-                </div>`;
-
-      marketList.appendChild(card);
-    });
-    
-    const marketSearch = document.getElementById('marketSearch');
-    if (marketSearch) {
-        marketSearch.addEventListener('input', renderMarketplace);
-    }
-
-    // Bind Action Listeners
-    marketList.querySelectorAll(".buy-listing-btn").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        buyMarketplaceItem(btn.getAttribute("data-id"));
+      // 3. NEW: Filter the master list based on your search
+      const filteredListings = activeMarketListings.filter(item => {
+          const nameMatch = item.oreName.toLowerCase().includes(searchQuery);
+          const sellerMatch = item.sellerName ? item.sellerName.toLowerCase().includes(searchQuery) : false;
+          // Return item if name OR seller matches the search
+          return nameMatch || sellerMatch;
       });
-    });
 
-    marketList.querySelectorAll(".cancel-listing-btn").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        cancelMarketplaceListing(btn.getAttribute("data-id"));
+      // 4. Handle Empty or "No Results" states
+      if (filteredListings.length === 0) {
+          const msg = searchQuery === '' ? "No items currently listed on the server." : "No ores found matching your search.";
+          marketList.innerHTML = `<div class="empty-inv" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 25px;">${msg}</div>`;
+          return;
+      }
+
+      const now = Date.now();
+      const currentUserId = auth.currentUser ? auth.currentUser.uid : null;
+
+      // 5. Build cards only for the filtered items
+      filteredListings.forEach(item => {
+          // Self-cleaning logic (stays the same as your current code)
+          if (item.status === "sold" && item.soldTime && (now - item.soldTime > 24 * 60 * 60 * 1000)) {
+              if (firebaseActive) db.ref('marketplace/' + item.id).remove();
+              return;
+          }
+
+          const card = document.createElement('div');
+          
+          // Add Rarity Glow to the card class
+          const rarityClass = (item.itemDetails && item.itemDetails.rarity) ? item.itemDetails.rarity : 'common';
+          card.className = `market-card ${rarityClass}`;
+
+          const currencySymbol = item.currency === "tokens" ? "🎟️" : "🪙";
+          const priceText = `${currencySymbol} ${formatMoney(item.price, true)}`;
+
+          let controlHtml = '';
+          if (item.status === "sold") {
+              controlHtml = `<span class="market-badge-sold">Sold</span>`;
+          } else if (currentUserId === item.sellerId) {
+              controlHtml = `<button class="nav-btn cancel-listing-btn" data-id="${item.id}" style="background-color: #3b0707; border-color: #7f1d1d; color: #fca5a5; padding: 4px 8px; font-size: 0.7rem;"><i class="fa-solid fa-trash-can"></i> Reclaim</button>`;
+          } else {
+              controlHtml = `<button class="card-buy-btn buy-listing-btn" data-id="${item.id}" style="width: auto; padding: 4px 12px; font-size: 0.72rem;">Buy</button>`;
+          }
+
+          card.innerHTML = `
+              <div class="market-info-block">
+                  <div class="circle-icon" style="width: 36px; height: 36px; font-size: 1.15rem;">${item.oreIcon}</div>
+                  <div class="market-details">
+                      <span class="market-ore-name">${item.oreName}</span>
+                      <span class="market-seller-label">Seller: ${item.sellerName || "Anonymous Miner"}</span>
+                  </div>
+              </div>
+              <div class="market-meta-block">
+                  <span class="market-price-tag">${priceText}</span>
+                  ${controlHtml}
+              </div>`;
+
+          marketList.appendChild(card);
       });
-    });
+
+      // Re-bind Action Listeners
+      marketList.querySelectorAll('.buy-listing-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => { e.stopPropagation(); buyMarketplaceItem(btn.getAttribute('data-id')); });
+      });
+      marketList.querySelectorAll('.cancel-listing-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => { e.stopPropagation(); cancelMarketplaceListing(btn.getAttribute('data-id')); });
+      });
   }
 
   // Cancel / Reclaim Listing Logic
