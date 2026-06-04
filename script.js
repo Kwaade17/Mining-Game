@@ -34,7 +34,7 @@ let isShuttingDown = false; // Prevents background saves during reset
 
 document.addEventListener("DOMContentLoaded", () => {
   // ==================== SESSION STATE ====================
-  const GAME_VERSION = "2.2.7"; // Active version used to check shop updates
+  const GAME_VERSION = "2.2.8"; // Active version used to check shop updates
 
   const playerState = {
     username: "", // Custom player display name
@@ -52,6 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
     hasWeightPass: false, // <-- This is my own pass
     tokenSubTimer: 0, // <-- ADD THIS
     lastClaimTime: 0, // <-- ADD THIS (Daily Claim timestamp)
+    currentVersion: "2.2.8", // <-- ADD THIS: Tracks the player's acknowledged version
     saveMode: "local", // <-- ADD THIS (local or cloud)
     currentEnergy: 100,
     maxEnergy: 100,
@@ -448,6 +449,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         Object.assign(playerState, parsed);
+        
+        // --- VERSION CHECKER (SILENT UPGRADE) ---
+        // Only upgrade if the code version is actually different from the save
+        if (playerState.currentVersion !== GAME_VERSION) {
+            console.log(`System: Code version (${GAME_VERSION}) differs from Save version (${playerState.currentVersion}). Syncing...`);
+            playerState.currentVersion = GAME_VERSION;
+            saveGame(); 
+        }
 
         // Fix: Initialize buffs and unlockedOres if missing from older save formats
         if (!playerState.buffs) {
@@ -3706,6 +3715,70 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // ==================== LIVE UPDATE NOTIFIER (LOOP-PROOF) ====================
+  function startUpdateListener() {
+      if (!firebaseActive) return;
+
+      db.ref('config/live_version').on('value', (snapshot) => {
+          const serverVersion = snapshot.val();
+          if (!serverVersion) return;
+
+          // 1. If Code and Server match, make sure the Save reflects that and STOP.
+          if (serverVersion === GAME_VERSION) {
+              if (playerState.currentVersion !== GAME_VERSION) {
+                  playerState.currentVersion = GAME_VERSION;
+                  saveGame();
+              }
+              return; 
+          }
+
+          // 2. CIRCUIT BREAKER: If we already tried refreshing for this specific version, don't show the modal again.
+          // This prevents the loop if the browser cache is serving old code.
+          if (sessionStorage.getItem('update_attempted_version') === serverVersion) {
+              console.log("System: Update available, but refresh already attempted for v" + serverVersion);
+              return;
+          }
+
+          // 3. If we are here, it means Server > Code and we haven't tried refreshing yet.
+          console.log("🚀 Update Found: Server v" + serverVersion + " | Current v" + GAME_VERSION);
+          
+          const updateMessage = `
+              <div style="text-align: center;">
+                  <p>Hey <strong>${playerState.username || "Miner"}</strong>!</p>
+                  <p>A new update (v${serverVersion}) is ready.</p>
+                  <p>Auto-refreshing in <span id="updateTimer" style="color: var(--gold-accent); font-weight:bold;">30</span> seconds...</p>
+                  <hr style="border: 0; border-top: 1px solid #333; margin: 15px 0;">
+                  <p style="font-size: 0.7rem; color: var(--text-muted);">
+                      Updating from v${GAME_VERSION} to v${serverVersion}
+                  </p>
+              </div>
+          `;
+
+          openDetailModal("Cavern Maintenance 🚀", "⚙️", updateMessage, []);
+
+          let secondsLeft = 30;
+          const countdownInterval = setInterval(() => {
+              secondsLeft--;
+              const timerEl = document.getElementById('updateTimer');
+              if (timerEl) timerEl.textContent = secondsLeft;
+
+              if (secondsLeft <= 0) {
+                  clearInterval(countdownInterval);
+                  
+                  // Mark this version as "attempted" so we don't loop
+                  sessionStorage.setItem('update_attempted_version', serverVersion);
+                  
+                  // Force the save version to update so the DB knows we saw it
+                  playerState.currentVersion = serverVersion;
+                  saveGame(); 
+                  
+                  // Force reload and bypass cache
+                  window.location.reload(true);
+              }
+          }, 1000);
+      });
+  }
+
   // ==================== INITIALIZATION ====================
   loadGame(); // Restore progress from local storage on reload
   checkUserRegistration(); // Call registration check on load
@@ -3713,7 +3786,10 @@ document.addEventListener("DOMContentLoaded", () => {
   updateStatsUI();
   renderInventoryTray();
   renderShop();
-  renderCollections();
+  renderCollections()
+  
+  // Start the listener
+  startUpdateListener();
 
   // ==================== DEVELOPER TOOLS ENGINE ====================
   const DEV_UID = "ZaOjo0lPMTYrHnA8sK5769agLO52"; // <--- CHANGE THIS!
