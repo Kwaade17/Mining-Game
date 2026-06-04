@@ -1104,7 +1104,7 @@ document.addEventListener("DOMContentLoaded", () => {
             
             // Apply variant skin classes (e.g. variant-pure, variant-rainbow)
             const vId = item.variant ? item.variant.toLowerCase() : 'normal';
-            card.className = `loot-item-square variant-${vId}`;
+            card.className = `loot-item-square variant-${vId} ${item.rarity}`;
             
             // Cleaner name display logic
             let prefix = '';
@@ -3797,7 +3797,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Listener for the Log (Put this in your initialization)
     if (firebaseActive) {
-        db.ref('activity_log').lmitToLast(5).on('value', (snapshot) => {
+        db.ref('activity_log').limitToLast(5).on('value', (snapshot) => {
             const feed = document.getElementById('activityFeed');
             if (!feed) return;
             feed.innerHTML = '';

@@ -1201,6 +1201,18 @@ const shopData = [
         versionAdded: "1.8.5",
         releaseDate: "2026-05-24"
     },
+    {
+        id: "earth-core-blast",
+        category: "energy",
+        name: "Earth Core Blast",
+        desc: "Restores 9000 Energy.",
+        cost: 60000,
+        icon: "🌍",
+        energy: 9000,
+        collectionId: null,
+        versionAdded: "2.3.0",
+        releaseDate: "2026-06-04"
+    },
 
     // Boosts / Potions (3 original + 4 new) - Extended Durations to Justify Cost Hikes
     {
