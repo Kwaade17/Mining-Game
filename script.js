@@ -32,9 +32,23 @@ let isProcessingClaim = false; // Prevents multiple revenue modals from stacking
 
 let isShuttingDown = false; // Prevents background saves during reset
 
+let isUpdatePending = false; // Prevents other modals from overlapping during a refresh
+
+// ==================== CHAT SECURITY & FILTERING ====================
+const BANNED_WORDS = ["fuck", "dick", "pussy", "spamlink"]; // Add words you want to block here
+
+function cleanText(text) {
+    let filtered = text;
+    BANNED_WORDS.forEach(word => {
+        const regex = new RegExp(word, "gi");
+        filtered = filtered.replace(regex, "***");
+    });
+    return filtered;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   // ==================== SESSION STATE ====================
-  const GAME_VERSION = "2.4.0"; // Active version used to check shop updates
+  const GAME_VERSION = "2.6.0"; // Active version used to check shop updates
 
   const playerState = {
     username: "", // Custom player display name
@@ -53,6 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tokenSubTimer: 0, // <-- ADD THIS
     lastClaimTime: 0, // <-- ADD THIS (Daily Claim timestamp)
     currentVersion: "2.2.8", // <-- ADD THIS: Tracks the player's acknowledged version
+    lastSeenUpdate: "2.5.0", // Tracks the last patch notes the user read
     saveMode: "local", // <-- ADD THIS (local or cloud)
     currentEnergy: 100,
     maxEnergy: 100,
@@ -452,6 +467,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         Object.assign(playerState, parsed);
+        
+        if (playerState.lastSeenUpdate === undefined) playerState.lastSeenUpdate = "0.0.0";
         
         // --- VERSION CHECKER (SILENT UPGRADE) ---
         // Only upgrade if the code version is actually different from the save
@@ -1336,6 +1353,18 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     playerState.inventory.push(newOre);
+    
+    // ==================== WORLD ANNOUNCEMENT (SHOUT) ====================
+    if (rolledMut.id === "ethereal" || newOre.rarity === "rare" || newOre.rarity === "legendary" || newOre.rarity === "mythic") {
+        const shoutText = `🌟 [${playerState.username}] just found a ${newOre.mutation !== "Normal" ? newOre.mutation + ' ' : ''}${newOre.name}!`;
+        
+        db.ref('global_chat').push({
+            uid: "SYSTEM_SHOUT",
+            type: "shout",
+            text: shoutText,
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+    }
     
     // Change your rarity check to:
     if (newOre.rarity === "rare" || newOre.rarity === "epic" || newOre.rarity === "legendary" || newOre.rarity === "mythic") {
@@ -2527,6 +2556,13 @@ document.addEventListener("DOMContentLoaded", () => {
         if (targetId === "view-collections") renderCollections();
         if (targetId === "view-marketplace") renderMarketplace(); // <-- INSERT THIS
         if (targetId === "view-leaderboard") renderLeaderboard();
+        if (targetId === "view-global-chat") {
+          // Just scroll to the bottom, the listener is already running!
+          setTimeout(() => {
+            chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+            if (window.innerWidth > 768) chatInput.focus();
+          }, 100);
+        }
       }
 
       // Auto-close sidebar on mobile viewports
@@ -3495,6 +3531,54 @@ document.addEventListener("DOMContentLoaded", () => {
           renderMarketplace();
       });
   }
+  
+  // ==================== DYNAMIC ANNOUNCEMENT SYSTEM ====================
+    function checkGameAnnouncement() {
+      if (isUpdatePending) return;
+      
+      if (GAME_VERSION !== gameAnnouncement.version) return;
+      
+      // Only show if the announcement is active and the player hasn't seen THIS version yet
+      if (!gameAnnouncement.active || playerState.lastSeenUpdate === gameAnnouncement.version) return;
+
+      // Build the scrollable info list
+      let infoHtml = `
+          <div style="text-align: left; margin-bottom: 15px;">
+              <span style="background: var(--gold-accent); color: #000; padding: 2px 8px; border-radius: 4px; font-size: 0.6rem; font-weight: bold; text-transform: uppercase;">
+                  ${gameAnnouncement.type} v${gameAnnouncement.version}
+              </span>
+          </div>
+          <div class="announcement-scroll" style="max-height: 250px; overflow-y: auto; padding-right: 8px; text-align: left; display: flex; flex-direction: column; gap: 12px;">
+      `;
+
+      gameAnnouncement.info.forEach(item => {
+          infoHtml += `
+              <div style="border-left: 2px solid var(--gold-accent); padding-left: 10px;">
+                  <h5 style="margin: 0; color: var(--gold-accent); font-size: 0.85rem; text-transform: uppercase;">${item.label}</h5>
+                  <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">${item.desc}</p>
+              </div>
+          `;
+      });
+
+      infoHtml += `</div>`;
+
+      // Trigger the modal
+      openDetailModal(
+          gameAnnouncement.title,
+          "📣",
+          infoHtml,
+          [],
+          {
+              label: "GOT IT, LET'S MINE!",
+              callback: () => {
+                  // Update the player state so it doesn't show again
+                  playerState.lastSeenUpdate = gameAnnouncement.version;
+                  saveGame();
+                  showNotification("System", "Patch notes acknowledged.", "shop");
+              }
+          }
+      );
+  }
 
   // ==================== AUTHENTICATION & DATA MIGRATION ENGINE ====================
   const authModal = document.getElementById("authModal");
@@ -3725,12 +3809,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==================== LIVE UPDATE NOTIFIER (LOOP-PROOF) ====================
   function startUpdateListener() {
       if (!firebaseActive) return;
-
+      
       db.ref('config/live_version').on('value', (snapshot) => {
           const serverVersion = snapshot.val();
           if (!serverVersion) return;
 
-          // 1. If Code and Server match, make sure the Save reflects that and STOP.
           if (serverVersion === GAME_VERSION) {
               if (playerState.currentVersion !== GAME_VERSION) {
                   playerState.currentVersion = GAME_VERSION;
@@ -3745,6 +3828,8 @@ document.addEventListener("DOMContentLoaded", () => {
               console.log("System: Update available, but refresh already attempted for v" + serverVersion);
               return;
           }
+          
+          isUpdatePending = true;
 
           // 3. If we are here, it means Server > Code and we haven't tried refreshing yet.
           console.log("🚀 Update Found: Server v" + serverVersion + " | Current v" + GAME_VERSION);
@@ -3873,6 +3958,83 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+  
+  // ==================== GLOBAL CHAT ENGINE (v2.5.0) ====================
+  const chatInput = document.getElementById('txt-message');
+  const chatSubmitBtn = document.getElementById('btn-chat-submit');
+  const chatMessagesContainer = document.getElementById('chatMessages');
+
+  function sendChatMessage() {
+    if (!firebaseActive || !auth.currentUser) {
+        showNotification("Sign In Required", "You must be logged in to send messages!", "error");
+        return;
+    }
+  
+    let rawText = chatInput.value.trim();
+    if (rawText === "") return;
+  
+    // Apply Filter
+    const filteredText = cleanText(rawText);
+  
+    const msgData = {
+        uid: auth.currentUser.uid,
+        username: playerState.username || "Anonymous Miner",
+        rebirth: playerState.rebirthCount || 0, // NEW: Include Rebirth Rank
+        text: filteredText,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+    };
+  
+    db.ref('global_chat').push(msgData)
+        .then(() => {
+            chatInput.value = ""; 
+            SoundEngine.playClick();
+        })
+        .catch(err => console.error("Chat failed to send:", err));
+  }
+
+  function initChatListener() {
+      if (!firebaseActive || !chatMessagesContainer) return;
+
+      db.ref('global_chat').limitToLast(50).on('value', (snapshot) => {
+          chatMessagesContainer.innerHTML = '';
+
+          // Dynamic System Welcome Message
+          const welcome = document.createElement('div');
+          welcome.className = 'chat-bubble system';
+          welcome.innerHTML = `<span>SYSTEM</span><p>Welcome to the Caverns, ${playerState.username || 'Miner'}!</p>`;
+          chatMessagesContainer.appendChild(welcome);
+
+          if (snapshot.exists()) {
+              snapshot.forEach((child) => {
+                  const msg = child.val();
+                  const isMe = auth.currentUser && msg.uid === auth.currentUser.uid;
+                  const isSystemShout = msg.type === "shout"; 
+                  
+                  const bubble = document.createElement('div');
+                  bubble.className = `chat-bubble ${isMe ? 'is-me' : ''} ${isSystemShout ? 'shout-alert' : ''}`;
+                  
+                  // Rebirth Tag [RXX]
+                  const rebirthTag = msg.rebirth > 0 ? `<small style="color:var(--gold-accent); margin-right:4px; font-weight:900;">[R${msg.rebirth}]</small>` : '';
+                  
+                  bubble.innerHTML = `
+                      <span>${isSystemShout ? '✨ WORLD ANNOUNCEMENT' : rebirthTag + msg.username}</span>
+                      <p>${msg.text}</p>
+                  `;
+                  chatMessagesContainer.appendChild(bubble);
+              });
+          }
+          chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+      });
+  }
+
+  // Bind UI Events
+  if (chatSubmitBtn) chatSubmitBtn.addEventListener('click', sendChatMessage);
+  
+  if (chatInput) {
+      chatInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') sendChatMessage();
+      });
+  }
 
   // ==================== INITIALIZATION ====================
   loadGame(); // Restore progress from local storage on reload
@@ -3881,12 +4043,19 @@ document.addEventListener("DOMContentLoaded", () => {
   updateStatsUI();
   renderInventoryTray();
   renderShop();
-  renderCollections()
+  renderCollections();
+  
+  // NEW: Start the chat listener immediately on boot
+  initChatListener();
   
   // Start the listener
   startUpdateListener();
   
   initPresenceSystem();
+  
+  setTimeout(() => {
+    checkGameAnnouncement();
+  }, 1000);
 
   // ==================== DEVELOPER TOOLS ENGINE ====================
   const DEV_UID = "ZaOjo0lPMTYrHnA8sK5769agLO52"; // <--- CHANGE THIS!
@@ -4050,4 +4219,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Launch Dev Tools
   initDevTools();
+  
+  // Chat Clear Listener
+  const chatSettingsIcon = document.querySelector('.fa-gear.dev-only');
+  if (chatSettingsIcon) {
+      chatSettingsIcon.style.opacity = "1";
+      chatSettingsIcon.addEventListener('click', () => {
+          if (confirm("Clear local chat history?")) {
+              chatMessagesContainer.innerHTML = '<div>Chat cleared locally.</div>';
+              showNotification("Settings", "Local chat cleared.", "shop");
+          }
+      });
+  }
 });

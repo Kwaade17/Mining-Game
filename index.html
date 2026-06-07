@@ -212,6 +212,11 @@
                 ><i class="fa-solid fa-ranking-star fa-fw"></i> Hall of Fame</a
               >
             </li>
+            <li>
+              <a href="#" class="nav-link" data-view="view-global-chat"
+                ><i class="fa-solid fa-message fa-fw"></i> Global Chat</a
+              >
+            </li>
           </ul>
 
           <!-- Sidebar Divider for separated button -->
@@ -466,7 +471,7 @@
         </div>
 
         <!-- 6. LEADERBOARD VIEW (NEW) -->
-        <div id="view-leaderboard" class="game-view">0
+        <div id="view-leaderboard" class="game-view">
           <div class="col-wrapper">
             <div
               class="section-header"
@@ -532,7 +537,33 @@
                 <i class="fa-solid fa-spinner fa-spin"></i> Loading Rankings...
               </div>
             </div>
+            
           </div>
+        </div>
+        
+        <!-- 7. Global Chat View -->
+        <div id="view-global-chat" class="game-view">
+            <div class="global-chat-wrapper">
+                <header class="chat-header">
+                    <div class="header-info">
+                        <i class="fa-solid fa-globe"></i>
+                        <h3>Global Chat</h3>
+                    </div>
+                    <i class="fa-solid fa-gear dev-only" style="cursor:pointer; opacity: 0.5;"></i>
+                </header>
+                
+                <!-- Messages Area (Now starts with a loading indicator) -->
+                <div class="chat-messages" id="chatMessages">
+                    <div id="chatLoading" style="text-align: center; padding: 50px; color: var(--text-muted); font-size: 0.8rem;">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Connecting to global channel...
+                    </div>
+                </div>
+                
+                <div class="chat-input-area">
+                    <input id="txt-message" type="text" placeholder="Type a message..." maxlength="100">
+                    <button id="btn-chat-submit"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
+            </div>
         </div>
       </main>
     </div>

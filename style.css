@@ -2288,3 +2288,192 @@ body {
     50% { opacity: 1; filter: drop-shadow(0 0 4px #4ade80); }
     100% { opacity: 0.5; filter: drop-shadow(0 0 0px #4ade80); }
 }
+
+/* =================== GLOBAL CHAT STYLE =================== */
+
+#view-global-chat {
+    padding: 0 !important; /* Chat needs to be edge-to-edge */
+    height: 100%;
+}
+
+.global-chat-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: var(--bg-dark);
+}
+
+/* Header: Fixed height */
+.chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background-color: #1a1a1a;
+    border-bottom: 2px solid var(--gold-accent);
+    color: var(--gold-accent);
+}
+
+.header-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-info h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Messages Area: Fills all remaining space and scrolls */
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background-image: linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px);
+    background-size: 100% 20px; /* Subtle line effect */
+}
+
+/* Bubble Styling */
+.chat-bubble {
+    align-self: flex-start;
+    max-width: 85%;
+    padding: 10px 14px;
+    background-color: var(--stone-dark);
+    border-radius: 12px 12px 12px 2px;
+    border: 1px solid #333;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+}
+
+/* Differentiate YOUR messages (Optional) */
+.chat-bubble.is-me {
+    align-self: flex-end;
+    background-color: #3e3223;
+    border-color: var(--gold-accent);
+    border-radius: 12px 12px 2px 12px;
+}
+
+.chat-bubble span {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--gold-accent);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.chat-bubble p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-light);
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+.chat-bubble.system {
+    align-self: center;
+    background: rgba(255,255,255,0.05);
+    border: none;
+    border-radius: 20px;
+}
+.chat-bubble.system span { color: #888; text-align: center; }
+
+/* Input Area: Stay at bottom */
+.chat-input-area {
+    padding: 15px;
+    background-color: #1a1a1a;
+    border-top: 1px solid #333;
+    display: flex;
+    gap: 10px;
+}
+
+#txt-message {
+    flex: 1;
+    background-color: #111;
+    border: 1px solid #444;
+    border-radius: 25px;
+    padding: 10px 20px;
+    color: white;
+    outline: none;
+    font-size: 0.9rem;
+}
+
+#txt-message:focus {
+    border-color: var(--gold-accent);
+}
+
+#btn-chat-submit {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background-color: var(--gold-accent);
+    color: black;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.1s;
+}
+
+#btn-chat-submit:active {
+    transform: scale(0.9);
+}
+
+.chat-bubble.system {
+    align-self: center !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px dashed rgba(255, 255, 255, 0.1) !important;
+    border-radius: 10px !important;
+    max-width: 90% !important;
+    margin: 10px 0;
+}
+
+.chat-bubble.system span {
+    text-align: center;
+    color: #888;
+}
+
+.chat-bubble.system p {
+    text-align: center;
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+/* =================== CHAT ANNOUNCEMENT STYLING =================== */
+.chat-bubble.shout-alert {
+    align-self: center !important;
+    background: linear-gradient(135deg, rgba(255, 204, 0, 0.15), rgba(124, 58, 237, 0.15)) !important;
+    border: 1px solid var(--gold-accent) !important;
+    max-width: 95% !important;
+    box-shadow: 0 0 15px rgba(255, 204, 0, 0.2);
+    animation: pulseGlow 2s infinite;
+    margin: 10px 0;
+}
+
+.chat-bubble.shout-alert span {
+    color: var(--gold-accent) !important;
+    text-align: center;
+    font-weight: 900;
+    font-size: 0.6rem !important;
+}
+
+.chat-bubble.shout-alert p {
+    color: #fff !important;
+    font-weight: bold;
+    text-align: center;
+    font-size: 0.85rem !important;
+}
+
+.announcement-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+.announcement-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--gold-accent);
+    border-radius: 10px;
+}

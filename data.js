@@ -1,3 +1,29 @@
+// ==================== LIVE ANNOUNCEMENT ENGINE ====================
+const gameAnnouncement = {
+    active: true,             // Set to false to hide the popup entirely
+    type: "Update",           // Types: Update, Maintenance, Event, Notice
+    version: "2.6.0",         // Matches your GAME_VERSION
+    title: "The Social Mastery Update",
+    info: [
+        {
+            label: "Chat Rank Tags",
+            desc: "Show off your prestige! Your Rebirth Rank now appears as a tag next to your name in Global Chat."
+        },
+        {
+            label: "World Shouts",
+            desc: "The whole server celebrates with you! Finding Mythic or Ethereal ores now triggers a World Announcement."
+        },
+        {
+            label: "Profanity Filter",
+            desc: "Keeping the caverns clean. Professional message filtering and chat settings are now live."
+        },
+        {
+            label: "UI Optimization",
+            desc: "Cleaned up the code logic for smoother transitions on mobile devices and high-refresh monitors."
+        }
+    ]
+};
+
 // ==================== CAVES DATABASE (DYNAMIC LOOT POOLS) ====================
 const cavesData = [
     {
