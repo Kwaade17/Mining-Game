@@ -2,9 +2,13 @@
 const gameAnnouncement = {
     active: true,             // Set to false to hide the popup entirely
     type: "Update",           // Types: Update, Maintenance, Event, Notice
-    version: "2.6.0",         // Matches your GAME_VERSION
+    version: "2.6.1",         // Matches your GAME_VERSION
     title: "The Social Mastery Update",
     info: [
+        {
+            label: "[NEW] Global Chat",
+            desc: "Are you alone? This TIME you are not alone! You can chat here whenever you like! Just don't say BAD WORDS!"
+        },
         {
             label: "Chat Rank Tags",
             desc: "Show off your prestige! Your Rebirth Rank now appears as a tag next to your name in Global Chat."
@@ -779,6 +783,74 @@ const cavesData = [
         name: "Supernova Crucible",
         image: "Img/Supernova Crucible.png",
         requiredLevel: 80,
+        energyCost: 110,
+        xpReward: 90,
+        collectionId: "supernova-col",
+        caveCollectionId: "cave-12-col",
+        lootPool: [
+            {
+                name: "Stellar Dust",
+                rarity: "common",
+                baseValue: 400,
+                baseWeight: 14.0,
+                icon: "✨"
+            },
+            {
+                name: "Stellarite Shard",
+                rarity: "common",
+                baseValue: 520,
+                baseWeight: 16.0,
+                icon: "⭐"
+            },
+            {
+                name: "Plasma Residue",
+                rarity: "uncommon",
+                baseValue: 800,
+                baseWeight: 18.0,
+                icon: "🔥"
+            },
+            {
+                name: "Neutronium Flake",
+                rarity: "uncommon",
+                baseValue: 1100,
+                baseWeight: 20.5,
+                icon: "⛓️"
+            },
+            {
+                name: "Cosmic Ember",
+                rarity: "rare",
+                baseValue: 1900,
+                baseWeight: 24.0,
+                icon: "☀️"
+            },
+            {
+                name: "Supernova Relic",
+                rarity: "epic",
+                baseValue: 3800,
+                baseWeight: 28.5,
+                icon: "🎆"
+            },
+            {
+                name: "Pulsar Crystal",
+                rarity: "legendary",
+                baseValue: 7500,
+                baseWeight: 33.0,
+                icon: "⚡"
+            },
+            {
+                name: "Heart of the Star",
+                rarity: "mythic",
+                baseValue: 18000,
+                baseWeight: 42.0,
+                icon: "🌠"
+            }
+        ]
+    },
+    {
+        id: 13,
+        name: "Supernova Crucible",
+        image: "Img/Supernova Crucible.png",
+        requiredLevel: 90,
         energyCost: 110,
         xpReward: 90,
         collectionId: "supernova-col",

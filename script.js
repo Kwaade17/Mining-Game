@@ -48,7 +48,7 @@ function cleanText(text) {
 
 document.addEventListener("DOMContentLoaded", () => {
   // ==================== SESSION STATE ====================
-  const GAME_VERSION = "2.6.0"; // Active version used to check shop updates
+  const GAME_VERSION = "2.6.1"; // Active version used to check shop updates
 
   const playerState = {
     username: "", // Custom player display name
@@ -84,6 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
       rage: 0, // Dynamic rage cost timer in seconds
       xpBoost: 0, // Dynamic XP boost timer in seconds
     },
+    isDevMode: false, // Tracks if the testing UI is active
   };
 
   // ==================== SELECTORS ====================
@@ -527,6 +528,9 @@ document.addEventListener("DOMContentLoaded", () => {
           playerState.rebirthMultiplier = 1.0;
         if (playerState.hasWeightPass === undefined)
           playerState.hasWeightPass = false;
+        if (playerState.isDevMode === undefined) playerState.isDevMode = false;
+        
+        applyPersistentDevTheme(); // Set the theme based on the saved state
       } catch (err) {
         console.error("Save load failed: ", err);
       }
@@ -1355,7 +1359,7 @@ document.addEventListener("DOMContentLoaded", () => {
     playerState.inventory.push(newOre);
     
     // ==================== WORLD ANNOUNCEMENT (SHOUT) ====================
-    if (rolledMut.id === "ethereal" || newOre.rarity === "rare" || newOre.rarity === "legendary" || newOre.rarity === "mythic") {
+    if (rolledVar.id === "rainbow" || rolledMut.id === "ethereal" || newOre.rarity === "mythic") {
         const shoutText = `🌟 [${playerState.username}] just found a ${newOre.mutation !== "Normal" ? newOre.mutation + ' ' : ''}${newOre.name}!`;
         
         db.ref('global_chat').push({
@@ -1367,7 +1371,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     // Change your rarity check to:
-    if (newOre.rarity === "rare" || newOre.rarity === "epic" || newOre.rarity === "legendary" || newOre.rarity === "mythic") {
+    if (rolledVar.id === "rainbow" || rolledMut.id === "ethereal" || newOre.rarity === "legendary" || newOre.rarity === "mythic") {
         logGlobalEvent(`${playerState.username} found a ${newOre.rarity} ${newOre.name}!`);
     }
 
@@ -1500,13 +1504,19 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderCaves() {
     if (!caveContainer) return;
     caveContainer.innerHTML = "";
+    
+    const visibleCaves = cavesData.filter(cave => {
+        if (cave.id > 12) return playerState.isDevMode;
+        return true;
+    });
+    
     const startIndex = (currentMapPage - 1) * cavesPerPage;
     const endIndex = startIndex + cavesPerPage;
 
     for (let i = startIndex; i < endIndex; i++) {
       const box = document.createElement("div");
-      if (i < cavesData.length) {
-        const cave = cavesData[i];
+      if (i < visibleCaves.length) {
+        const cave = visibleCaves[i];
         const isLocked = playerState.level < cave.requiredLevel;
 
         if (isLocked) {
@@ -4216,6 +4226,30 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   };
+  
+  // Environment Switcher: Changes the game into a "Developer Build"
+  window.devToggleUI = () => {
+      playerState.isDevMode = !playerState.isDevMode;
+      
+      applyPersistentDevTheme();
+      
+      const status = playerState.isDevMode ? "ENABLED" : "DISABLED";
+      showNotification("DEV SYSTEM", `Developer Environment ${status}`, "shop");
+      
+      saveGame();
+      // Refresh views to show/hide secret content
+      renderCaves();
+      renderShop();
+  };
+
+  function applyPersistentDevTheme() {
+      if (playerState.isDevMode) {
+          document.body.classList.add('dev-theme');
+          document.body.setAttribute('data-version', GAME_VERSION);
+      } else {
+          document.body.classList.remove('dev-theme');
+      }
+  }
 
   // Launch Dev Tools
   initDevTools();

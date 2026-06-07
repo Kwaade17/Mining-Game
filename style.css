@@ -2477,3 +2477,37 @@ body {
     background-color: var(--gold-accent);
     border-radius: 10px;
 }
+
+/* ==================== DEVELOPER BUILD THEME (v2.6.2) ==================== */
+body.dev-theme {
+    /* Dramatic color shift to indicate testing environment */
+    --gold-accent: #00f2ff; 
+    --cave-btn: #002b36;
+    --cave-hover: #004d5c;
+}
+
+/* Persistent "Developer Build" watermark */
+body.dev-theme::after {
+    content: "DEVELOPER BUILD - EXPERIMENTAL " attr(data-version);
+    position: fixed;
+    bottom: 5px;
+    left: 5px;
+    background: rgba(0, 242, 255, 0.2);
+    color: #00f2ff;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: bold;
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 10000;
+    font-family: monospace;
+    letter-spacing: 1px;
+}
+
+/* Make dev-mode borders pulse slightly */
+body.dev-theme .navbar, 
+body.dev-theme .modal-card,
+body.dev-theme .inventory-section {
+    border-color: #00f2ff !important;
+    box-shadow: 0 0 10px rgba(0, 242, 255, 0.1);
+}
