@@ -2,9 +2,13 @@
 const gameAnnouncement = {
     active: true,             // Set to false to hide the popup entirely
     type: "Update",           // Types: Update, Maintenance, Event, Notice
-    version: "2.6.1",         // Matches your GAME_VERSION
+    version: "2.7.0",         // Matches your GAME_VERSION
     title: "The Social Mastery Update",
     info: [
+        {
+            label: "[NEW] Sync is now working!",
+            desc: "You don't have to worry about losing progress because everything is saved in the cloud!"
+        },
         {
             label: "[NEW] Global Chat",
             desc: "Are you alone? This TIME you are not alone! You can chat here whenever you like! Just don't say BAD WORDS!"
@@ -1303,13 +1307,37 @@ const shopData = [
         id: "earth-core-blast",
         category: "energy",
         name: "Earth Core Blast",
-        desc: "Restores 9000 Energy.",
+        desc: "Restores 3000 Energy.",
         cost: 60000,
         icon: "🌍",
-        energy: 9000,
+        energy: 3000,
         collectionId: null,
         versionAdded: "2.3.0",
         releaseDate: "2026-06-04"
+    },
+    {
+        id: "moon-blessings",
+        category: "energy",
+        name: "Moon Blessings",
+        desc: "Restores 9000 Energy.",
+        cost: 100000,
+        icon: "🌝",
+        energy: 9000,
+        collectionId: null,
+        versionAdded: "2.6.0",
+        releaseDate: "2026-06-07"
+    },
+    {
+        id: "holy-god-hand",
+        category: "energy",
+        name: "Holy God Hand",
+        desc: "Restores 24000 Energy.",
+        cost: 3500900,
+        icon: "🙌🏻",
+        energy: 24000,
+        collectionId: null,
+        versionAdded: "2.6.0",
+        releaseDate: "2026-06-07"
     },
 
     // Boosts / Potions (3 original + 4 new) - Extended Durations to Justify Cost Hikes
@@ -1968,5 +1996,42 @@ const collectionsData = [
         icon: "🎖️",
         obtained: false,
         tier: "Secret"
+    }
+];
+
+// ==================== CRAFTING RECIPES DATABASE ====================
+const craftingRecipes = [
+    {
+        id: "luck-charm",
+        name: "Luck Charm",
+        desc: "Permanent +5% Luck chance.",
+        icon: "🧿",
+        ingredients: [
+            { name: "Copper Ore", qty: 50 },
+            { name: "Verdigris Crust", qty: 25 }
+        ],
+        effect: { type: "luckBoost", value: 0.05 }
+    },
+    {
+        id: "golden-pick-skin",
+        name: "Midas Touch Skin",
+        desc: "A pure gold skin for your active pickaxe.",
+        icon: "✨",
+        ingredients: [
+            { name: "Gold Vein", qty: 100 },
+            { name: "Aureum Elixir", qty: 5 }
+        ],
+        effect: { type: "skin", value: "gold-skin" }
+    },
+    {
+        id: "weight-stabilizer",
+        name: "Weight Stabilizer",
+        desc: "Ores weigh +10% more on average.",
+        icon: "⚖️",
+        ingredients: [
+            { name: "Iron Ore", qty: 80 },
+            { name: "Magnetite Core", qty: 10 }
+        ],
+        effect: { type: "weightBoost", value: 0.10 }
     }
 ];

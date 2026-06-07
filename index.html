@@ -217,6 +217,7 @@
                 ><i class="fa-solid fa-message fa-fw"></i> Global Chat</a
               >
             </li>
+            <li dev-only="true"><a href="#" class="nav-link" data-view="view-crafting"><i class="fa-solid fa-hammer fa-fw"></i> Crafting</a></li>
           </ul>
 
           <!-- Sidebar Divider for separated button -->
@@ -562,6 +563,17 @@
                 <div class="chat-input-area">
                     <input id="txt-message" type="text" placeholder="Type a message..." maxlength="100">
                     <button id="btn-chat-submit"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 8. CRAFTING VIEW -->
+        <div id="view-crafting" class="game-view">
+            <div class="col-wrapper">
+                <h3 class="section-header"><i class="fa-solid fa-hammer"></i> Blacksmith Forge</h3>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 15px;">Combine raw ores to create permanent artifacts and enhancements.</p>
+                <div id="craftingList" style="display: flex; flex-direction: column; gap: 15px;">
+                    <!-- Recipes rendered here -->
                 </div>
             </div>
         </div>

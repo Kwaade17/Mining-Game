@@ -4,7 +4,7 @@ let db = null;
 let firebaseActive = false;
 
 if (typeof firebase !== "undefined") {
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optil
   const firebaseConfig = {
     apiKey: "AIzaSyBeCPvV6ho9J9wBLH7wHe8j0Usg0pO2ESA",
     authDomain: "gian-app-development.firebaseapp.com",
@@ -46,10 +46,16 @@ function cleanText(text) {
     return filtered;
 }
 
+const DEV_TOOLS_LIST = [];
+
 document.addEventListener("DOMContentLoaded", () => {
   // ==================== SESSION STATE ====================
-  const GAME_VERSION = "2.6.1"; // Active version used to check shop updates
-
+  const GAME_VERSION = "2.7.0";
+  
+  // Global throttling variables
+  let lastCloudSaveTime = 0;
+  const CLOUD_SAVE_DELAY = 5000; // 5 seconds between cloud pushes
+  
   const playerState = {
     username: "", // Custom player display name
     level: 1,
@@ -57,7 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
     xpNeeded: 100,
     money: 200,
     maxBagCapacity: 20,
-    tokens: 0, // <-- ADD THIS (Premium Currency)
+    tokens: 0, // <-- ADD THIS (Prmium Currency)
     hasCoinSub: false, // <-- ADD THIS (Pension Subscription check)
     hasTokenSub: false, // <-- ADD THIS
     hasMagnet: false, // <-- ADD THIS
@@ -66,8 +72,8 @@ document.addEventListener("DOMContentLoaded", () => {
     hasWeightPass: false, // <-- This is my own pass
     tokenSubTimer: 0, // <-- ADD THIS
     lastClaimTime: 0, // <-- ADD THIS (Daily Claim timestamp)
-    currentVersion: "2.2.8", // <-- ADD THIS: Tracks the player's acknowledged version
-    lastSeenUpdate: "2.5.0", // Tracks the last patch notes the user read
+    currentVersion: "1.0.0", // <-- ADD THIS: Tracks the player's acknowledged version
+    lastSeenUpdate: "1.0.0", // Tracks the last patch notes the user read
     saveMode: "local", // <-- ADD THIS (local or cloud)
     currentEnergy: 100,
     maxEnergy: 100,
@@ -175,6 +181,16 @@ document.addEventListener("DOMContentLoaded", () => {
     divine: 3,
     cosmic: 1,
   };
+  
+  // ==================== TRIGGER DEVELOPER OPTION =====================
+  document.querySelectorAll('.sidebar-nav ul li').forEach( e => {
+    if (e.getAttribute("dev-only") === "true") {
+      if (!playerState.isDevMode) {
+        e.style.display = "none";
+      }
+      DEV_TOOLS_LIST.push(e)
+    };
+  });
 
   // ==================== OFFLINE SYNTHESIZED SOUND ENGINE ====================
   const SoundEngine = {
@@ -358,7 +374,7 @@ document.addEventListener("DOMContentLoaded", () => {
           // Inside the callback of the rebirth modal:
           logGlobalEvent(`🔥 ${playerState.username} has ASCENDED to Rebirth Rank ${playerState.rebirthCount}!`);
 
-          saveGame();
+          saveGame(true);
           updateMapPageStructure(); // Re-lock caves
           updateStatsUI();
           renderShop(); // Reset buy buttons
@@ -371,203 +387,113 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
-  // ==================== PERSISTENT LOCAL STORAGE ENGINE ====================
-  function saveGame() {
-        if (isShuttingDown) return;
+  // ==================== 5. DATA PERSISTENCE (FIXED) ====================
+  function saveGame(forceCloud = false) {
+      if (isShuttingDown) return;
 
-        // 1. Save locally immediately for responsiveness
-        localStorage.setItem('miner_save', JSON.stringify(playerState));
-        const colMap = {};
-        collectionsData.forEach(item => { colMap[item.id] = item.obtained; });
-        localStorage.setItem('miner_col_save', JSON.stringify(colMap));
+      // 1. Always save to LocalStorage (The Cache)
+      localStorage.setItem('miner_save', JSON.stringify(playerState));
+      const colMap = {};
+      collectionsData.forEach(item => { colMap[item.id] = item.obtained; });
+      localStorage.setItem('miner_col_save', JSON.stringify(colMap));
 
-        // 2. Only push to cloud if online and logged in
-        if (playerState.saveMode === "cloud" && navigator.onLine && firebaseActive && auth.currentUser) {
-            
-            // Upload current player state to Firebase
-            const cloudSave = {
-                ...playerState
-            };
-
-            db.ref('users/' + auth.currentUser.uid + '/saveState').set(cloudSave)
-                .catch(err => console.error("Cloud sync failed:", err));
-            db.ref('users/' + auth.currentUser.uid + '/collections').set(colMap);
-            
-            // Also update the public leaderboard
-            const scorecard = {
-                username: playerState.username,
-                level: playerState.level,
-                money: playerState.money,
-                rebirthCount: playerState.rebirthCount,
-                lastSeen: firebase.database.ServerValue.TIMESTAMP
-            };
-            db.ref('leaderboards/' + auth.currentUser.uid).set(scorecard);
-        }
-    }
-
-  // ==================== CLOUD SAVE LOADER FOR CROSS-DEVICE SYNC (v2.2.7) ====================
-  function loadCloudSave() {
-    if (!firebaseActive || !auth.currentUser) {
-      console.log("Cloud load skipped: Not authenticated");
-      return Promise.resolve();
-    }
-
-    const userId = auth.currentUser.uid;
-    console.log("Loading cloud save for user:", userId);
-
-    return Promise.all([
-      // Fetch player state from cloud
-      db.ref("users/" + userId + "/saveState").once("value"),
-      // Fetch collections data from cloud
-      db.ref("users/" + userId + "/collections").once("value"),
-    ])
-      .then(([saveSnapshot, colSnapshot]) => {
-        // Load player state from cloud
-        if (saveSnapshot.exists()) {
-          const cloudSave = saveSnapshot.val();
-          console.log("Cloud save found, merging with local state...");
-
-          // Merge cloud save with existing playerState, preserving critical fields
-          Object.assign(playerState, cloudSave);
-
-          // Ensure saveMode stays as "cloud"
-          playerState.saveMode = "cloud";
-        }
-
-        // Load collections from cloud
-        if (colSnapshot.exists()) {
-          const cloudCollections = colSnapshot.val();
-          console.log("Cloud collections found, syncing...");
-
-          collectionsData.forEach((item) => {
-            if (cloudCollections[item.id] !== undefined) {
-              item.obtained = cloudCollections[item.id];
-            }
-          });
-        }
-
-        console.log("Cloud save loaded successfully");
-        return Promise.resolve();
-      })
-      .catch((err) => {
-        console.error("Error loading cloud save:", err);
-        return Promise.resolve(); // Don't crash, continue with local save
-      });
+      // 2. Cloud Save & Leaderboard Sync (The Source of Truth)
+      if (playerState.saveMode === "cloud" && navigator.onLine && firebaseActive && auth.currentUser) {
+          const now = Date.now();
+          
+          if (forceCloud || (now - lastCloudSaveTime > CLOUD_SAVE_DELAY)) {
+              lastCloudSaveTime = now;
+              
+              const userPath = 'users/' + auth.currentUser.uid;
+              
+              // Sync main save and collections
+              db.ref(userPath + '/saveState').set(playerState);
+              db.ref(userPath + '/collections').set(colMap);
+              
+              // Find rarest ore in inventory to show off on leaderboard
+              const rarest = playerState.inventory.reduce((prev, curr) => {
+                  const weights = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5, divine: 6, cosmic: 7 };
+                  return (weights[curr.rarity] > weights[prev.rarity]) ? curr : prev;
+              }, { rarity: 'common', name: 'None', icon: '🪨' });
+              
+              // Inside scorecard object:
+              const scorecard = {
+                  username: playerState.username,
+                  level: playerState.level,
+                  money: playerState.money,
+                  rebirthCount: playerState.rebirthCount,
+                  rarestOre: rarest.icon + " " + rarest.name, // <-- ADD THIS
+                  lastSeen: firebase.database.ServerValue.TIMESTAMP
+              };
+              db.ref('leaderboards/' + auth.currentUser.uid).set(scorecard);
+              
+              console.log("☁️ Cloud and Leaderboard Sync Complete.");
+          }
+      }
   }
 
   function loadGame() {
-    const savedState = localStorage.getItem("miner_save");
-    if (savedState) {
-      try {
-        const parsed = JSON.parse(savedState);
+      // 1. Load from local storage (Fast placeholder)
+      const savedState = localStorage.getItem('miner_save');
+      if (savedState) {
+          try {
+              const parsed = JSON.parse(savedState);
+              Object.assign(playerState, parsed);
+              
+              // Silent Version Upgrade
+              if (playerState.currentVersion !== GAME_VERSION) {
+                  playerState.currentVersion = GAME_VERSION;
+                  saveGame(); 
+              }
 
-        if (parsed.inventory) {
-          parsed.inventory.forEach((ore) => {
-            ore.isNew = false;
+              // Initialize properties if missing
+              if (!playerState.buffs) playerState.buffs = { luck: 0, rage: 0, xpBoost: 0, vigor: 0, jackpot: 0 };
+              if (!playerState.unlockedOres) playerState.unlockedOres = {};
+              if (playerState.rebirthCount === undefined) playerState.rebirthCount = 0;
+              if (playerState.rebirthMultiplier === undefined) playerState.rebirthMultiplier = 1.0;
+              if (playerState.saveMode === undefined) playerState.saveMode = "local";
+
+          } catch (err) { console.error("Local load failed:", err); }
+      }
+
+      // Sync local collections
+      const savedCol = localStorage.getItem('miner_col_save');
+      if (savedCol) {
+          try {
+              const parsedCol = JSON.parse(savedCol);
+              collectionsData.forEach(item => {
+                  if (parsedCol[item.id] !== undefined) item.obtained = parsedCol[item.id];
+              });
+          } catch (err) { console.error("Local Col load failed:", err); }
+      }
+
+      // 2. FETCH CLOUD SOURCE OF TRUTH
+      if (firebaseActive && auth.currentUser) {
+          console.log("📡 Fetching Master Save from Cloud...");
+          db.ref('users/' + auth.currentUser.uid).once('value').then((snapshot) => {
+              const cloudData = snapshot.val();
+              if (cloudData && cloudData.saveState) {
+                  Object.assign(playerState, cloudData.saveState);
+                  if (cloudData.collections) {
+                      collectionsData.forEach(item => {
+                          if (cloudData.collections[item.id] !== undefined) {
+                              item.obtained = cloudData.collections[item.id];
+                          }
+                      });
+                  }
+                  // Refresh UI components once cloud data arrives
+                  updateStatsUI();
+                  updateMapPageStructure();
+                  renderInventoryTray();
+                  renderShop();
+                  renderCollections();
+                  applyPersistentDevTheme();
+                  console.log("✅ Cloud Sync Success.");
+              }
           });
-        }
-
-        Object.assign(playerState, parsed);
-        
-        if (playerState.lastSeenUpdate === undefined) playerState.lastSeenUpdate = "0.0.0";
-        
-        // --- VERSION CHECKER (SILENT UPGRADE) ---
-        // Only upgrade if the code version is actually different from the save
-        if (playerState.currentVersion !== GAME_VERSION) {
-            console.log(`System: Code version (${GAME_VERSION}) differs from Save version (${playerState.currentVersion}). Syncing...`);
-            playerState.currentVersion = GAME_VERSION;
-            saveGame(); 
-        }
-
-        // Fix: Initialize buffs and unlockedOres if missing from older save formats
-        if (!playerState.buffs) {
-          playerState.buffs = { luck: 0, rage: 0, xpBoost: 0 };
-        }
-        if (!playerState.unlockedOres) {
-          playerState.unlockedOres = {};
-        }
-        if (playerState.sellMultiplier === undefined) {
-          playerState.sellMultiplier = 1.0; // <-- ADD THIS LINE
-        }
-        if (playerState.tokens === undefined) {
-          playerState.tokens = 0; // <-- ADD THIS
-        }
-        if (playerState.hasCoinSub === undefined) {
-          playerState.hasCoinSub = false; // <-- ADD THIS
-        }
-        if (playerState.hasTokenSub === undefined) {
-          playerState.hasTokenSub = false;
-        }
-        if (playerState.hasMagnet === undefined) {
-          playerState.hasMagnet = false;
-        }
-        if (playerState.tokenSubTimer === undefined) {
-          playerState.tokenSubTimer = 0;
-        }
-        if (!playerState.buffs.vigor) {
-          playerState.buffs.vigor = 0;
-        }
-        if (!playerState.buffs.jackpot) {
-          playerState.buffs.jackpot = 0;
-        }
-        if (playerState.hasStarterBundle === undefined) {
-          playerState.hasStarterBundle = false;
-        }
-        if (playerState.hasMinerPack === undefined) {
-          playerState.hasMinerPack = false;
-        }
-        if (playerState.lastClaimTime === undefined) {
-          playerState.lastClaimTime = 0; // <-- ADD THIS
-        }
-        if (playerState.saveMode === undefined) {
-          playerState.saveMode = "local"; // <-- ADD THIS
-        }
-        if (playerState.rebirthCount === undefined)
-          playerState.rebirthCount = 0;
-        if (playerState.rebirthMultiplier === undefined)
-          playerState.rebirthMultiplier = 1.0;
-        if (playerState.hasWeightPass === undefined)
-          playerState.hasWeightPass = false;
-        if (playerState.isDevMode === undefined) playerState.isDevMode = false;
-        
-        applyPersistentDevTheme(); // Set the theme based on the saved state
-      } catch (err) {
-        console.error("Save load failed: ", err);
       }
-    }
-
-    const savedCol = localStorage.getItem("miner_col_save");
-    if (savedCol) {
-      try {
-        const parsedCol = JSON.parse(savedCol);
-        collectionsData.forEach((item) => {
-          if (parsedCol[item.id] !== undefined) {
-            item.obtained = parsedCol[item.id];
-            item.isNew = false;
-          }
-        });
-      } catch (err) {
-        console.error("Collections load failed: ", err);
-      }
-    }
-
-    // Sync tiny scorecard to Global Leaderboard if online
-    if (
-      playerState.saveMode === "cloud" &&
-      firebaseActive &&
-      auth.currentUser
-    ) {
-      const scorecard = {
-        username: playerState.username,
-        level: playerState.level,
-        money: playerState.money,
-        rebirthCount: playerState.rebirthCount,
-        lastSeen: firebase.database.ServerValue.TIMESTAMP,
-      };
-      db.ref("leaderboards/" + auth.currentUser.uid).set(scorecard);
-    }
-
-    checkAchievements(); // In case any achievements were missed while offline
+      
+      checkAchievements();
   }
 
   // ==================== CURRENCY FORMATTER ENGINE ====================
@@ -1107,7 +1033,7 @@ document.addEventListener("DOMContentLoaded", () => {
       updateMapPageStructure();
     }
     updateStatsUI();
-    saveGame();
+    saveGame(true);
     if (firebaseActive && playerState.saveMode === "cloud") {
       claimPendingEarnings(); // <-- ADD THIS
     }
@@ -1328,10 +1254,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const rolledVar = rollWeightedSelection(variantsData);
     const weightFluctuation = 0.8 + Math.random() * 0.4;
-    const weightMult = rollBonusWeight(clickEvent);
+    const extraWeight = rollBonusWeight(clickEvent);
     const actualWeight = parseFloat(
-      (weightMult + selectedOre.baseWeight * weightFluctuation).toFixed(2),
-    );
+      (extraWeight + selectedOre.baseWeight * weightFluctuation).toFixed(2)
+    )
     const subTotal = Math.floor(
       selectedOre.baseValue * rolledVar.multiplier * actualWeight,
     );
@@ -1346,7 +1272,7 @@ document.addEventListener("DOMContentLoaded", () => {
       baseWeight: selectedOre.baseWeight,
       variant: rolledVar.name,
       variantMultiplier: rolledVar.multiplier,
-      weightMultiplier: weightMult,
+      weightMultiplier: extraWeight,
       actualWeight: actualWeight,
       subTotalValue: subTotal,
       mutation: rolledMut.name,
@@ -2115,7 +2041,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     showNotification("🛒 Item Purchased!", notificationText, "shop", 4000);
 
-    saveGame();
+    saveGame(true);
     updateStatsUI();
     renderShop();
     renderBuffsUI();
@@ -2573,6 +2499,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (window.innerWidth > 768) chatInput.focus();
           }, 100);
         }
+        if (targetId === "view-crafting") renderCrafting();
       }
 
       // Auto-close sidebar on mobile viewports
@@ -3151,6 +3078,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         players.forEach((p, index) => {
           const row = document.createElement("tr");
+          row.style.cursor = 'pointer';
+          row.onclick = () => inspectPlayer(p);
+          
           const isMe = auth.currentUser && p.uid === auth.currentUser.uid;
           if (isMe) row.className = "my-score-highlight";
 
@@ -3180,6 +3110,23 @@ document.addEventListener("DOMContentLoaded", () => {
   // Listener for Category Switch
   if (leaderCatSelect) {
     leaderCatSelect.addEventListener("change", renderLeaderboard);
+  }
+  
+  function inspectPlayer(playerData) {
+      SoundEngine.playClick();
+      const stats = [
+          { label: "Level", value: `Lvl ${playerData.level}` },
+          { label: "Rebirth Rank", value: playerData.rebirthCount || 0 },
+          { label: "Total Wealth", value: `🪙 ${formatMoney(playerData.money, true)}` },
+          { label: "Top Specimen", value: playerData.rarestOre || "None" }
+      ];
+
+      openDetailModal(
+          `${playerData.username}'s Profile`,
+          "👤",
+          "Inspecting a fellow miner from the global community. You can see their current progress and highest-tier discovery.",
+          stats
+      );
   }
 
   // Render Live Marketplace Listings (v2.3.2 - With Search Filtering)
@@ -3346,7 +3293,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const listing = activeMarketListings.find((i) => i.id === listingId);
     if (!listing || listing.status !== "active") return;
-
+    
     // Currency checks
     if (listing.currency === "tokens") {
       if (playerState.tokens < listing.price) {
@@ -3405,7 +3352,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           playerState.inventory.push(listing.itemDetails);
           
-          logGlobalEvent(`${listing.buyerName} purchased ${listing.oreName} from ${listing.sellerName}!`);
+          logGlobalEvent(`${playerState.username} purchased ${listing.oreName} from ${listing.sellerName}!`);
 
           SoundEngine.playLevelUp();
           showNotification(
@@ -3415,12 +3362,12 @@ document.addEventListener("DOMContentLoaded", () => {
             4000,
           );
 
-          saveGame();
+          saveGame(true);
           updateStatsUI();
           renderInventoryTray();
           checkAchievements(); // Trigger achievement check in case they bought a high-tier ore that can unlock something
         }
-      },
+      }
     );
   }
 
@@ -3541,6 +3488,49 @@ document.addEventListener("DOMContentLoaded", () => {
           renderMarketplace();
       });
   }
+  
+  function renderCrafting() {
+    const container = document.getElementById('craftingList');
+    if (!container) return;
+    container.innerHTML = '';
+
+    craftingRecipes.forEach(recipe => {
+      const card = document.createElement('div');
+      card.className = 'market-card'; // Reuse market style for consistency
+      
+      let ingredientsHtml = '<div style="display:flex; gap:10px; margin-top:5px;">';
+      let canCraft = true;
+
+      recipe.ingredients.forEach(ing => {
+          const count = playerState.inventory.filter(i => i.name === ing.name).length;
+          if (count < ing.qty) canCraft = false;
+          ingredientsHtml += `<small style="color:${count >= ing.qty ? '#4ade80' : '#f87171'}">${ing.name}: ${count}/${ing.qty}</small>`;
+      });
+      ingredientsHtml += '</div>';
+
+      card.innerHTML = `
+          <div class="market-info-block">
+              <div class="circle-icon">${recipe.icon}</div>
+              <div class="market-details">
+                  <span class="market-ore-name">${recipe.name}</span>
+                  <span class="market-seller-label">${recipe.desc}</span>
+                  ${ingredientsHtml}
+              </div>
+          </div>
+          <button class="card-buy-btn" ${!canCraft ? 'disabled' : ''} onclick="attemptCraft('${recipe.id}')" style="width:80px;">Forge</button>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  window.attemptCraft = (id) => {
+      const recipe = craftingRecipes.find(r => r.id === id);
+      // 1. Double check ingredients
+      // 2. Loop through ingredients and use .splice to remove them from playerState.inventory
+      // 3. Apply recipe.effect to playerState
+      // 4. showNotification and renderCrafting()
+      showNotification("Crafting", `${recipe.name} created!`, "level-up");
+  };
   
   // ==================== DYNAMIC ANNOUNCEMENT SYSTEM ====================
     function checkGameAnnouncement() {
@@ -3706,7 +3696,7 @@ document.addEventListener("DOMContentLoaded", () => {
           .then((userCredential) => {
             const user = userCredential.user;
 
-            // Fetch saved data from Cloud database
+            // Fetch  data from Cloud database
             db.ref("users/" + user.uid)
               .once("value")
               .then((snapshot) => {
@@ -3794,19 +3784,18 @@ document.addEventListener("DOMContentLoaded", () => {
         playerState.saveMode = "cloud";
         if (user.displayName) playerState.username = user.displayName;
         
-        // Load cloud save data for cross-device synchronization (v2.2.7)
-        loadCloudSave().then(() => {
-          // After cloud save is loaded, refresh UI and marketplace
-          updateStatsUI();
-          renderInventoryTray();
-          renderCollections();
-          renderShop();
-          updateMapPageStructure();
+        // CRITICAL: Pull the cloud truth the moment we log in
+        loadGame();
+        
+        updateStatsUI();
+        renderInventoryTray();
+        renderCollections();
+        renderShop();
+        updateMapPageStructure();
 
-          // Refresh market to show "Buy" buttons for items you don't own
-          renderMarketplace();
-          claimPendingEarnings();
-        });
+        // Refresh market to show "Buy" buttons for items you don't own
+        renderMarketplace();
+        claimPendingEarnings();
       } else {
         playerState.saveMode = "local";
         // Refresh market to show "Guest" view (Buy buttons disabled/inspect only)
@@ -3881,58 +3870,138 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
   
-  // ==================== GLOBAL ACTIVITY LOG (v2.3.1) ====================
+  // ==================== GLOBAL LOG (v2.5.0) ====================
   function logGlobalEvent(message) {
-      if (!firebaseActive || !auth.currentUser) return;
-      
-      console.log("📡 Attempting to log event:", message); // Debug log
-      
-      const logRef = db.ref('activity_log').push();
-      logRef.set({
-          text: message,
-          timestamp: firebase.database.ServerValue.TIMESTAMP
-      }).catch(err => console.error("Logger Database Error:", err));
+    if (!firebaseActive || !auth.currentUser) return;
+    
+    console.log("📡 Attempting to log event:", message);
+    
+    const activityLogRef = db.ref('activity_log');
+    const newLogRef = activityLogRef.push();
+    
+    // 1. Save log entry with User Identity data
+    newLogRef.set({
+        text: message,
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        userId: auth.currentUser.uid,
+        userName: auth.currentUser.displayName || "Unknown Explorer"
+    })
+    .then(() => {
+        // 2. Fetch buffer for cleanup
+        return activityLogRef.orderByChild('timestamp').limitToLast(15).once('value');
+    })
+    .then((snapshot) => {
+        if (!snapshot.exists()) return;
+  
+        const logKeys = [];
+        snapshot.forEach((child) => {
+            logKeys.push(child.key);
+        });
+  
+        const maxBuffer = 5; 
+        if (logKeys.length > maxBuffer) {
+            const keysToDelete = logKeys.slice(0, logKeys.length - maxBuffer);
+            const updates = {};
+            keysToDelete.forEach(key => {
+                updates[key] = null;
+            });
+            return activityLogRef.update(updates);
+        }
+    })
+    .catch(err => console.error("Logger Database Error:", err));
+  }
+  
+  function formatRelativeTime(timestamp) {
+    if (!timestamp) return "";
+    
+    const now = Date.now();
+    const secondsPast = Math.floor((now - timestamp) / 1000);
+  
+    if (secondsPast < 15) return "just now";
+    if (secondsPast < 60) return `${secondsPast}s ago`;
+    
+    const minutesPast = Math.floor(secondsPast / 60);
+    if (minutesPast < 60) return `${minutesPast}m ago`;
+    
+    const hoursPast = Math.floor(minutesPast / 60);
+    if (hoursPast < 24) return `${hoursPast}h ago`;
+    
+    return new Date(timestamp).toLocaleDateString();
+  }
+  
+  let currentLogsCache = []; // Holds the active logs for time-refreshing
+
+  if (firebaseActive) {
+    // 1. Main Live Database Listener
+    db.ref('activity_log').orderByChild('timestamp').limitToLast(5).on('value', (snapshot) => {
+        currentLogsCache = [];
+        
+        if (!snapshot.exists()) {
+            const feed = document.getElementById('activityFeed');
+            if (feed) feed.innerHTML = '<div>Waiting for cavern activity...</div>';
+            return;
+        }
+  
+        snapshot.forEach(child => {
+            currentLogsCache.push({
+                id: child.key,
+                ...child.val()
+            });
+        });
+  
+        // Reverse to ensure newest is index 0
+        currentLogsCache.reverse();
+        
+        // Render instantly with the new item animated
+        renderLogsToFeed(true); 
+    }, (error) => {
+        console.error("Activity Feed Listener Error:", error);
+    });
+  
+    // 2. Background Auto-Refresher (Runs every 30 seconds)
+    // This updates the "1m ago" text without pulling data from Firebase again
+    setInterval(() => {
+        if (currentLogsCache.length > 0) {
+            renderLogsToFeed(false); // Render without re-triggering entrance animations
+        }
+    }, 30000);
   }
 
-  // Listener for the Log
-  if (firebaseActive) {
-      // We limit to last 8 events for a better filled look
-      db.ref('activity_log').limitToLast(8).on('value', (snapshot) => {
-          const feed = document.getElementById('activityFeed');
-          if (!feed) return;
-          
-          feed.innerHTML = '';
-          
-          if (!snapshot.exists()) {
-              feed.innerHTML = '<div>Waiting for cavern activity...</div>';
-              return;
-          }
-
-          snapshot.forEach(child => {
-              const data = child.val();
-              const entry = document.createElement('div');
-              entry.style.padding = "4px 0";
-              entry.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
-              entry.innerHTML = `<span style="color:var(--gold-accent); margin-right: 5px;">⚡</span> ${data.text}`;
-              feed.prepend(entry); // Newest at the top
-          });
-      });
-  }
-
-  // Listener for the Log (Put this in your initialization)
-  if (firebaseActive) {
-      db.ref('activity_log').limitToLast(5).on('value', (snapshot) => {
-          const feed = document.getElementById('activityFeed');
-          if (!feed) return;
-          feed.innerHTML = '';
-          snapshot.forEach(child => {
-              const entry = document.createElement('div');
-              entry.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
-              entry.style.paddingBottom = "2px";
-              entry.innerHTML = `<i class="fa-solid fa-bolt" style="color:var(--gold-accent); font-size:0.5rem;"></i> ${child.val().text}`;
-              feed.prepend(entry); // Newest at the top
-          });
-      });
+  // 3. Centralized UI Rendering Engine
+  function renderLogsToFeed(shouldAnimateNewItem) {
+    const feed = document.getElementById('activityFeed');
+    if (!feed) return;
+    
+    feed.innerHTML = '';
+  
+    currentLogsCache.forEach((data, index) => {
+        const entry = document.createElement('div');
+        entry.style.padding = "6px 0";
+        entry.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
+        entry.style.display = "flex";
+        entry.style.justifyContent = "space-between";
+        entry.style.alignItems = "center";
+  
+        const relativeTime = formatRelativeTime(data.timestamp);
+  
+        // Core Layout structure containing icon, log message, and the right-aligned timestamp
+        entry.innerHTML = `
+            <div>
+                <span style="color:var(--gold-accent); margin-right: 5px;">⚡</span>
+                <span>${data.text}</span>
+            </div>
+            <span style="font-size: 0.8em; color: rgba(255,255,255,0.4); margin-left: 10px; white-space: nowrap;">
+                ${relativeTime}
+            </span>
+        `;
+        
+        // Trigger animation safely only if it's a brand-new database push
+        if (index === 0 && shouldAnimateNewItem) {
+            entry.classList.add('log-entry-animated');
+        }
+  
+        feed.appendChild(entry);
+    });
   }
   
   // ==================== LIVE PRESENCE SYSTEM (REFINED) ====================
@@ -4141,13 +4210,13 @@ document.addEventListener("DOMContentLoaded", () => {
   window.devAddGold = () => {
     playerState.money += 100000000;
     updateStatsUI();
-    saveGame();
+    saveGame(true);
     showNotification("DEV", "+100M Gold Added", "level-up");
   };
   window.devAddTokens = () => {
     playerState.tokens += 100000000;
     updateStatsUI();
-    saveGame();
+    saveGame(true);
     showNotification("DEV", "+100M Tokens Added", "level-up");
   };
   window.devFillEnergy = () => {
@@ -4195,11 +4264,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   // FIXED: Hard Reset now clears LocalStorage AND Signs Out of Firebase
   window.devReset = () => {
-    if (
-      confirm(
-        "🔥 HARD RESET: This will wipe your local save and SIGN YOU OUT. Continue?",
-      )
-    ) {
+    if (confirm("🔥 HARD RESET: This will wipe your local save and SIGN YOU OUT. Continue?")) {
       isShuttingDown = true; // Stop all background save processes immediately
 
       // 1. Wipe all local storage
@@ -4211,18 +4276,12 @@ document.addEventListener("DOMContentLoaded", () => {
       playerState.inventory = [];
       playerState.username = "";
 
-      // 3. Handle Firebase and Reload
-      if (firebaseActive && auth) {
-        auth
-          .signOut()
+      // Locate at the bottom of script.js:
+      if (firebaseActive && auth) { // FIXED: replaced { with auth
+        auth.signOut()
           .then(() => {
-            window.location.replace(window.location.href); // Harder reload
-          })
-          .catch(() => {
             window.location.replace(window.location.href);
-          });
-      } else {
-        window.location.replace(window.location.href);
+        });
       }
     }
   };
@@ -4232,6 +4291,16 @@ document.addEventListener("DOMContentLoaded", () => {
       playerState.isDevMode = !playerState.isDevMode;
       
       applyPersistentDevTheme();
+      
+      if (playerState.isDevMode) {
+        DEV_TOOLS_LIST.forEach( el => {
+          el.style.display = "block"
+        });
+      } else {
+        DEV_TOOLS_LIST.forEach( el => {
+          el.style.display = "none"
+        });
+      }
       
       const status = playerState.isDevMode ? "ENABLED" : "DISABLED";
       showNotification("DEV SYSTEM", `Developer Environment ${status}`, "shop");
@@ -4257,12 +4326,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // Chat Clear Listener
   const chatSettingsIcon = document.querySelector('.fa-gear.dev-only');
   if (chatSettingsIcon) {
-      chatSettingsIcon.style.opacity = "1";
-      chatSettingsIcon.addEventListener('click', () => {
-          if (confirm("Clear local chat history?")) {
-              chatMessagesContainer.innerHTML = '<div>Chat cleared locally.</div>';
-              showNotification("Settings", "Local chat cleared.", "shop");
-          }
-      });
+    chatSettingsIcon.style.opacity = "1";
+    chatSettingsIcon.addEventListener('click', () => {
+        if (confirm("Clear local chat history?")) {
+            chatMessagesContainer.innerHTML = '<div>Chat cleared locally.</div>';
+            showNotification("Settings", "Local chat cleared.", "shop");
+        }
+    });
   }
+  
 });

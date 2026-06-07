@@ -1,8 +1,128 @@
-<!-- Inside sidebar-profile -->
-<p id="sidebarRebirth" style="...">Rebirth Rank: 0</p>
+Here are three ideas:
 
-<!-- NEW: Online Player Counter -->
-<div id="onlineCounter" style="font-size: 0.65rem; color: #4ade80; margin-top: 10px; margin-bottom: 5px; font-weight: bold; display: flex; align-items: center; justify-content: center;">
-    <i class="fa-solid fa-circle" style="font-size: 0.5rem; margin-right: 6px; animation: pulseGlow 2s infinite;"></i>
-    <span id="onlineCount">1</span> Miners Online
-</div>
+  - Player Inspector: Since every player's scorecard is public on the
+    Leaderboard, we can make it so clicking a name opens a modal showing their
+    Rebirth Rank and Rarest Ore owned.
+  - Marketplace Tax/Fee: To prevent players from just moving money back and
+    forth between alt accounts, we could add a small 5% fee to Marketplace sales
+    that "burns" some gold from the economy.
+  - Crafting System: Since players can now trade for specific ores, you could
+    add a "Crafting" tab where players combine common ores to create permanent
+    buffs or unique skins.
+
+Lets do these three!
+
+// Inside the success block where you write to sellerEarningsRef:
+const tax = Math.floor(listing.price * 0.05); // 5% Tax
+const finalPayout = listing.price - tax;
+
+sellerEarningsRef.transaction((earnings) => {
+    if (!earnings) earnings = { gold: 0, tokens: 0 };
+    if (listing.currency === "tokens") {
+        earnings.tokens += finalPayout; 
+    } else {
+        earnings.gold += finalPayout;
+    }
+    return earnings;
+});
+
+// ==================== UI RENDERER ====================
+function startLoggingListener() {
+    if (!firebaseActive) return;
+
+    // limitToLast(5) ensures the client only downloads 5 items max, 
+    // even if the database temporarily holds more records.
+    db.ref('activity_log')
+      .orderByChild('timestamp')
+      .limitToLast(5)
+      .on('value', (snapshot) => {
+          const logsContainer = [];
+          
+          snapshot.forEach((childSnapshot) => {
+              logsContainer.push({
+                  id: childSnapshot.key,
+                  ...childSnapshot.val()
+              });
+          });
+
+          // Firebase returns limitToLast items in ascending order (oldest to newest).
+          // We reverse it here so the absolute newest log appears at the top of your UI.
+          const newestFirstLogs = logsContainer.reverse();
+          
+          // Execute your UI rendering logic here
+          renderLogsToUI(newestFirstLogs); 
+          
+      }, (error) => {
+          console.error("UI Logger Listener Failed:", error);
+      });
+}
+
+function renderLogsToUI(logs) {
+    console.log("📺 Displaying top 5 logs in UI:", logs);
+    // Insert your DOM manipulation or framework state updates here
+    const feed = document.getElementById('activityFeed');
+    if (!feed) return;
+    
+    feed.innerHTML = '';
+    
+    if (!snapshot.exists()) {
+        feed.innerHTML = '<div>Waiting for cavern activity...</div>';
+        return;
+    }
+    
+    snapshot.forEach(child => {
+        const data = child.val();
+        const entry = document.createElement('div');
+        entry.style.padding = "4px 0";
+        entry.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
+        entry.innerHTML = `<span style="color:var(--gold-accent); margin-right: 5px;">⚡</span> ${data.text}`;
+        feed.prepend(entry); // Newest at the top
+    });
+}
+
+// ==================== GLOBAL LOG (v2.4.0) ====================
+function logGlobalEvent(message) {
+    if (!firebaseActive || !auth.currentUser) return;
+    
+    console.log("📡 Attempting to log event:", message);
+    
+    const activityLogRef = db.ref('activity_log');
+    const newLogRef = activityLogRef.push();
+    
+    // 1. Instantly save the new log entry
+    newLogRef.set({
+        text: message,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+    })
+    .then(() => {
+        // 2. Run memory management asynchronously in the background.
+        // We trim down to 10 records instead of 5 to create a safe buffer zone,
+        // preventing race conditions if multiple users are logging at once.
+        return activityLogRef.orderByChild('timestamp').limitToLast(10).once('value');
+    })
+    .then((snapshot) => {
+        if (!snapshot.exists()) return;
+
+        // Collect all existing log IDs into an array
+        const logKeys = [];
+        snapshot.forEach((child) => {
+            logKeys.push(child.key); // Automatically ordered oldest to newest
+        });
+
+        const maxBuffer = 5;
+        if (logKeys.length > maxBuffer) {
+            // Determine exactly how many overflow logs need to be deleted
+            const keysToDelete = logKeys.slice(0, logKeys.length - maxBuffer);
+            
+            // Build a multi-path update object to delete everything in a single database request
+            const updates = {};
+            keysToDelete.forEach(key => {
+                updates[key] = null; // Setting a node to null in Firebase deletes it
+            });
+
+            // Execute the batch deletion
+            return activityLogRef.update(updates);
+        }
+    })
+    .catch(err => console.error("Logger Database Error:", err));
+}

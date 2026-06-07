@@ -1,6 +1,6 @@
 # ⛏️ Underworld Miner — Cavern Chronicles
 
-[![Game Version](https://img.shields.io/badge/Version-v2.6.0-gold.svg)](https://github.com/Kwaade17/Mining-Game)
+[![Game Version](https://img.shields.io/badge/Version-v2.7.0-gold.svg)](https://github.com/Kwaade17/Mining-Game)
 [![Platform](https://img.shields.io/badge/Platform-Web__Browser-blue.svg)](https://github.com/Kwaade17/Mining-Game)
 [![Language](https://img.shields.io/badge/Made%20With-HTML%20%7C%20CSS%20%7C%20JS-brightgreen.svg)](https://github.com/Kwaade17/Mining-Game)
 

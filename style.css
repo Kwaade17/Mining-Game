@@ -2511,3 +2511,20 @@ body.dev-theme .inventory-section {
     border-color: #00f2ff !important;
     box-shadow: 0 0 10px rgba(0, 242, 255, 0.1);
 }
+
+/* LOG ANIMATIONS */
+@keyframes logFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px); /* Soft downward slide */
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.log-entry-animated {
+    animation: logFadeIn 0.4s ease-out forwards;
+    will-change: opacity, transform; /* Hardware-accelerates the animation */
+}
